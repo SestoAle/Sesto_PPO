@@ -39,11 +39,11 @@ class Environment:
 if __name__ == "__main__":
 
     # Total episode of training
-    total_episode = 50000
+    total_episode = 10000
     # Frequency of training (in episode)
     frequency = 2000
     # Frequency of logging
-    logging = 100
+    logging = 20
 
     # Create environment
     env = Environment()
@@ -64,6 +64,8 @@ if __name__ == "__main__":
     policy_losses = []
     # Value losses
     value_losses = []
+    # Lenghts of episode
+    lengths = []
     while ep <= total_episode:
         ep += 1
         step = 0
@@ -74,9 +76,11 @@ if __name__ == "__main__":
         while not done:
 
             # Evaluation - Execute step
-            action, logprob = agent.eval([state])
+            action, logprob, probs = agent.eval([state])
             action = action[0]
+
             state_n, reward, done = env.execute(action)
+
             step += 1
             total_step += 1
             episode_reward += reward
@@ -99,14 +103,15 @@ if __name__ == "__main__":
             # If done, end the episode
             if done:
                 episode_rewards.append(episode_reward)
+                lengths.append(step)
                 break
-
-
 
         # Logging information
         if ep > 0 and ep % logging == 0:
             print('Mean of {} episode reward after {} episodes: {}'.
                   format(logging, ep, np.mean(episode_rewards[-logging:])))
+            print('Average episode length {}'.
+                  format(logging, ep, np.mean(lengths[-logging:])))
             print('Policy loss {}'.
                   format(np.mean(policy_losses[-logging:])))
             print('Value loss {}'.
@@ -126,7 +131,7 @@ if __name__ == "__main__":
         while not done:
 
             # Evaluation - Execute step
-            action = agent.eval([state])
+            action = agent.eval_max([state])
             state_n, reward, done = env.execute(action)
             step += 1
             episode_reward += reward

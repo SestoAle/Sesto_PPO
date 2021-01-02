@@ -6,7 +6,7 @@ eps = 1e-12
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, lr=0.002, batch_size=128, num_itr=4, action_size=4, epsilon=0.2, c1=0.5, c2=0.01,
+    def __init__(self, sess, lr=0.002, batch_size=128, num_itr=4, action_size=4, epsilon=0.2, c1=0.5, c2=0.0,
                  discount=0.99, name='ppo', **kwargs):
 
         # Model parameters
@@ -30,14 +30,14 @@ class PPO:
             # Input spefication (for Minigrid)
             self.state = tf.compat.v1.placeholder(tf.float32, [None, 8], name='state')
 
-            # Critic network
-            with tf.compat.v1.variable_scope('critic'):
-                # Network specification
-                self.reward = tf.compat.v1.placeholder(tf.float32, [None, 1], name='rewards')
-                self.v_network = self.mlp(self.state)
-
-                # Value function
-                self.value = self.linear(self.v_network, 1)
+            # # Critic network
+            # with tf.compat.v1.variable_scope('critic'):
+            #     # Network specification
+            #     self.reward = tf.compat.v1.placeholder(tf.float32, [None, 1], name='rewards')
+            #     self.v_network = self.mlp(self.state)
+            #
+            #     # Value function
+            #     self.value = self.linear(self.v_network, 1)
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -52,8 +52,12 @@ class PPO:
                 self.probs = self.linear(self.p_network, action_size, activation='softmax')
                 # Distribution to sample
                 self.dist = tf.compat.v1.distributions.Categorical(self.probs)
+
                 # Actual action
                 self.action = self.dist.sample()
+
+                self.value = self.linear(self.p_network, 1)
+
                 self.log_prob = self.dist.log_prob(self.action)
 
                 # TODO: what?
@@ -88,10 +92,10 @@ class PPO:
             return lin
 
     # A simple MLP network
-    def mlp(self, state, layers = 1, hidden_size = 64):
+    def mlp(self, state, layers = 2, hidden_size = 64):
 
         for i in range(layers):
-            state = self.linear(state, hidden_size, name='linear_{}'.format(i), activation='relu')
+            state = self.linear(state, hidden_size, name='linear_{}'.format(i), activation='tanh')
 
         return state
 
@@ -106,13 +110,13 @@ class PPO:
 
         for it in range(self.num_itr):
             # Take a mini-batch of batch_size experience
-            mini_batch_idxs = np.random.randint(0, len(self.buffer['states']), self.batch_size)
+            #mini_batch_idxs = np.random.randint(0, len(self.buffer['states']), self.batch_size)
 
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
-            old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
-            states_n_mini_batch = [self.buffer['states_n'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [self.buffer['rewards'][id] for id in mini_batch_idxs]
+            # states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            # actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
+            # old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
+            # states_n_mini_batch = [self.buffer['states_n'][id] for id in mini_batch_idxs]
+            # rewards_mini_batch = [self.buffer['rewards'][id] for id in mini_batch_idxs]
 
             states_mini_batch = self.buffer['states']
             actions_mini_batch = self.buffer['actions']
@@ -122,6 +126,8 @@ class PPO:
 
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, 1])
+
+            print(rewards_mini_batch)
 
             current_logprobs = self.eval_with_action(states_mini_batch, actions_mini_batch)
 
@@ -145,8 +151,9 @@ class PPO:
             self.state: state
         }
 
-        action, logprob = self.sess.run([self.action, self.log_prob], feed_dict=feed_dict)
-        return action, logprob
+        action, logprob, probs = self.sess.run([self.action, self.log_prob, self.probs], feed_dict=feed_dict)
+
+        return action, logprob, probs
 
     def eval_max(self, state):
         feed_dict = {
@@ -207,6 +214,9 @@ class PPO:
                 discounted_reward = 0
 
             discounted_reward = reward + (self.discount*discounted_reward)
-            discounted_rewards.append(discounted_reward)
+            discounted_rewards.insert(0, discounted_reward)
 
-        self.buffer['rewards'] = list(reversed(discounted_rewards))
+        # Normalizing reward
+        discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
+
+        self.buffer['rewards'] = discounted_rewards
