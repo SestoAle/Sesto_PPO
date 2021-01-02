@@ -44,6 +44,7 @@ class PPO:
                 # Previous prob
                 self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None, 1], name='old_prob')
                 self.current_logprob = tf.compat.v1.placeholder(tf.float32, [None,1], name='current_prob')
+                self.reward = tf.compat.v1.placeholder(tf.float32, [None, 1], name='rewards')
 
                 # Network specification
                 self.p_network = self.mlp(self.state)
