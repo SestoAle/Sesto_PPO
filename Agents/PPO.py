@@ -128,8 +128,6 @@ class PPO:
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, 1])
 
-            print(rewards_mini_batch)
-
             current_logprobs = self.eval_with_action(states_mini_batch, actions_mini_batch)
 
             feed_dict = {
