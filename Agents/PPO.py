@@ -49,14 +49,14 @@ class PPO:
                 self.p_network = self.mlp(self.state)
 
                 # Probability distribution
-                self.probs = self.linear(self.p_network, action_size, activation='softmax')
+                self.probs = self.linear(self.p_network, action_size, activation='softmax', name='probs')
                 # Distribution to sample
                 self.dist = tf.compat.v1.distributions.Categorical(self.probs)
 
                 # Actual action
                 self.action = self.dist.sample()
 
-                self.value = self.linear(self.p_network, 1)
+                self.value = self.linear(self.p_network, 1, name='value')
 
                 self.log_prob = self.dist.log_prob(self.action)
 
