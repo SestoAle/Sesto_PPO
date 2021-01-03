@@ -34,10 +34,16 @@ def set_curriculum(curriculum, total_timesteps, current_curriculum_step, mode='s
 
     return config
 
+# Method for count time after each episode
+def timer(start, end):
+    hours, rem = divmod(end - start, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print("Time passed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+
 if __name__ == "__main__":
 
     # DeepCrawl
-    game_name = 'envs/rnd'
+    game_name = 'envs/DeepCrawl-Procedural-4'
     work_id = 99
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
@@ -99,6 +105,7 @@ if __name__ == "__main__":
     current_curriculum_step = 0
 
     # Trainin loop
+    start_time = time.time()
     while ep <= total_episode:
         # Reset the episode
         ep += 1
@@ -148,3 +155,5 @@ if __name__ == "__main__":
                   format(logging, ep, np.mean(episode_rewards[-logging:])))
 
             print('The agent made a total of {} steps'.format(total_step))
+
+            timer(start_time, time.time())
