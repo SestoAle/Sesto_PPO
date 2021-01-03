@@ -1,7 +1,7 @@
 from Agents.PPO import PPO
 import tensorflow as tf
 import gym
-
+import gym_minigrid
 
 import numpy as np
 
@@ -14,7 +14,6 @@ class Environment:
         self.no_graphic = no_graphic
 
         self.max_timestep = 300
-
 
     def get_state(self, obs):
         state = np.reshape(obs, (8))
@@ -39,11 +38,11 @@ class Environment:
 if __name__ == "__main__":
 
     # Total episode of training
-    total_episode = 10000
+    total_episode = 3000
     # Frequency of training (in episode)
     frequency = 2000
     # Frequency of logging
-    logging = 20
+    logging = 100
 
     # Create environment
     env = Environment()
@@ -60,12 +59,7 @@ if __name__ == "__main__":
     total_step = 0
     # Cumulative rewards
     episode_rewards = []
-    # Policy losses
-    policy_losses = []
-    # Value losses
-    value_losses = []
-    # Lenghts of episode
-    lengths = []
+
     while ep <= total_episode:
         ep += 1
         step = 0
@@ -73,54 +67,42 @@ if __name__ == "__main__":
         done = False
         episode_reward = 0
 
-        while not done:
+        while True:
 
             # Evaluation - Execute step
             action, logprob, probs = agent.eval([state])
             action = action[0]
-
             state_n, reward, done = env.execute(action)
 
-            step += 1
-            total_step += 1
             episode_reward += reward
-
-            # If step >= max_timestep, end the episode
-            if step >= env.max_timestep:
-                done = True
 
             # Update PPO memory
             agent.add_to_buffer(state, state_n, action, reward, logprob, done)
             state = state_n
 
+            step += 1
+            total_step += 1
+
             # If frequency episodes are passed, update the policy
             if total_step > 0 and total_step % frequency == 0:
-                total_loss, value_loss, policy_loss = agent.train()
+                total_loss = agent.train()
                 agent.clear_buffer()
-                value_losses.append(value_loss)
-                policy_losses.append(policy_loss)
 
             # If done, end the episode
-            if done:
+            if done or step >= env.max_timestep:
                 episode_rewards.append(episode_reward)
-                lengths.append(step)
                 break
 
         # Logging information
         if ep > 0 and ep % logging == 0:
             print('Mean of {} episode reward after {} episodes: {}'.
                   format(logging, ep, np.mean(episode_rewards[-logging:])))
-            print('Average episode length {}'.
-                  format(logging, ep, np.mean(lengths[-logging:])))
-            print('Policy loss {}'.
-                  format(np.mean(policy_losses[-logging:])))
-            print('Value loss {}'.
-                  format(np.mean(value_losses[-logging:])))
 
 
     # Testing phase
     # Re-Create environment with graphics
     env = Environment(no_graphic=False)
+    ep = 0
     while True:
 
         state = env.reset()
@@ -128,7 +110,7 @@ if __name__ == "__main__":
         done = False
         episode_reward = 0
 
-        while not done:
+        while True:
 
             # Evaluation - Execute step
             action = agent.eval_max([state])
@@ -136,13 +118,11 @@ if __name__ == "__main__":
             step += 1
             episode_reward += reward
 
-            # If step >= max_timestep, end the episode
-            if step >= env.max_timestep:
-                done = True
-
             state = state_n
 
             # If done, end the episode
-            if done:
+            if done or step >= env.max_timestep:
                 episode_rewards.append(episode_reward)
                 break
+
+        ep += 1

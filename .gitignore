@@ -133,3 +133,5 @@ dmypy.json
 .idea/Sesto_PPO.iml
 .idea/vcs.xml
 .idea/workspace.xml
+envs/
+.DS_Store
