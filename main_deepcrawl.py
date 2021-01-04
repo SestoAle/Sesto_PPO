@@ -3,6 +3,8 @@ import tensorflow as tf
 from unity_env_wrapper import UnityEnvWrapper
 import time
 import os
+import json
+from utils import NumpyEncoder
 
 import numpy as np
 
@@ -40,6 +42,17 @@ def set_curriculum(curriculum, total_timesteps, mode='steps'):
 
     return config
 
+
+def save_model(rewards, model_name):
+
+
+    json_str = json.dumps(history, cls=NumpyEncoder)
+    f = open("arrays/" + model_name + ".json", "w")
+    f.write(json_str)
+    f.close()
+
+    print('Model saved with name: {}'.format(model_name))
+
 # Method for count time after each episode
 def timer(start, end):
     hours, rem = divmod(end - start, 3600)
@@ -49,13 +62,14 @@ def timer(start, end):
 if __name__ == "__main__":
 
     # DeepCrawl
-    game_name = 'envs/DeepCrawl-Procedural-4'
-    work_id = 99
+    game_name = 'envs/rnd'
+    work_id = 0
+    model_name = 'ranger'
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
@@ -77,12 +91,24 @@ if __name__ == "__main__":
             }
     }
 
+    # History to save model statistics
+    history = {
+        "episode_rewards": [],
+        "episode_timesteps": [],
+        "mean_entropies": [],
+        "std_entropies": [],
+        "reward_model_loss": [],
+        "env_rewards": []
+    }
+
     # Total episode of training
     total_episode = 1e10
     # Frequency of training (in episode)
     frequency = 5
     # Frequency of logging
-    logging = 100
+    logging = 1
+    # Frequency of saving
+    save_frequency = 1
     # Max timestep for episode
     max_episode_timestep = 100
 
@@ -103,8 +129,6 @@ if __name__ == "__main__":
     # Training loop
     ep = 0
     total_step = 0
-    # Cumulative rewards
-    episode_rewards = []
 
     # For curriculum training
     start_training = 0
@@ -151,20 +175,27 @@ if __name__ == "__main__":
 
                 # If done, end the episode
                 if done:
-                    episode_rewards.append(episode_reward)
+                    history['episode_rewards'].append(episode_reward)
+                    history['episode_timesteps'].append(step)
+                    history['mean_entropies'].append(episode_reward)
+                    history['std_entropies'].append(episode_reward)
                     break
 
             # Logging information
             if ep > 0 and ep % logging == 0:
                 print('Mean of {} episode reward after {} episodes: {}'.
-                      format(logging, ep, np.mean(episode_rewards[-logging:])))
+                      format(logging, ep, np.mean(history['episode_rewards'][-logging:])))
 
                 print('The agent made a total of {} steps'.format(total_step))
 
                 timer(start_time, time.time())
 
+            if ep > 0 and ep % save_frequency == 0:
+                save_model(history, model_name)
+
             # If frequency episodes are passed, update the policy
             if ep > 0 and ep % frequency == 0:
                 total_loss = agent.train()
     finally:
+        save_model(history, model_name)
         env.close()

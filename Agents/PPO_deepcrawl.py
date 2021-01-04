@@ -57,7 +57,7 @@ class PPO:
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
                 self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
-                self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
+                self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=None)
 
                 # Probability distribution
                 self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax, name='probs')
@@ -138,7 +138,7 @@ class PPO:
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
     # Convolutional network, the same for both the networks
-    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats):
+    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, baseline=False):
         conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
         conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
         conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
@@ -156,11 +156,17 @@ class PPO:
 
         embs_41 = tf.nn.tanh(self.embedding(agent_stats, 129, 256, name='embs_41'))
         embs_41 = tf.reshape(embs_41, [-1, 16 * 256])
-        flat_41 = self.linear(embs_41, 256, name='fc_41', activation=tf.nn.relu)
+        if not baseline:
+            flat_41 = self.linear(embs_41, 256, name='fc_41', activation=tf.nn.relu)
+        else:
+            flat_41 = self.linear(embs_41, 128, name='fc_41', activation=tf.nn.relu)
 
         embs_51 = self.embedding(target_stats, 125, 256, name='embs_51')
         embs_51 = tf.reshape(embs_51, [-1, 15 * 256])
-        flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
+        if not baseline:
+            flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
+        else:
+            flat_51 = self.linear(embs_51, 128, name='fc_51', activation=tf.nn.relu)
 
         all_flat = tf.concat([flat_11, flat_21, flat_31, flat_41, flat_51], axis=1)
 
