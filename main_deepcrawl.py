@@ -49,7 +49,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 5
     # Frequency of logging
-    logging = 100
+    logging = 1
     # Max timestep for episode
     max_episode_timestep = 100
 
@@ -130,6 +130,9 @@ if __name__ == "__main__":
             action = action[0]
             state_n, done, reward = env.execute(action)
 
+            if step >= env._max_episode_timesteps - 1:
+                done = True
+
             episode_reward += reward
 
             # Update PPO memory
@@ -140,14 +143,9 @@ if __name__ == "__main__":
             total_step += 1
 
             # If done, end the episode
-            if done or step >= env._max_episode_timesteps:
+            if done:
                 episode_rewards.append(episode_reward)
                 break
-
-        # If frequency episodes are passed, update the policy
-        if ep > 0 and ep % frequency == 0:
-            total_loss = agent.train()
-            agent.clear_buffer()
 
         # Logging information
         if ep > 0 and ep % logging == 0:
@@ -157,3 +155,7 @@ if __name__ == "__main__":
             print('The agent made a total of {} steps'.format(total_step))
 
             timer(start_time, time.time())
+
+        # If frequency episodes are passed, update the policy
+        if ep > 0 and ep % frequency == 0:
+            total_loss = agent.train()

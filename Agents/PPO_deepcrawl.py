@@ -14,8 +14,8 @@ eps = 1e-5
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19, epsilon=0.2, c1=0.5, c2=0.01,
-                 discount=0.99, lmbda=1.0, name='ppo', **kwargs):
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, **kwargs):
 
         # Model parameters
         self.sess = sess
@@ -36,6 +36,7 @@ class PPO:
 
         self.buffer = dict()
         self.clear_buffer()
+        self.memory = memory
 
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
@@ -221,9 +222,11 @@ class PPO:
 
         # Train the value function
         for it in range(self.v_num_itr):
+            # Take a mini-batch of batch_size experience
+            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
-            states_mini_batch = self.buffer['states']
-            rewards_mini_batch = discounted_rewards
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
 
@@ -303,9 +306,10 @@ class PPO:
 
         return feed_dict
 
-
     # Clear the memory buffer
     def clear_buffer(self):
+
+        self.buffer['episode_lengths'] = []
         self.buffer['states'] = []
         self.buffer['actions'] = []
         self.buffer['old_probs'] = []
@@ -315,12 +319,28 @@ class PPO:
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
+
+        # If we store more than memory episodes, remove the last episode
+        if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
+            idxs_to_remove = self.buffer['episode_lengths'][0]
+            del self.buffer['states'][:idxs_to_remove]
+            del self.buffer['actions'][:idxs_to_remove]
+            del self.buffer['old_probs'][:idxs_to_remove]
+            del self.buffer['states_n'][:idxs_to_remove]
+            del self.buffer['rewards'][:idxs_to_remove]
+            del self.buffer['terminals'][:idxs_to_remove]
+            del self.buffer['episode_lengths'][0]
+
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
         self.buffer['old_probs'].append(old_prob)
         self.buffer['states_n'].append(state_n)
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
+        # If its terminal, update the episode length count (all states - sum(previous episode lengths)
+        if terminals:
+            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+
 
     # Change rewards in buffer to discounted rewards
     def compute_discounted_reward(self):
@@ -336,7 +356,7 @@ class PPO:
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
-        discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
+        # discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
 
         return discounted_rewards
 
@@ -360,7 +380,7 @@ class PPO:
             rewards.insert(0, reward)
 
         # Normalizing
-        rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
+        # rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
 
         return rewards
 
