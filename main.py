@@ -38,7 +38,7 @@ class Environment:
 if __name__ == "__main__":
 
     # Total episode of training
-    total_episode = 3000
+    total_episode = 2000
     # Frequency of training (in episode)
     frequency = 2000
     # Frequency of logging
@@ -76,6 +76,9 @@ if __name__ == "__main__":
 
             episode_reward += reward
 
+            if step >= env.max_timestep:
+                done = True
+
             # Update PPO memory
             agent.add_to_buffer(state, state_n, action, reward, logprob, done)
             state = state_n
@@ -89,7 +92,7 @@ if __name__ == "__main__":
                 agent.clear_buffer()
 
             # If done, end the episode
-            if done or step >= env.max_timestep:
+            if done:
                 episode_rewards.append(episode_reward)
                 break
 
