@@ -2,8 +2,14 @@ from Agents.PPO_deepcrawl import PPO
 import tensorflow as tf
 from unity_env_wrapper import UnityEnvWrapper
 import time
+import os
 
 import numpy as np
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 # Update curriculum for DeepCrawl
 def set_curriculum(curriculum, total_timesteps, mode='steps'):
@@ -159,3 +165,4 @@ if __name__ == "__main__":
         # If frequency episodes are passed, update the policy
         if ep > 0 and ep % frequency == 0:
             total_loss = agent.train()
+            agent.clear_buffer()

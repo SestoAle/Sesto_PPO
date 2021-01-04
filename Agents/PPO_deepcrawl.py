@@ -5,11 +5,6 @@ from math import sqrt
 from tensorforce import util
 import os
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-physical_devices = tf.config.experimental.list_physical_devices('GPU')
-if len(physical_devices) > 0:
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
 eps = 1e-5
 
 class PPO:
@@ -179,11 +174,11 @@ class PPO:
         # Before training, compute discounted reward
         # Compute GAE for rewards. If lambda == 1, they are discoutned rewards
         # Compute values for each state
-        states = self.obs_to_state(self.buffer['states'])
-        feed_dict = self.create_state_feed_dict(states)
-        v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        v_values = np.append(v_values, 0)
-        discounted_rewards = self.compute_gae(v_values)
+        # states = self.obs_to_state(self.buffer['states'])
+        # feed_dict = self.create_state_feed_dict(states)
+        # v_values = self.sess.run(self.value, feed_dict=feed_dict)
+        # v_values = np.append(v_values, 0)
+        discounted_rewards = self.compute_discounted_reward()
 
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
@@ -320,16 +315,16 @@ class PPO:
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
 
-        # If we store more than memory episodes, remove the last episode
-        if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
-            idxs_to_remove = self.buffer['episode_lengths'][0]
-            del self.buffer['states'][:idxs_to_remove]
-            del self.buffer['actions'][:idxs_to_remove]
-            del self.buffer['old_probs'][:idxs_to_remove]
-            del self.buffer['states_n'][:idxs_to_remove]
-            del self.buffer['rewards'][:idxs_to_remove]
-            del self.buffer['terminals'][:idxs_to_remove]
-            del self.buffer['episode_lengths'][0]
+        # # If we store more than memory episodes, remove the last episode
+        # if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
+        #     idxs_to_remove = self.buffer['episode_lengths'][0]
+        #     del self.buffer['states'][:idxs_to_remove]
+        #     del self.buffer['actions'][:idxs_to_remove]
+        #     del self.buffer['old_probs'][:idxs_to_remove]
+        #     del self.buffer['states_n'][:idxs_to_remove]
+        #     del self.buffer['rewards'][:idxs_to_remove]
+        #     del self.buffer['terminals'][:idxs_to_remove]
+        #     del self.buffer['episode_lengths'][0]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -338,8 +333,8 @@ class PPO:
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
-        if terminals:
-            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+        # if terminals:
+        #     self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
 
 
     # Change rewards in buffer to discounted rewards
