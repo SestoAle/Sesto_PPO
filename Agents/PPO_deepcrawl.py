@@ -9,7 +9,7 @@ eps = 1e-5
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
+    def __init__(self, sess, p_lr=5e-4, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, **kwargs):
 
         # Model parameters
@@ -85,7 +85,7 @@ class PPO:
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
-                self.value = tf.squeeze(self.linear(self.p_network, 1))
+                self.value = tf.squeeze(self.linear(self.v_network, 1))
 
             # Advantage
             # Advantage (reward - baseline)
@@ -174,11 +174,11 @@ class PPO:
         # Before training, compute discounted reward
         # Compute GAE for rewards. If lambda == 1, they are discoutned rewards
         # Compute values for each state
-        # states = self.obs_to_state(self.buffer['states'])
-        # feed_dict = self.create_state_feed_dict(states)
-        # v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        # v_values = np.append(v_values, 0)
-        discounted_rewards = self.compute_discounted_reward()
+        states = self.obs_to_state(self.buffer['states'])
+        feed_dict = self.create_state_feed_dict(states)
+        v_values = self.sess.run(self.value, feed_dict=feed_dict)
+        v_values = np.append(v_values, 0)
+        discounted_rewards = self.compute_gae(v_values)
 
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
@@ -315,16 +315,16 @@ class PPO:
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
 
-        # # If we store more than memory episodes, remove the last episode
-        # if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
-        #     idxs_to_remove = self.buffer['episode_lengths'][0]
-        #     del self.buffer['states'][:idxs_to_remove]
-        #     del self.buffer['actions'][:idxs_to_remove]
-        #     del self.buffer['old_probs'][:idxs_to_remove]
-        #     del self.buffer['states_n'][:idxs_to_remove]
-        #     del self.buffer['rewards'][:idxs_to_remove]
-        #     del self.buffer['terminals'][:idxs_to_remove]
-        #     del self.buffer['episode_lengths'][0]
+        # If we store more than memory episodes, remove the last episode
+        if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
+            idxs_to_remove = self.buffer['episode_lengths'][0]
+            del self.buffer['states'][:idxs_to_remove]
+            del self.buffer['actions'][:idxs_to_remove]
+            del self.buffer['old_probs'][:idxs_to_remove]
+            del self.buffer['states_n'][:idxs_to_remove]
+            del self.buffer['rewards'][:idxs_to_remove]
+            del self.buffer['terminals'][:idxs_to_remove]
+            del self.buffer['episode_lengths'][0]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -333,8 +333,8 @@ class PPO:
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
-        # if terminals:
-        #     self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+        if terminals:
+            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
 
 
     # Change rewards in buffer to discounted rewards
@@ -351,7 +351,7 @@ class PPO:
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
-        discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
+        # discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
 
         return discounted_rewards
 
@@ -375,7 +375,7 @@ class PPO:
             rewards.insert(0, reward)
 
         # Normalizing
-        rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
+        # rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
 
         return rewards
 

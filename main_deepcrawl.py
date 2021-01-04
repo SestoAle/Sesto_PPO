@@ -112,57 +112,59 @@ if __name__ == "__main__":
 
     # Trainin loop
     start_time = time.time()
-    while ep <= total_episode:
-        # Reset the episode
-        ep += 1
-        step = 0
+    try:
+        while ep <= total_episode:
+            # Reset the episode
+            ep += 1
+            step = 0
 
-        # Set actual curriculum
-        config = set_curriculum(curriculum, total_step)
-        if start_training == 0:
-            print(config)
-        start_training = 1
-        env.set_config(config)
+            # Set actual curriculum
+            config = set_curriculum(curriculum, total_step)
+            if start_training == 0:
+                print(config)
+            start_training = 1
+            env.set_config(config)
 
-        state = env.reset()
-        done = False
-        episode_reward = 0
+            state = env.reset()
+            done = False
+            episode_reward = 0
 
-        # Episode loop
-        while True:
+            # Episode loop
+            while True:
 
-            # Evaluation - Execute step
-            action, logprob, probs = agent.eval([state])
-            action = action[0]
-            state_n, done, reward = env.execute(action)
+                # Evaluation - Execute step
+                action, logprob, probs = agent.eval([state])
+                action = action[0]
+                state_n, done, reward = env.execute(action)
 
-            if step >= env._max_episode_timesteps - 1:
-                done = True
+                if step >= env._max_episode_timesteps - 1:
+                    done = True
 
-            episode_reward += reward
+                episode_reward += reward
 
-            # Update PPO memory
-            agent.add_to_buffer(state, state_n, action, reward, logprob, done)
-            state = state_n
+                # Update PPO memory
+                agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                state = state_n
 
-            step += 1
-            total_step += 1
+                step += 1
+                total_step += 1
 
-            # If done, end the episode
-            if done:
-                episode_rewards.append(episode_reward)
-                break
+                # If done, end the episode
+                if done:
+                    episode_rewards.append(episode_reward)
+                    break
 
-        # Logging information
-        if ep > 0 and ep % logging == 0:
-            print('Mean of {} episode reward after {} episodes: {}'.
-                  format(logging, ep, np.mean(episode_rewards[-logging:])))
+            # Logging information
+            if ep > 0 and ep % logging == 0:
+                print('Mean of {} episode reward after {} episodes: {}'.
+                      format(logging, ep, np.mean(episode_rewards[-logging:])))
 
-            print('The agent made a total of {} steps'.format(total_step))
+                print('The agent made a total of {} steps'.format(total_step))
 
-            timer(start_time, time.time())
+                timer(start_time, time.time())
 
-        # If frequency episodes are passed, update the policy
-        if ep > 0 and ep % frequency == 0:
-            total_loss = agent.train()
-            agent.clear_buffer()
+            # If frequency episodes are passed, update the policy
+            if ep > 0 and ep % frequency == 0:
+                total_loss = agent.train()
+    finally:
+        env.close()
