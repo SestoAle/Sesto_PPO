@@ -90,7 +90,6 @@ class PPO:
 
                 # Value function
                 self.value = tf.squeeze(self.linear(self.v_network, 1))
-                self.value = tf.compat.v1.Print(self.value, [self.value], 'yeah')
 
             # Advantage
             # Advantage (reward - baseline)
