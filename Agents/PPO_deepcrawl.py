@@ -90,7 +90,7 @@ class PPO:
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
-                self.value = tf.squeeze(self.linear(self.v_network, 1))
+                self.value = tf.squeeze(self.linear(self.p_network, 1))
 
             # Advantage
             # Advantage (reward - baseline)
