@@ -6,7 +6,7 @@ eps = 1e-5
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, lr=0.002, batch_size=2000, num_itr=4, action_size=4, epsilon=0.2, c1=0.5, c2=0.01,
+    def __init__(self, sess, lr=0.0002, batch_size=2000, num_itr=4, action_size=4, epsilon=0.2, c1=0.5, c2=0.01,
                  discount=0.99, lmbda=1.0, name='ppo', **kwargs):
 
         # Model parameters

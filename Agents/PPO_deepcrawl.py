@@ -77,11 +77,11 @@ class PPO:
             with tf.compat.v1.variable_scope('critic'):
 
                 # V Network specification
-                #self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                #                               self.agent_stats, self.target_stats, self.previous_acts)
+                self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                              self.agent_stats, self.target_stats, self.previous_acts)
 
                 # Final p_layers
-                self.v_network = self.linear(self.conv_network, 256, name='v_fc1', activation=tf.nn.relu)
+                self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
@@ -89,7 +89,7 @@ class PPO:
 
             # Advantage
             # Advantage (reward - baseline)
-            self.advantage = self.reward - self.value
+            self.advantage = self.reward - self.baseline_values
 
             # L_clip loss
             self.ratio = tf.exp(self.log_prob_with_action - self.old_logprob)
@@ -104,12 +104,12 @@ class PPO:
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss - self.c1*self.mse_loss + self.c2*self.entr_loss)
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*self.entr_loss)
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
             # Value Optimizer
-            # self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
+            self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
 
     ## Layers
     def linear(self, inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -138,7 +138,7 @@ class PPO:
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
     # Convolutional network, the same for both the networks
-    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, prev_action):
+    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats):
         conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
         conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
         conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
@@ -199,7 +199,7 @@ class PPO:
             feed_dict = self.create_state_feed_dict(states)
 
             # Get the baseline values
-            #v_values_mini_batch = self.sess.run(self.value, feed_dict=feed_dict)
+            v_values_mini_batch = [v_values[id] for id in mini_batch_idxs]
 
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -209,32 +209,32 @@ class PPO:
             feed_dict[self.reward] = rewards_mini_batch
             feed_dict[self.old_logprob] = old_probs_mini_batch
             feed_dict[self.eval_action] = actions_mini_batch
-            #feed_dict[self.baseline_values] = v_values_mini_batch
+            feed_dict[self.baseline_values] = v_values_mini_batch
 
             loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
 
             losses.append(loss)
 
-        # # Train the value function
-        # for it in range(self.v_num_itr):
-        #     # Take a mini-batch of batch_size experience
-        #     mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-        #
-        #     states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-        #     rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-        #     # Reshape problem, why?
-        #     rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
-        #
-        #     # Get DeepCrawl state
-        #     # Convert the observation to states
-        #     states = self.obs_to_state(states_mini_batch)
-        #
-        #     feed_dict = self.create_state_feed_dict(states)
-        #
-        #     # Update feed dict for training
-        #     feed_dict[self.reward] = rewards_mini_batch
-        #     v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-        #     v_losses.append(v_loss)
+        # Train the value function
+        for it in range(self.v_num_itr):
+            # Take a mini-batch of batch_size experience
+            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            # Reshape problem, why?
+            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+
+            # Get DeepCrawl state
+            # Convert the observation to states
+            states = self.obs_to_state(states_mini_batch)
+
+            feed_dict = self.create_state_feed_dict(states)
+
+            # Update feed dict for training
+            feed_dict[self.reward] = rewards_mini_batch
+            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            v_losses.append(v_loss)
 
         return np.mean(losses)
 
