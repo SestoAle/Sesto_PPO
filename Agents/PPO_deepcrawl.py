@@ -14,7 +14,7 @@ eps = 1e-5
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
+    def __init__(self, sess, p_lr=5e-4, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, **kwargs):
 
         # Model parameters
@@ -82,11 +82,11 @@ class PPO:
             with tf.compat.v1.variable_scope('critic'):
 
                 # V Network specification
-                self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                               self.agent_stats, self.target_stats, self.previous_acts)
+                #self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                #                               self.agent_stats, self.target_stats, self.previous_acts)
 
                 # Final p_layers
-                self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
+                self.v_network = self.linear(self.conv_network, 256, name='v_fc1', activation=tf.nn.relu)
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
@@ -109,12 +109,12 @@ class PPO:
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*self.entr_loss)
+            self.total_loss = - tf.reduce_mean(self.clip_loss - self.c1*self.mse_loss + self.c2*self.entr_loss)
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
             # Value Optimizer
-            self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
+            # self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
 
     ## Layers
     def linear(self, inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -220,26 +220,26 @@ class PPO:
 
             losses.append(loss)
 
-        # Train the value function
-        for it in range(self.v_num_itr):
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            # Reshape problem, why?
-            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
-
-            # Get DeepCrawl state
-            # Convert the observation to states
-            states = self.obs_to_state(states_mini_batch)
-
-            feed_dict = self.create_state_feed_dict(states)
-
-            # Update feed dict for training
-            feed_dict[self.reward] = rewards_mini_batch
-            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-            v_losses.append(v_loss)
+        # # Train the value function
+        # for it in range(self.v_num_itr):
+        #     # Take a mini-batch of batch_size experience
+        #     mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+        #
+        #     states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+        #     rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+        #     # Reshape problem, why?
+        #     rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+        #
+        #     # Get DeepCrawl state
+        #     # Convert the observation to states
+        #     states = self.obs_to_state(states_mini_batch)
+        #
+        #     feed_dict = self.create_state_feed_dict(states)
+        #
+        #     # Update feed dict for training
+        #     feed_dict[self.reward] = rewards_mini_batch
+        #     v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+        #     v_losses.append(v_loss)
 
         return np.mean(losses)
 
