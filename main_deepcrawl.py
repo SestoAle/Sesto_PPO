@@ -76,7 +76,7 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 5
     # Frequency of logging
-    logging = 1
+    logging = 100
     # Max timestep for episode
     max_episode_timestep = 100
 
