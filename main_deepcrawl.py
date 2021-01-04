@@ -1,7 +1,5 @@
 from Agents.PPO_deepcrawl import PPO
 import tensorflow as tf
-import gym
-import gym_minigrid
 from unity_env_wrapper import UnityEnvWrapper
 import time
 
