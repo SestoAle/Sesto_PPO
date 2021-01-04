@@ -52,7 +52,7 @@ class PPO:
 
                 # Network specification
                 self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                               self.agent_stats, self.target_stats, self.previous_acts)
+                                               self.agent_stats, self.target_stats)
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
@@ -78,7 +78,7 @@ class PPO:
 
                 # V Network specification
                 self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                              self.agent_stats, self.target_stats, self.previous_acts)
+                                              self.agent_stats, self.target_stats)
 
                 # Final p_layers
                 self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
