@@ -8,7 +8,9 @@ import time
 import numpy as np
 
 # Update curriculum for DeepCrawl
-def set_curriculum(curriculum, total_timesteps, current_curriculum_step, mode='steps'):
+def set_curriculum(curriculum, total_timesteps, mode='steps'):
+
+    global current_curriculum_step
 
     if curriculum == None:
         return None
@@ -112,7 +114,7 @@ if __name__ == "__main__":
         step = 0
 
         # Set actual curriculum
-        config = set_curriculum(curriculum, total_step, current_curriculum_step)
+        config = set_curriculum(curriculum, total_step)
         if start_training == 0:
             print(config)
         start_training = 1

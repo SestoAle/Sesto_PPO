@@ -14,14 +14,16 @@ eps = 1e-5
 
 class PPO:
     # PPO agent
-    def __init__(self, sess, lr=5e-6, batch_fraction=0.33, num_itr=20, action_size=19, epsilon=0.2, c1=0.5, c2=0.01,
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19, epsilon=0.2, c1=0.5, c2=0.01,
                  discount=0.99, lmbda=1.0, name='ppo', **kwargs):
 
         # Model parameters
         self.sess = sess
-        self.lr = lr
+        self.p_lr = p_lr
+        self.v_lr = v_lr
         self.batch_fraction = batch_fraction
         self.num_itr = num_itr
+        self.v_num_itr = v_num_itr
         self.name = name
         self.action_size = action_size
 
@@ -49,6 +51,8 @@ class PPO:
             with tf.compat.v1.variable_scope('actor'):
                 # Previous prob, for training
                 self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None,], name='old_prob')
+                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None,], name='baseline_values')
+                self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
                 self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
@@ -75,19 +79,22 @@ class PPO:
 
             # Critic network
             with tf.compat.v1.variable_scope('critic'):
-                # Network specification
-                self.reward = tf.compat.v1.placeholder(tf.float32, [None,], name='rewards')
+
+                # V Network specification
+                self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats, self.previous_acts)
 
                 # Final p_layers
-                self.v_network = self.linear(self.conv_network, 256, name='v_fc1', activation=tf.nn.relu)
+                self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
-                self.value = tf.squeeze(self.linear(self.p_network, 1))
+                self.value = tf.squeeze(self.linear(self.v_network, 1))
+                self.value = tf.compat.v1.Print(self.value, [self.value], 'yeah')
 
             # Advantage
             # Advantage (reward - baseline)
-            self.advantage = self.reward - self.value
+            self.advantage = self.reward - self.baseline_values
 
             # L_clip loss
             self.ratio = tf.exp(self.log_prob_with_action - self.old_logprob)
@@ -102,10 +109,12 @@ class PPO:
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss - self.c1*self.mse_loss + self.c2*self.entr_loss)
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*self.entr_loss)
 
-            # Optimizer
-            self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.total_loss)
+            # Policy Optimizer
+            self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
+            # Value Optimizer
+            self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
 
     ## Layers
     def linear(self, inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -165,11 +174,11 @@ class PPO:
     # Train loop
     def train(self):
         losses = []
+        v_losses = []
 
         # Before training, compute discounted reward
         # Compute GAE for rewards. If lambda == 1, they are discoutned rewards
         # Compute values for each state
-
         states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
@@ -178,6 +187,7 @@ class PPO:
 
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
+        # Train the policy
         for it in range(self.num_itr):
 
             # Take a mini-batch of batch_size experience
@@ -191,8 +201,10 @@ class PPO:
             # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
-
             feed_dict = self.create_state_feed_dict(states)
+
+            # Get the baseline values
+            v_values_mini_batch = self.sess.run(self.value, feed_dict=feed_dict)
 
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -202,10 +214,30 @@ class PPO:
             feed_dict[self.reward] = rewards_mini_batch
             feed_dict[self.old_logprob] = old_probs_mini_batch
             feed_dict[self.eval_action] = actions_mini_batch
+            feed_dict[self.baseline_values] = v_values_mini_batch
 
-            loss, step = self.sess.run([self.total_loss, self.step], feed_dict=feed_dict)
+            loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
 
             losses.append(loss)
+
+        # Train the value function
+        for it in range(self.v_num_itr):
+
+            states_mini_batch = self.buffer['states']
+            rewards_mini_batch = discounted_rewards
+            # Reshape problem, why?
+            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+
+            # Get DeepCrawl state
+            # Convert the observation to states
+            states = self.obs_to_state(states_mini_batch)
+
+            feed_dict = self.create_state_feed_dict(states)
+
+            # Update feed dict for training
+            feed_dict[self.reward] = rewards_mini_batch
+            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            v_losses.append(v_loss)
 
         return np.mean(losses)
 
