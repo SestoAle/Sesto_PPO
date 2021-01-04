@@ -94,7 +94,7 @@ class PPO:
 
             # Advantage
             # Advantage (reward - baseline)
-            self.advantage = self.reward - self.baseline_values
+            self.advantage = self.reward - self.value
 
             # L_clip loss
             self.ratio = tf.exp(self.log_prob_with_action - self.old_logprob)
@@ -204,7 +204,7 @@ class PPO:
             feed_dict = self.create_state_feed_dict(states)
 
             # Get the baseline values
-            v_values_mini_batch = self.sess.run(self.value, feed_dict=feed_dict)
+            #v_values_mini_batch = self.sess.run(self.value, feed_dict=feed_dict)
 
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -214,7 +214,7 @@ class PPO:
             feed_dict[self.reward] = rewards_mini_batch
             feed_dict[self.old_logprob] = old_probs_mini_batch
             feed_dict[self.eval_action] = actions_mini_batch
-            feed_dict[self.baseline_values] = v_values_mini_batch
+            #feed_dict[self.baseline_values] = v_values_mini_batch
 
             loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
 
