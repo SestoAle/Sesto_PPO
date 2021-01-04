@@ -62,7 +62,7 @@ def timer(start, end):
 if __name__ == "__main__":
 
     # DeepCrawl
-    game_name = 'envs/rnd'
+    game_name = 'envs/DeepCrawl-Procedural-4'
     work_id = 0
     model_name = 'ranger'
 
@@ -106,9 +106,9 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 5
     # Frequency of logging
-    logging = 1
+    logging = 100
     # Frequency of saving
-    save_frequency = 1
+    save_frequency = 3000
     # Max timestep for episode
     max_episode_timestep = 100
 
