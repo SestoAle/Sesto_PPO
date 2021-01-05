@@ -11,7 +11,8 @@ eps = 1e-5
 class PPO:
     # PPO agent
     def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=19,
-                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False, **kwargs):
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
+                 **kwargs):
 
         # Model parameters
         self.sess = sess
@@ -123,8 +124,8 @@ class PPO:
             return lin
 
     def conv_layer_2d(self, input, filters, kernel_size, strides=(1, 1), padding="SAME", name='conv',
-                      activation=None,
-                      bias=True):
+                      activation=None, bias=True):
+
         with tf.compat.v1.variable_scope(name):
             conv = tf.compat.v1.layers.conv2d(input, filters, kernel_size, strides, padding=padding, name=name,
                                               activation=activation, use_bias=bias)
@@ -181,16 +182,40 @@ class PPO:
         losses = []
         v_losses = []
 
+        # Get batch size based on batch_fraction
+        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
+
         # Before training, compute discounted reward
-        # Compute GAE for rewards. If lambda == 1, they are discoutned rewards
+        discounted_rewards = self.compute_discounted_reward()
+
+        # Train the value function
+        for it in range(self.v_num_itr):
+            # Take a mini-batch of batch_size experience
+            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            # Reshape problem, why?
+            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+
+            # Get DeepCrawl state
+            # Convert the observation to states
+            states = self.obs_to_state(states_mini_batch)
+
+            feed_dict = self.create_state_feed_dict(states)
+
+            # Update feed dict for training
+            feed_dict[self.reward] = rewards_mini_batch
+            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            v_losses.append(v_loss)
+
+        # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
         states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
         v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
-
-        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Train the policy
         for it in range(self.p_num_itr):
@@ -214,6 +239,7 @@ class PPO:
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
             old_probs_mini_batch = np.reshape(old_probs_mini_batch, [-1, ])
+            v_values_mini_batch = np.reshape(v_values_mini_batch, [-1, ])
 
             # Update feed dict for training
             feed_dict[self.reward] = rewards_mini_batch
@@ -224,27 +250,6 @@ class PPO:
             loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
 
             losses.append(loss)
-
-        # Train the value function
-        for it in range(self.v_num_itr):
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            # Reshape problem, why?
-            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
-
-            # Get DeepCrawl state
-            # Convert the observation to states
-            states = self.obs_to_state(states_mini_batch)
-
-            feed_dict = self.create_state_feed_dict(states)
-
-            # Update feed dict for training
-            feed_dict[self.reward] = rewards_mini_batch
-            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-            v_losses.append(v_loss)
 
         return np.mean(losses)
 
