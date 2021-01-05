@@ -67,7 +67,7 @@ class PPO:
                 self.dist = tf.compat.v1.distributions.Categorical(probs=self.probs)
 
                 # Sample action
-                self.action = self.dist.sample()
+                self.action = self.dist.sample(name='action')
                 self.log_prob = self.dist.log_prob(self.action)
 
                 # Get probability of a given action - useful for training
@@ -394,6 +394,30 @@ class PPO:
     # Save the entire model
     def save_model(self, name=None, folder='saved'):
         self.saver.save(self.sess, '{}/{}'.format(folder, name))
+
+        if True:
+            graph_def = self.sess.graph.as_graph_def()
+
+            # freeze_graph clear_devices option
+            for node in graph_def.node:
+                node.device = ''
+
+            graph_def = tf.compat.v1.graph_util.remove_training_nodes(input_graph=graph_def)
+            output_node_names = [
+                'ppo/actor/probs/probs/Softmax',
+                'ppo/actor/Categorical/action/Reshape_1'
+            ]
+
+            # implies tf.compat.v1.graph_util.extract_sub_graph
+            graph_def = tf.compat.v1.graph_util.convert_variables_to_constants(
+                sess=self.sess, input_graph_def=graph_def,
+                output_node_names=output_node_names
+            )
+            graph_path = tf.io.write_graph(
+                graph_or_graph_def=graph_def, logdir=folder,
+                name=(name + '.pb'), as_text=False
+            )
+
         return
 
     # Load entire model
