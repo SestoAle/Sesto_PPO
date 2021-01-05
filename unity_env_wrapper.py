@@ -371,6 +371,13 @@ class UnityEnvWrapper(Environment):
 
         return -entropy
 
+    def entropy(self, probs):
+        entropy = 0
+        for prob in probs:
+            entropy += (prob + eps) * (math.log(prob + eps) + eps)
+
+        return -entropy
+
     def states(self):
         return {
             # Categorical values: 2 agent, 1 empty tile, 0 obstacle tile

@@ -27,31 +27,47 @@ def set_curriculum(curriculum, total_timesteps, mode='steps'):
         curriculum_step = 0
 
         for (index, l) in enumerate(lessons):
+
             if total_timesteps > l:
                 curriculum_step = index + 1
+
 
 
     parameters = curriculum['parameters']
     config = {}
 
     for (par, value) in parameters.items():
-        config[par] = value[current_curriculum_step]
-
+        config[par] = value[curriculum_step]
 
     current_curriculum_step = curriculum_step
 
     return config
 
 
-def save_model(rewards, model_name):
+def save_model(history, model_name, curriculum, agent):
 
-
+    # Save statistics as json
     json_str = json.dumps(history, cls=NumpyEncoder)
-    f = open("arrays/" + model_name + ".json", "w")
+    f = open("arrays/{}.json".format(model_name), "w")
     f.write(json_str)
     f.close()
 
+    # Save curriculum as json
+    json_str = json.dumps(curriculum, cls=NumpyEncoder)
+    f = open("arrays/{}_curriculum.json".format(model_name), "w")
+    f.write(json_str)
+    f.close()
+
+    # Save the tf model
+    agent.save_model(name=model_name, folder='saved')
     print('Model saved with name: {}'.format(model_name))
+
+def load_model(model_name, agent):
+    agent.load_model(name=model_name, folder='saved')
+    with open("arrays/{}.json".format(model_name)) as f:
+        history = json.load(f)
+
+    return history
 
 # Method for count time after each episode
 def timer(start, end):
@@ -108,7 +124,7 @@ if __name__ == "__main__":
     # Frequency of logging
     logging = 100
     # Frequency of saving
-    save_frequency = 3000
+    save_frequency = 5
     # Max timestep for episode
     max_episode_timestep = 100
 
@@ -125,6 +141,16 @@ if __name__ == "__main__":
     agent = PPO(sess=sess)
     init = tf.compat.v1.global_variables_initializer()
     sess.run(init)
+
+    # If a saved model with the model_name already exists, load it (and the history attached to it)
+    if os.path.exists('{}/{}.meta'.format('saved', model_name)):
+        answer = None
+        while answer != 'y' and answer != 'n':
+            answer = input("There's already an agent saved with name {}, "
+                           "do you want to continue training? [y/n] ".format(model_name))
+
+        if answer == 'y':
+            history = load_model(model_name, agent)
 
     # Training loop
     ep = 0
@@ -143,7 +169,7 @@ if __name__ == "__main__":
             step = 0
 
             # Set actual curriculum
-            config = set_curriculum(curriculum, total_step)
+            config = set_curriculum(curriculum, np.sum(history['episode_timesteps']))
             if start_training == 0:
                 print(config)
             start_training = 1
@@ -153,17 +179,26 @@ if __name__ == "__main__":
             done = False
             episode_reward = 0
 
+            # Save local entropies
+            local_entropies = []
+
             # Episode loop
             while True:
 
                 # Evaluation - Execute step
                 action, logprob, probs = agent.eval([state])
                 action = action[0]
+                # Save probabilities for entropy
+                local_entropies.append(env.entropy(probs[0]))
+
+                # Execute in the environment
                 state_n, done, reward = env.execute(action)
 
+                # If step is equal than max timesteps, terminate the episode
                 if step >= env._max_episode_timesteps - 1:
                     done = True
 
+                # Get the cumulative reward
                 episode_reward += reward
 
                 # Update PPO memory
@@ -173,12 +208,12 @@ if __name__ == "__main__":
                 step += 1
                 total_step += 1
 
-                # If done, end the episode
+                # If done, end the episode and save statistics
                 if done:
                     history['episode_rewards'].append(episode_reward)
                     history['episode_timesteps'].append(step)
-                    history['mean_entropies'].append(episode_reward)
-                    history['std_entropies'].append(episode_reward)
+                    history['mean_entropies'].append(np.mean(local_entropies))
+                    history['std_entropies'].append(np.std(local_entropies))
                     break
 
             # Logging information
@@ -190,12 +225,13 @@ if __name__ == "__main__":
 
                 timer(start_time, time.time())
 
-            if ep > 0 and ep % save_frequency == 0:
-                save_model(history, model_name)
-
             # If frequency episodes are passed, update the policy
             if ep > 0 and ep % frequency == 0:
                 total_loss = agent.train()
+
+            # Save model and statistics
+            if ep > 0 and ep % save_frequency == 0:
+                save_model(history, model_name, curriculum, agent)
     finally:
-        save_model(history, model_name)
+        save_model(history, model_name, curriculum, agent)
         env.close()

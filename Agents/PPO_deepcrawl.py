@@ -7,20 +7,22 @@ import os
 
 eps = 1e-5
 
+# Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, num_itr=20, v_num_itr=10, action_size=19,
-                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, **kwargs):
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=19,
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False, **kwargs):
 
         # Model parameters
         self.sess = sess
         self.p_lr = p_lr
         self.v_lr = v_lr
         self.batch_fraction = batch_fraction
-        self.num_itr = num_itr
+        self.p_num_itr = p_num_itr
         self.v_num_itr = v_num_itr
         self.name = name
         self.action_size = action_size
+        self.norm_reward = norm_reward
 
         # PPO hyper-parameters
         self.epsilon = epsilon
@@ -78,7 +80,7 @@ class PPO:
 
                 # V Network specification
                 self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                              self.agent_stats, self.target_stats)
+                                              self.agent_stats, self.target_stats, baseline=True)
 
                 # Final p_layers
                 self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
@@ -110,6 +112,8 @@ class PPO:
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
             # Value Optimizer
             self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
+
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
 
     ## Layers
     def linear(self, inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -189,7 +193,7 @@ class PPO:
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Train the policy
-        for it in range(self.num_itr):
+        for it in range(self.p_num_itr):
 
             # Take a mini-batch of batch_size experience
             mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
@@ -357,7 +361,8 @@ class PPO:
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
-        discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
+        if self.norm_reward:
+            discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
 
         return discounted_rewards
 
@@ -381,7 +386,21 @@ class PPO:
             rewards.insert(0, reward)
 
         # Normalizing
-        rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
+        if self.norm_reward:
+            rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
 
         return rewards
+
+    # Save the entire model
+    def save_model(self, name=None, folder='saved'):
+        self.saver.save(self.sess, '{}/{}'.format(folder, name))
+        return
+
+    # Load entire model
+    def load_model(self, name=None, folder='saved'):
+        self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        self.saver.restore(self.sess, '{}/{}'.format(folder, name))
+
+        print('Model loaded correctly!')
+        return
 
