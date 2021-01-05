@@ -121,10 +121,12 @@ if __name__ == "__main__":
     total_episode = 1e10
     # Frequency of training (in episode)
     frequency = 5
+    # Memory of the agent (in episode)
+    memory = 10
     # Frequency of logging
     logging = 100
     # Frequency of saving
-    save_frequency = 5
+    save_frequency = 3000
     # Max timestep for episode
     max_episode_timestep = 100
 
@@ -138,7 +140,7 @@ if __name__ == "__main__":
     # Create agent
     tf.compat.v1.disable_eager_execution()
     sess = tf.compat.v1.Session()
-    agent = PPO(sess=sess)
+    agent = PPO(sess=sess, memory=memory)
     init = tf.compat.v1.global_variables_initializer()
     sess.run(init)
 
