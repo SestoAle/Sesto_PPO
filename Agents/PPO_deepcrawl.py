@@ -60,7 +60,7 @@ class PPO:
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
                 self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
-                self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=None)
+                self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
 
                 # Probability distribution
                 self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax, name='probs')
@@ -101,13 +101,13 @@ class PPO:
             self.clip_loss = tf.minimum(self.surr1, self.surr2)
 
             # Value function loss
-            self.mse_loss = tf.compat.v1.squared_difference(self.reward, self.value)
+            self.mse_loss = tf.compat.v1.losses.mean_squared_error(self.reward, self.value)
 
             # Entropy bonus
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*self.entr_loss)
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*(self.entr_loss + eps))
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
@@ -181,6 +181,8 @@ class PPO:
     def train(self):
         losses = []
         v_losses = []
+        losses_2 = []
+        losses_3 = []
 
         # Get batch size based on batch_fraction
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
@@ -248,7 +250,7 @@ class PPO:
             feed_dict[self.baseline_values] = v_values_mini_batch
 
             loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
-
+            
             losses.append(loss)
 
         return np.mean(losses)

@@ -5,6 +5,7 @@ import time
 import os
 import json
 from utils import NumpyEncoder
+import math
 
 import numpy as np
 
@@ -79,8 +80,8 @@ if __name__ == "__main__":
 
     # DeepCrawl
     game_name = 'envs/DeepCrawl-Procedural-4'
-    work_id = 0
-    model_name = 'ranger'
+    work_id = 1
+    model_name = 'warrior'
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
@@ -98,9 +99,9 @@ if __name__ == "__main__":
                 'maxAgentMp': [0, 0, 0, 0, 0],
                 'numActions': [17, 17, 17, 17, 17],
                 # Agent statistics
-                'agentAtk': [3, 3, 3, 3, 3],
+                'agentAtk': [4, 4, 4, 4, 4],
                 'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [3, 3, 3, 3, 3],
+                'agentDes': [0, 0, 0, 0, 0],
 
                 'minStartingInitiative': [1, 1, 1, 1, 1],
                 'maxStartingInitiative': [1, 1, 1, 1, 1]
@@ -144,6 +145,15 @@ if __name__ == "__main__":
     init = tf.compat.v1.global_variables_initializer()
     sess.run(init)
 
+    # Training loop
+    ep = 0
+    total_step = 0
+
+    # For curriculum training
+    start_training = 0
+    current_curriculum_step = 0
+
+
     # If a saved model with the model_name already exists, load it (and the history attached to it)
     if os.path.exists('{}/{}.meta'.format('saved', model_name)):
         answer = None
@@ -153,14 +163,9 @@ if __name__ == "__main__":
 
         if answer == 'y':
             history = load_model(model_name, agent)
+            ep = len(history['episode_timesteps'])
+            total_step = np.sum(history['episode_timesteps'])
 
-    # Training loop
-    ep = 0
-    total_step = 0
-
-    # For curriculum training
-    start_training = 0
-    current_curriculum_step = 0
 
     # Trainin loop
     start_time = time.time()
@@ -189,6 +194,9 @@ if __name__ == "__main__":
 
                 # Evaluation - Execute step
                 action, logprob, probs = agent.eval([state])
+                if math.isnan(probs[0][0]):
+                    input('...')
+
                 action = action[0]
                 # Save probabilities for entropy
                 local_entropies.append(env.entropy(probs[0]))
@@ -227,6 +235,9 @@ if __name__ == "__main__":
 
                 timer(start_time, time.time())
 
+                if np.mean(history['episode_rewards'][-logging:]) < -6.:
+                    input('...')
+
             # If frequency episodes are passed, update the policy
             if ep > 0 and ep % frequency == 0:
                 total_loss = agent.train()
@@ -235,5 +246,5 @@ if __name__ == "__main__":
             if ep > 0 and ep % save_frequency == 0:
                 save_model(history, model_name, curriculum, agent)
     finally:
-        save_model(history, model_name, curriculum, agent)
+        #save_model(history, model_name, curriculum, agent)
         env.close()
