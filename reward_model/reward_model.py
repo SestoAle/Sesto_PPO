@@ -254,8 +254,6 @@ class RewardModel:
     def train(self):
 
         losses = []
-        print(len(self.expert_traj['obs']))
-        print(len(self.buffer['obs']))
 
         # Update discriminator
         for it in range(self.num_itr):

@@ -1,2 +1,2 @@
-model_checkpoint_path: "archer"
-all_model_checkpoint_paths: "archer"
+model_checkpoint_path: "irl_buff"
+all_model_checkpoint_paths: "irl_buff"

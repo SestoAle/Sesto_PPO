@@ -150,12 +150,17 @@ class Runner:
                     self.history['episode_timesteps'].append(step)
                     self.history['mean_entropies'].append(np.mean(local_entropies))
                     self.history['std_entropies'].append(np.std(local_entropies))
+                    self.history['env_rewards'].append(env_episode_reward)
                     break
 
             # Logging information
             if self.ep > 0 and self.ep % self.logging == 0:
                 print('Mean of {} episode reward after {} episodes: {}'.
                       format(self.logging, self.ep, np.mean(self.history['episode_rewards'][-self.logging:])))
+
+                if self.reward_model is not None:
+                    print('Mean of {} environment episode reward after {} episodes: {}'.
+                            format(self.logging, self.ep, np.mean(self.history['env_rewards'][-self.logging:])))
 
                 print('The agent made a total of {} steps'.format(self.total_step))
 

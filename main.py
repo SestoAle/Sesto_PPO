@@ -21,6 +21,8 @@ parser.add_argument('-gn', '--game-name', help="The name of the game", default='
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
+parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
@@ -30,8 +32,8 @@ parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations f
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
-parser.set_defaults(fixed_reward_model=True)
+parser.set_defaults(use_reward_model=False)
+parser.set_defaults(fixed_reward_model=False)
 
 args = parser.parse_args()
 
@@ -43,6 +45,8 @@ if __name__ == "__main__":
     work_id = int(args.work_id)
     save_frequency = int(args.save_frequency)
     logging = int(args.logging)
+    max_episode_timestep = int(args.max_timesteps)
+    sampled_env = int(args.sampled_env)
     # IRL
     use_reward_model = args.use_reward_model
     reward_model_name = args.reward_model
@@ -53,12 +57,12 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
-                'maxTargetHp': [1, 10, 20, 20, 20],
-                'minAgentHp': [15, 10, 5, 5, 10],
+                'maxTargetHp': [20, 10, 20, 20, 20],
+                'minAgentHp': [1, 10, 5, 5, 10],
                 'maxAgentHp': [20, 20, 20, 20, 20],
                 'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
                 'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
@@ -66,23 +70,23 @@ if __name__ == "__main__":
                 'maxAgentMp': [0, 0, 0, 0, 0],
                 'numActions': [17, 17, 17, 17, 17],
                 # Agent statistics
-                'agentAtk': [4, 4, 4, 4, 4],
+                'agentAtk': [3, 3, 3, 3, 3],
                 'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [0, 0, 0, 0, 0],
+                'agentDes': [3, 3, 3, 3, 3],
 
                 'minStartingInitiative': [1, 1, 1, 1, 1],
-                'maxStartingInitiative': [1, 1, 1, 1, 1]
+                'maxStartingInitiative': [1, 1, 1, 1, 1],
+
+                'sampledEnv': [sampled_env]
             }
     }
 
     # Total episode of training
     total_episode = 1e10
     # Frequency of training (in episode)
-    frequency = 5
+    frequency = 10
     # Memory of the agent (in episode)
     memory = 10
-    # Max timestep for episode
-    max_episode_timestep = 100
 
     # Open the environment with all the desired flags
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
