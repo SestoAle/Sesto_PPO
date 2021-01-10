@@ -1,131 +1,129 @@
-from Agents.PPO import PPO
+from agents.PPO import PPO
+from runner.runner import Runner
+import os
+import time
 import tensorflow as tf
-import gym
-import gym_minigrid
+from unity_env_wrapper import UnityEnvWrapper
+import argparse
 
-import numpy as np
+from reward_model.reward_model import RewardModel
 
-class Environment:
-    # Class for environment
-    def __init__(self, name="LunarLander-v2", no_graphic=True, **kwargs):
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-        self.game_name = name
-        self.env = gym.make(self.game_name)
-        self.no_graphic = no_graphic
 
-        self.max_timestep = 300
+# Parse arguments for training
+parser = argparse.ArgumentParser()
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='warrior')
+parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
+parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
+parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 
-    def get_state(self, obs):
-        state = np.reshape(obs, (8))
-        return state
+# Parse arguments for Inverse Reinforcement Learning
+parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
+parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=15)
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='warrior_10')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems_archer.pkl')
+parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
+                    dest='fixed_reward_model', action='store_true')
 
-    def reset(self):
-        obs = self.env.reset()
-        if not self.no_graphic:
-            self.env.render('human')
-        state = self.get_state(obs)
-        return state
+parser.set_defaults(use_reward_model=True)
+parser.set_defaults(fixed_reward_model=True)
 
-    def execute(self, action):
-        obs, reward, done, _ = self.env.step(action)
-        if not self.no_graphic:
-            self.env.render('human')
-        state = self.get_state(obs)
-
-        return state, reward, done
-
+args = parser.parse_args()
 
 if __name__ == "__main__":
 
-    # Total episode of training
-    total_episode = 2000
-    # Frequency of training (in episode)
-    frequency = 2000
-    # Frequency of logging
-    logging = 20
+    # DeepCrawl arguments
+    game_name = args.game_name
+    model_name = args.model_name
+    work_id = int(args.work_id)
+    save_frequency = int(args.save_frequency)
+    logging = int(args.logging)
+    # IRL
+    use_reward_model = args.use_reward_model
+    reward_model_name = args.reward_model
+    fixed_reward_model = args.fixed_reward_model
+    dems_name = args.dems_name
+    reward_frequency = int(args.reward_frequency)
 
-    # Create environment
-    env = Environment()
+    # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
+    curriculum = {
+        'current_step': 0,
+        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
+        'parameters':
+            {
+                'minTargetHp': [1, 10, 10, 10, 10],
+                'maxTargetHp': [1, 10, 20, 20, 20],
+                'minAgentHp': [15, 10, 5, 5, 10],
+                'maxAgentHp': [20, 20, 20, 20, 20],
+                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
+                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
+                'minAgentMp': [0, 0, 0, 0, 0],
+                'maxAgentMp': [0, 0, 0, 0, 0],
+                'numActions': [17, 17, 17, 17, 17],
+                # Agent statistics
+                'agentAtk': [4, 4, 4, 4, 4],
+                'agentDef': [3, 3, 3, 3, 3],
+                'agentDes': [0, 0, 0, 0, 0],
+
+                'minStartingInitiative': [1, 1, 1, 1, 1],
+                'maxStartingInitiative': [1, 1, 1, 1, 1]
+            }
+    }
+
+    # Total episode of training
+    total_episode = 1e10
+    # Frequency of training (in episode)
+    frequency = 5
+    # Memory of the agent (in episode)
+    memory = 10
+    # Max timestep for episode
+    max_episode_timestep = 100
+
+    # Open the environment with all the desired flags
+    env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
+                                  worker_id=work_id, with_stats=True, size_stats=31,
+                                  size_global=10, agent_separate=False, with_class=False, with_hp=False,
+                                  with_previous=True, verbose=False, manual_input=False,
+                                  _max_episode_timesteps=max_episode_timestep)
 
     # Create agent
-    tf.compat.v1.disable_eager_execution()
-    sess = tf.compat.v1.Session()
-    agent = PPO(sess=sess)
-    init = tf.compat.v1.global_variables_initializer()
-    sess.run(init)
+    graph = tf.compat.v1.Graph()
+    with graph.as_default():
+        tf.compat.v1.disable_eager_execution()
+        sess = tf.compat.v1.Session(graph=graph)
+        agent = PPO(sess=sess, memory=memory, model_name=model_name)
+        # Initialize variables of models
+        init = tf.compat.v1.global_variables_initializer()
+        sess.run(init)
 
-    # Training loop
-    ep = 0
-    total_step = 0
-    # Cumulative rewards
-    episode_rewards = []
+    # If we want to use IRL, create a reward model
+    reward_model = None
+    if use_reward_model:
+        graph = tf.compat.v1.Graph()
+        with graph.as_default():
+            reward_sess = tf.compat.v1.Session(graph=graph)
+            reward_model = RewardModel(actions_size=19, policy=agent, sess=reward_sess, name='reward_model')
+            # Initialize variables of models
+            init = tf.compat.v1.global_variables_initializer()
+            reward_sess.run(init)
+            # If we want, we can use an already trained reward model
+            if fixed_reward_model:
+                reward_model.load_model(reward_model_name)
+                print("Model loaded!")
 
-    while ep <= total_episode:
-        ep += 1
-        step = 0
-        state = env.reset()
-        done = False
-        episode_reward = 0
+    # Create runner
+    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+                    logging=logging, total_episode=total_episode, curriculum=curriculum,
 
-        while True:
-
-            # Evaluation - Execute step
-            action, logprob, probs = agent.eval([state])
-            action = action[0]
-            state_n, reward, done = env.execute(action)
-
-            episode_reward += reward
-
-            # Update PPO memory
-            agent.add_to_buffer(state, state_n, action, reward, logprob, done)
-            state = state_n
-
-            step += 1
-            total_step += 1
-
-            # If frequency episodes are passed, update the policy
-            if total_step > 0 and total_step % frequency == 0:
-                total_loss = agent.train()
-                agent.clear_buffer()
-
-            # If done, end the episode
-            if done or step >= env.max_timestep:
-                episode_rewards.append(episode_reward)
-                break
-
-        # Logging information
-        if ep > 0 and ep % logging == 0:
-            print('Mean of {} episode reward after {} episodes: {}'.
-                  format(logging, ep, np.mean(episode_rewards[-logging:])))
-
-        if np.mean(episode_rewards[-logging:]) >= 200:
-            break
-
-
-    # Testing phase
-    # Re-Create environment with graphics
-    env = Environment(no_graphic=False)
-    ep = 0
-    while True:
-
-        state = env.reset()
-        step = 0
-        done = False
-        episode_reward = 0
-
-        while True:
-
-            # Evaluation - Execute step
-            action = agent.eval_max([state])
-            state_n, reward, done = env.execute(action)
-            step += 1
-            episode_reward += reward
-
-            state = state_n
-
-            # If done, end the episode
-            if done or step >= env.max_timestep:
-                episode_rewards.append(episode_reward)
-                break
-
-        ep += 1
+                    reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                    fixed_reward_model=fixed_reward_model)
+    try:
+        runner.run()
+    finally:
+        #save_model(history, model_name, curriculum, agent)
+        env.close()

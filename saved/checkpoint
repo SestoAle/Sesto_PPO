@@ -1,2 +1,2 @@
-model_checkpoint_path: "ranger"
-all_model_checkpoint_paths: "ranger"
+model_checkpoint_path: "archer"
+all_model_checkpoint_paths: "archer"
