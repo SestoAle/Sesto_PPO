@@ -172,7 +172,7 @@ class Runner:
 
             # If IRL, update the reward model after reward_frequency episode
             if self.reward_model is not None:
-                if self.ep > 0 and self.ep % self.reward_frequency == 0:
+                if not self.fixed_reward_model and self.ep > 0 and self.ep % self.reward_frequency == 0:
                     self.reward_model.train()
 
             # Save model and statistics

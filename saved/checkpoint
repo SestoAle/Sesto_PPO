@@ -1,2 +1,2 @@
-model_checkpoint_path: "irl_buff"
-all_model_checkpoint_paths: "irl_buff"
+model_checkpoint_path: "irl_buff_fr"
+all_model_checkpoint_paths: "irl_buff_fr"

@@ -84,7 +84,7 @@ if __name__ == "__main__":
     # Total episode of training
     total_episode = 1e10
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 5
     # Memory of the agent (in episode)
     memory = 10
 
