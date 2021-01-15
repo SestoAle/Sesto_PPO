@@ -33,7 +33,7 @@ parser.add_argument('-rm', '--reward-model', help="The name of the reward model"
 
 # Test reward models
 parser.add_argument('-em', '--ensemble-mode', help="IRL", default="mult")
-parser.add_argument('-t', '--temperatures', help="IRL", default="1.0,0.5,0.5")
+parser.add_argument('-t', '--temperatures', help="IRL", default="1.0,0.5")
 parser.add_argument('-sn', '--save-name', help="The name for save the results", default="test_reward")
 
 parser.set_defaults(use_reward_model=True)
@@ -177,6 +177,7 @@ if __name__ == "__main__":
                 temperatures = [float(t) for t in args.temperatures.split(",")]
                 for (i, agent) in enumerate(agents):
                     _, _, probs = agent.eval([state])
+                    probs = probs[0]
                     probs = boltzmann(probs, temperatures[i])
                     if args.ensemble_mode == 'mult':
                         total_probs *= probs
