@@ -111,7 +111,7 @@ if __name__ == "__main__":
         graph = tf.compat.v1.Graph()
         with graph.as_default():
             reward_sess = tf.compat.v1.Session(graph=graph)
-            reward_model = RewardModel(actions_size=19, policy=agent, sess=reward_sess, name='reward_model')
+            reward_model = RewardModel(actions_size=19, policy=agent, sess=reward_sess, name=model_name)
             # Initialize variables of models
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)

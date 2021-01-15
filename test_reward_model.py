@@ -7,6 +7,7 @@ from unity_env_wrapper import UnityEnvWrapper
 import argparse
 import numpy as np
 import json
+import re
 from utils import NumpyEncoder
 
 from reward_model.reward_model import RewardModel
@@ -22,7 +23,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='warrior')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
@@ -34,6 +34,7 @@ parser.add_argument('-rm', '--reward-model', help="The name of the reward model"
 # Test reward models
 parser.add_argument('-em', '--ensemble-mode', help="IRL", default="mult")
 parser.add_argument('-t', '--temperatures', help="IRL", default="1.0,0.5,0.5")
+parser.add_argument('-sn', '--save-name', help="The name for save the results", default="test_reward")
 
 parser.set_defaults(use_reward_model=True)
 
@@ -68,16 +69,12 @@ if __name__ == "__main__":
     game_name = args.game_name
     model_name = args.model_name
     work_id = int(args.work_id)
-    save_frequency = int(args.save_frequency)
     logging = int(args.logging)
     max_episode_timestep = int(args.max_timesteps)
     sampled_env = int(args.sampled_env)
     # IRL
     use_reward_model = args.use_reward_model
     reward_model_name = args.reward_model
-    fixed_reward_model = args.fixed_reward_model
-    dems_name = args.dems_name
-    reward_frequency = int(args.reward_frequency)
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
@@ -107,7 +104,7 @@ if __name__ == "__main__":
     }
 
     # Total episode of training
-    total_episode = 1e10
+    total_episode = 1000
 
     # Open the environment with all the desired flags
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
@@ -126,9 +123,6 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             sess = tf.compat.v1.Session(graph=graph)
             agent = PPO(sess=sess, model_name=model_name)
-            # Initialize variables of models
-            init = tf.compat.v1.global_variables_initializer()
-            sess.run(init)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -142,10 +136,8 @@ if __name__ == "__main__":
         graph = tf.compat.v1.Graph()
         with graph.as_default():
             sess = tf.compat.v1.Session(graph=graph)
-            model = RewardModel(actions_size=19, policy=None, sess=sess, name=re.sub("_\d*$", '', m),
+            model = RewardModel(actions_size=19, policy=None, sess=sess, name='reward_model',
                                 fixed_reward_model=True)
-            init = tf.compat.v1.global_variables_initializer()
-            sess.run(init)
             model.load_model(m)
             print("Models loaded with name: {}".format(m))
             reward_models.append(model)
@@ -166,7 +158,7 @@ if __name__ == "__main__":
             min_dict["reward_{}".format(i)] = 99999
             max_dict["reward_{}".format(i)] = -99999
 
-        while current_episode < int(args.num_episodes):
+        while current_episode < total_episode:
             done = False
             current_step = 0
             for i in range(num_reward_models + 1):
@@ -203,9 +195,11 @@ if __name__ == "__main__":
 
                 if args.ensemble_mode == 'entr':
                     if min_entropy < main_entropy + 0.01:
-                        action = np.argmax(agents[min_entropy_idx].eval([state])[2])
+                        #action = np.argmax(agents[min_entropy_idx].eval([state])[2])
+                        action = agents[min_entropy_idx].eval([state])[0]
                     else:
-                        action = np.argmax(agents[0].eval([state])[2])
+                        #action = np.argmax(agents[0].eval([state])[2])
+                        action = agents[0].eval([state])[0]
                 else:
                     action = np.argmax(total_probs)
 
@@ -227,7 +221,7 @@ if __name__ == "__main__":
                         max_dict["reward_{}".format(i + 1)] = r
 
                 current_step += 1
-                if current_step >= int(args.num_timesteps):
+                if current_step >= max_episode_timestep:
                     done = True
 
             for i in range(num_reward_models + 1):
@@ -240,7 +234,7 @@ if __name__ == "__main__":
             #     print("{}: {}".format(key, np.mean(episode_rewards[key])))
             # print(" ")
 
-        print("Mean of {} episode for each reward: ".format(args.num_episodes))
+        print("Mean of {} episode for each reward: ".format(total_episode))
         for key in all_step_rewards:
             for (i, rewards) in enumerate(all_step_rewards[key]):
                 r = [(v - min_dict[key]) / (max_dict[key] - min_dict[key]) for v in rewards]

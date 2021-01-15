@@ -432,7 +432,7 @@ class PPO:
 
     # Load entire model
     def load_model(self, name=None, folder='saved'):
-        self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        #self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
         self.saver.restore(self.sess, '{}/{}'.format(folder, name))
 
         print('Model loaded correctly!')
