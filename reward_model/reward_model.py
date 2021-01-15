@@ -11,7 +11,7 @@ eps = 1e-12
 
 class RewardModel:
 
-    def __init__(self, actions_size, policy, sess = None, gamma=0.9, lr=1e-5, batch_size=32, num_itr=20,
+    def __init__(self, actions_size, policy, sess = None, gamma=0.99, lr=1e-5, batch_size=32, num_itr=20,
                  use_vairl=False, mutual_information=0.5, alpha=0.0005, with_action=False, name='reward_model',
                  entropy_weight = 0.5, with_value=True, fixed_reward_model=False,
                  vs=None, **kwargs):

@@ -75,9 +75,9 @@ class Runner:
                                "do you want to continue training? [y/n] ".format(agent.model_name))
 
             if answer == 'y':
-                history = self.load_model(agent.model_name, agent)
-                self.ep = len(history['episode_timesteps'])
-                self.total_step = np.sum(history['episode_timesteps'])
+                self.history = self.load_model(agent.model_name, agent)
+                self.ep = len(self.history['episode_timesteps'])
+                self.total_step = np.sum(self.history['episode_timesteps'])
 
     def run(self):
 
@@ -210,9 +210,7 @@ class Runner:
 
     # Update curriculum for DeepCrawl
     def set_curriculum(self, curriculum, total_timesteps, mode='steps'):
-
-        global current_curriculum_step
-
+        
         if curriculum == None:
             return None
 
@@ -232,7 +230,7 @@ class Runner:
         for (par, value) in parameters.items():
             config[par] = value[curriculum_step]
 
-        current_curriculum_step = curriculum_step
+        self.current_curriculum_step = curriculum_step
 
         return config
 

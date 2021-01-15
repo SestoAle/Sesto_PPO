@@ -12,8 +12,8 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-5, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=19,
-                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.9, lmbda=1.0, name='ppo', memory=10, norm_reward=True,
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=19,
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=True,
                  model_name='agent',
                  **kwargs):
 
@@ -414,7 +414,8 @@ class PPO:
             graph_def = tf.compat.v1.graph_util.remove_training_nodes(input_graph=graph_def)
             output_node_names = [
                 'ppo/actor/add',
-                'ppo/actor/ppo_actor_Categorical/action/Reshape_2'
+                'ppo/actor/ppo_actor_Categorical/action/Reshape_2',
+                'ppo/critic/Squeeze'
             ]
 
             # implies tf.compat.v1.graph_util.extract_sub_graph

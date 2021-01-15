@@ -60,7 +60,7 @@ if __name__ == "__main__":
         'thresholds': [100e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
-                'minTargetHp': [1, 10, 10, 10, 10],
+                'minTargetHp': [20, 10, 10, 10, 10],
                 'maxTargetHp': [20, 10, 20, 20, 20],
                 'minAgentHp': [1, 10, 5, 5, 10],
                 'maxAgentHp': [20, 20, 20, 20, 20],
@@ -77,7 +77,7 @@ if __name__ == "__main__":
                 'minStartingInitiative': [1, 1, 1, 1, 1],
                 'maxStartingInitiative': [1, 1, 1, 1, 1],
 
-                'sampledEnv': [sampled_env]
+                #'sampledEnv': [sampled_env]
             }
     }
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
                                   worker_id=work_id, with_stats=True, size_stats=31,
                                   size_global=10, agent_separate=False, with_class=False, with_hp=False,
-                                  with_previous=True, verbose=False, manual_input=False,
+                                  with_previous=True, verbose=True, manual_input=True,
                                   _max_episode_timesteps=max_episode_timestep)
 
     # Create agent
