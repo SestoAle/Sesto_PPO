@@ -211,9 +211,6 @@ if __name__ == "__main__":
                 elif args.ensemble_mode == 'entr_add':
                     main_probs = agents[0].eval([state])[2] * (min_entropy)
                     main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
-                    print(main_probs)
-                    print(np.sum(main_probs))
-                    input('...')
                     action = np.argmax(main_probs)
 
                 else:
