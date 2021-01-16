@@ -190,6 +190,13 @@ if __name__ == "__main__":
                         if entropy(probs) < min_entropy:
                             min_entropy = entropy(probs)
                             min_entropy_idx = i
+                    elif args.ensemble_mode == 'entr_add':
+                        if i == 0:
+                            main_entropy = entropy(probs)
+                            continue
+                        if entropy(probs) < min_entropy:
+                            min_entropy = entropy(probs)
+                            min_entropy_idx = i
 
                 if args.ensemble_mode == 'add':
                     total_probs /= (num_reward_models + 1)
@@ -201,6 +208,14 @@ if __name__ == "__main__":
                     else:
                         #action = np.argmax(agents[0].eval([state])[2])
                         action = agents[0].eval([state])[0]
+                elif args.ensemble_mode == 'entr_add':
+                    main_probs = agents[0].eval([state])[2] * (min_entropy)
+                    main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
+                    print(main_probs)
+                    print(np.sum(main_probs))
+                    input('...')
+                    action = np.argmax(main_probs)
+
                 else:
                     action = np.argmax(total_probs)
 
