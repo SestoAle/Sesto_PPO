@@ -204,10 +204,10 @@ if __name__ == "__main__":
                 if args.ensemble_mode == 'entr':
                     if min_entropy < main_entropy + 0.01:
                         #action = np.argmax(agents[min_entropy_idx].eval([state])[2])
-                        action = agents[min_entropy_idx].eval([state])[0]
+                        action = np.argmax(agents[min_entropy_idx].eval([state])[2])
                     else:
                         #action = np.argmax(agents[0].eval([state])[2])
-                        action = agents[0].eval([state])[0]
+                        action = np.argmax(agents[0].eval([state])[2])
                 elif args.ensemble_mode == 'entr_add':
                     main_probs = agents[0].eval([state])[2] * (min_entropy)
                     main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
