@@ -1,2 +1,2 @@
-model_checkpoint_path: "irl_buff_attack_irl_fr"
-all_model_checkpoint_paths: "irl_buff_attack_irl_fr"
+model_checkpoint_path: "ranger_no_norm"
+all_model_checkpoint_paths: "ranger_no_norm"
