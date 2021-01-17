@@ -47,6 +47,8 @@ for (i,plot) in enumerate(plots):
                 filenames.append(filename)
                 rewards.append(json.load(f))
 
+    print(filenames)
+
     keys = rewards[0].keys()
 
     min_dict = dict()
@@ -73,7 +75,7 @@ for (i,plot) in enumerate(plots):
         for r_dict in rewards:
             length = 0
             episode_rewards = []
-            print(np.sum(r_dict[k]))
+
             for r in r_dict[k]:
                 length += len(r)
                 current_rews = [(v - min_dict[k]) / (max_dict[k] - min_dict[k]) for v in r]
@@ -84,11 +86,7 @@ for (i,plot) in enumerate(plots):
             all_rews.extend(episode_rewards)
 
         data = np.array(data)
-        print(data)
         data = (data - np.min(all_rews)) / (np.max(all_rews) - np.min(all_rews))
-        print(np.max(all_rews))
-        print(np.min(all_rews))
-        print(data)
 
         plt.plot(range(len(data)), data, '-o')
         legends.append(k)

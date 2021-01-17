@@ -212,7 +212,6 @@ if __name__ == "__main__":
                     main_probs = agents[0].eval([state])[2] * (min_entropy)
                     main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
                     action = np.argmax(main_probs)
-
                 else:
                     action = np.argmax(total_probs)
 
@@ -226,7 +225,11 @@ if __name__ == "__main__":
                 step_rewards["reward_0"].append(reward)
 
                 for (i, reward_model) in enumerate(reward_models):
-                    r = reward_model.eval([state], [state], [action])[0]
+                    if i == 0:
+                        if state['agent_stats'][1] == 21:
+                            r = 1
+                    else:
+                        r = reward_model.eval([state], [state], [action])[0]
                     step_rewards["reward_{}".format(i + 1)].append(r)
                     if r < min_dict["reward_{}".format(i + 1)]:
                         min_dict["reward_{}".format(i + 1)] = r
