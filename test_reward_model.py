@@ -227,8 +227,10 @@ if __name__ == "__main__":
                 for (i, reward_model) in enumerate(reward_models):
                     if i == 0:
                         r = 0
-                        if state['agent_stats'][1] == 21:
-                            r = 1
+                        if state['agent_stats'][6] >= 55:
+                            r += 1
+                        if state['agent_stats'][9] >= 79:
+                            r += 1
 
                     else:
                         r = reward_model.eval([state], [state], [action])[0]
