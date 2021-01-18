@@ -233,7 +233,7 @@ if __name__ == "__main__":
                             r += 1
                     elif i==1:
                         r = 0
-                        if state['agent_stats'][1] >= 21:
+                        if state['agent_stats'][1] == 21:
                             r += 1
                     else:
                         r = reward_model.eval([state], [state], [action])[0]
