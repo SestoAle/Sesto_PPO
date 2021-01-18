@@ -1,2 +1,2 @@
-model_checkpoint_path: "ranger_no_norm"
-all_model_checkpoint_paths: "ranger_no_norm"
+model_checkpoint_path: "ranger_defence_scratch"
+all_model_checkpoint_paths: "ranger_defence_scratch"
