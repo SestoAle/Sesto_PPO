@@ -33,7 +33,7 @@ parser.add_argument('-rm', '--reward-model', help="The name of the reward model"
 
 # Test reward models
 parser.add_argument('-em', '--ensemble-mode', help="IRL", default="mult")
-parser.add_argument('-t', '--temperatures', help="IRL", default="1.0,0.5")
+parser.add_argument('-t', '--temperatures', help="IRL", default="1.0,1.0,1.0")
 parser.add_argument('-sn', '--save-name', help="The name for save the results", default="test_reward")
 
 parser.set_defaults(use_reward_model=True)
@@ -231,7 +231,10 @@ if __name__ == "__main__":
                             r += 1
                         if state['agent_stats'][9] >= 79:
                             r += 1
-
+                    elif i==1:
+                        r = 0
+                        if state['agent_stats'][1] >= 21:
+                            r += 1
                     else:
                         r = reward_model.eval([state], [state], [action])[0]
                     step_rewards["reward_{}".format(i + 1)].append(r)
@@ -255,11 +258,6 @@ if __name__ == "__main__":
             # print(" ")
 
         print("Mean of {} episode for each reward: ".format(total_episode))
-        for key in all_step_rewards:
-            for (i, rewards) in enumerate(all_step_rewards[key]):
-                r = [(v - min_dict[key]) / (max_dict[key] - min_dict[key]) for v in rewards]
-                episode_rewards[key].append(np.sum(r))
-            print("    {}: {}".format(key, np.mean(episode_rewards[key])))
 
         print("Saving the experiment..")
         json_str = json.dumps(all_step_rewards, cls=NumpyEncoder)
