@@ -1,2 +1,2 @@
-model_checkpoint_path: "ranger_def_buf_scratch"
-all_model_checkpoint_paths: "ranger_def_buf_scratch"
+model_checkpoint_path: "mage_3"
+all_model_checkpoint_paths: "mage_3"

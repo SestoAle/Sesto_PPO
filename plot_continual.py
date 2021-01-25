@@ -11,7 +11,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='ranger_def_buf*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='ranger_def_entr*')
 
 args = parser.parse_args()
 
@@ -130,7 +130,7 @@ try:
     x = np.array(range(len(percentages)))
     x2.legend('win rate')
     sns.barplot(x=x, y=(np.array(percentages)), palette=np.array(pal[::-1])[rank], ax=x2)
-    labels = ['None', 'Mean', 'Mult', 'Entr Thresh', 'Entr Weight', 'From Scratch']
+    labels = ['None', 'Mean', 'Mult', 'Entr Thresh', 'Entr Weight', 'From Scratch', 'Fine Tunining']
     x2.set_xticklabels(labels)
     for p in x2.patches:
         x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',

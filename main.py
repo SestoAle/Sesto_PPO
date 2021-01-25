@@ -66,13 +66,13 @@ if __name__ == "__main__":
                 'maxAgentHp': [20, 20, 20, 20, 20],
                 'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
                 'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
-                'minAgentMp': [0, 0, 0, 0, 0],
-                'maxAgentMp': [0, 0, 0, 0, 0],
+                'minAgentMp': [20, 10, 10, 5, 5],
+                'maxAgentMp': [20, 10, 10, 10, 10],
                 'numActions': [17, 17, 17, 17, 17],
                 # Agent statistics
-                'agentAtk': [3, 3, 3, 3, 3],
+                'agentAtk': [-100, -100, -100, -100, -100],
                 'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [3, 3, 3, 3, 3],
+                'agentDes': [-100, -100, -100, -100, -100],
 
                 'minStartingInitiative': [1, 1, 1, 1, 1],
                 'maxStartingInitiative': [1, 1, 1, 1, 1],
