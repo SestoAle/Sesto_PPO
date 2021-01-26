@@ -16,13 +16,14 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='warrior')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='lstm')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
+parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
@@ -34,6 +35,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
+parser.set_defaults(recurrent=True)
 
 args = parser.parse_args()
 
@@ -88,6 +90,16 @@ if __name__ == "__main__":
     # Memory of the agent (in episode)
     memory = 10
 
+    # Create agent
+    graph = tf.compat.v1.Graph()
+    with graph.as_default():
+        tf.compat.v1.disable_eager_execution()
+        sess = tf.compat.v1.Session(graph=graph)
+        agent = PPO(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent)
+        # Initialize variables of models
+        init = tf.compat.v1.global_variables_initializer()
+        sess.run(init)
+
     # Open the environment with all the desired flags
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
                                   worker_id=work_id, with_stats=True, size_stats=31,
@@ -95,15 +107,7 @@ if __name__ == "__main__":
                                   with_previous=True, verbose=False, manual_input=False,
                                   _max_episode_timesteps=max_episode_timestep)
 
-    # Create agent
-    graph = tf.compat.v1.Graph()
-    with graph.as_default():
-        tf.compat.v1.disable_eager_execution()
-        sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess=sess, memory=memory, model_name=model_name)
-        # Initialize variables of models
-        init = tf.compat.v1.global_variables_initializer()
-        sess.run(init)
+
 
     # If we want to use IRL, create a reward model
     reward_model = None

@@ -19,6 +19,9 @@ class Runner:
         self.save_frequency = save_frequency
         self.env = env
 
+        # Recurrent
+        self.recurrent = self.agent.recurrent
+
         # Objects and parameters for IRL
         self.reward_model = reward_model
         self.fixed_reward_model = fixed_reward_model
@@ -106,11 +109,18 @@ class Runner:
             # Save local entropies
             local_entropies = []
 
+            # If recurrent, initialize hidden state
+            if self.recurrent:
+                internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1,self.agent.recurrent_size]))
+
             # Episode loop
             while True:
 
                 # Evaluation - Execute step
-                action, logprob, probs = self.agent.eval([state])
+                if not self.recurrent:
+                    action, logprob, probs = self.agent.eval([state])
+                else:
+                    action, logprob, probs, internal = self.agent.eval_recurrent([state], internal)
 
                 action = action[0]
                 # Save probabilities for entropy

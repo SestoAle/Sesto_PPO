@@ -15,6 +15,10 @@ class PPO:
     def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=19,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
+
+                 # LSTM
+                 recurrent = True, recurrent_length = 5,
+
                  **kwargs):
 
         # Model parameters
@@ -35,6 +39,11 @@ class PPO:
         self.c2 = c2
         self.discount = discount
         self.lmbda = lmbda
+
+        # Recurrent paramtere
+        self.recurrent = recurrent
+        self.recurrent_length = recurrent_length
+        self.recurrent_size = 256
 
         self.buffer = dict()
         self.clear_buffer()
@@ -64,7 +73,28 @@ class PPO:
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
                 self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
-                self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
+
+                if not self.recurrent:
+                    self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
+                else:
+                    # The last FC layer will be replaced by an LSTM layer.
+                    # Recurrent network needs more variables
+
+                    # Get batch size and number of feature of the previous layer
+                    bs, feature = utils.shape_list(self.p_network)
+                    self.recurrent_train_length = tf.compat.v1.placeholder(tf.int32)
+                    self.p_network = tf.reshape(self.p_network, [bs/self.recurrent_train_length, self.recurrent_train_length, feature])
+                    # Define the RNN cell
+                    self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units = self.recurrent_size, state_is_tuple=True)
+                    # Define state_in for the cell
+                    self.state_in = self.rnn_cell.zero_state(bs, tf.float32)
+
+                    # Apply rnn
+                    self.rnn, self.rnn_state = tf.compat.v1.nn.dynamic_rnn(
+                        inputs = self.p_network, cell=self.rnn_cell, dtype=tf.float32, initial_state=self.state_in
+                    )
+                    self.p_network = tf.reshape(self.rnn, [-1, self.recurrent_size])
+
 
                 # Probability distribution
                 self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax, name='probs') + eps
@@ -181,6 +211,24 @@ class PPO:
 
         return all_flat
 
+    # Sample a batch of consequent states for recurrent
+    def sample_batch_for_recurrent(self, length, batch_size, discounted_rewards):
+        sampled_trace = []
+        sampled_rewards = []
+        # Get a random number of episode in buffer
+        episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
+        # For each episode, get a sequence of length states with their discounted rewards
+        for ep in episode_numbers:
+            ep_lenght = self.buffer['episode_lengths'][ep]
+            point = np.random.randint(0, ep_lenght - length)
+            sampled_trace.append(self.buffer['states'][point*ep:point*ep + length])
+            sampled_rewards.append(discounted_rewards[point * ep:point * ep + length])
+
+        sampled_trace = np.reshape(np.asarray(sampled_trace), [batch_size * length])
+        sampled_rewards = np.reshape(np.asarray(sampled_rewards), [batch_size * length])
+        return sampled_trace, sampled_rewards
+
+
     # Train loop
     def train(self):
         losses = []
@@ -194,13 +242,19 @@ class PPO:
 
         # Train the value function
         for it in range(self.v_num_itr):
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            # Reshape problem, why?
-            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+            if not self.recurrent:
+                # Take a mini-batch of batch_size experience
+                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+
+                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+                rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+                # Reshape problem, why?
+                rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+            else:
+                # Sampling from batch but with recurrent shape (real_batch_size = batch_size * length)
+                states_mini_batch, rewards_mini_batch = \
+                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
 
             # Get DeepCrawl state
             # Convert the observation to states
@@ -210,7 +264,15 @@ class PPO:
 
             # Update feed dict for training
             feed_dict[self.reward] = rewards_mini_batch
-            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            if not self.recurrent:
+                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            else:
+                # If recurrent, we need to pass the internal state and the recurrent_length
+                state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
+                feed_dict[self.state_in] = state_train
+                feed_dict[self.recurrent_train_length] = self.recurrent_length
+                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+
             v_losses.append(v_loss)
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
@@ -266,6 +328,19 @@ class PPO:
         action, logprob, probs = self.sess.run([self.action, self.log_prob, self.probs], feed_dict=feed_dict)
 
         return action, logprob, probs
+
+    # Eval sampling the action, but with recurrent: it needs the internal hidden state
+    def eval_recurrent(self, state, internal):
+        state = self.obs_to_state(state)
+        feed_dict = self.create_state_feed_dict(state)
+
+        # Pass the internal state
+        feed_dict[self.state_in] = internal
+        feed_dict[self.recurrent_train_length] = 1
+        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state], feed_dict=feed_dict)
+
+        # Return is equal to eval(), but with the new internal state
+        return action, logprob, probs, internal
 
     # Eval with argmax
     def eval_max(self, state):
@@ -437,4 +512,3 @@ class PPO:
 
         print('Model loaded correctly!')
         return
-
