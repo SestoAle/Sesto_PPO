@@ -224,7 +224,7 @@ class PPO:
                 min_index = np.sum(self.buffer['episode_lengths'][:ep])
                 max_index = min_index + (ep_lenght - 1)
                 tmp_idxs = np.arange(int(min_index), int(max_index))
-                tmp_idxs = np.concatenate(tmp_idxs, np.ones(length - len(tmp_idxs))*max_index)
+                tmp_idxs = np.concatenate(tmp_idxs, np.ones(length - len(tmp_idxs))*int(max_index))
                 print(self.buffer['episode_lengths'])
                 print(ep_lenght)
                 print(tmp_idxs)
