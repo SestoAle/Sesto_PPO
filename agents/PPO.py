@@ -308,8 +308,6 @@ class PPO:
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
 
-            print(np.shape(states))
-
             feed_dict = self.create_state_feed_dict(states)
 
             # Get the baseline values
@@ -334,7 +332,6 @@ class PPO:
                 feed_dict[self.state_in] = state_train
                 feed_dict[self.recurrent_train_length] = self.recurrent_length
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
-                input('...')
             
             losses.append(loss)
 
