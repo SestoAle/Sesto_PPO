@@ -214,6 +214,8 @@ class PPO:
     def sample_batch_for_recurrent(self, length, batch_size, discounted_rewards):
         sampled_trace = []
         sampled_rewards = []
+        sampled_actions = []
+        sampled_old_probs = []
         # Get a random number of episode in buffer
         episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
         # For each episode, get a sequence of length states with their discounted rewards
@@ -223,11 +225,15 @@ class PPO:
                 continue
             point = np.random.randint(0, ep_lenght - length)
             sampled_trace.append(self.buffer['states'][point*ep:point*ep + length])
+            sampled_actions.append(self.buffer['actions'][point * ep:point * ep + length])
+            sampled_old_probs.append(self.buffer['old_probs'][point * ep:point * ep + length])
             sampled_rewards.append(discounted_rewards[point * ep:point * ep + length])
 
         sampled_trace = np.reshape(np.asarray(sampled_trace), [-1])
         sampled_rewards = np.reshape(np.asarray(sampled_rewards), [-1])
-        return sampled_trace, sampled_rewards
+        sampled_actions = np.reshape(np.asarray(sampled_actions), [-1])
+        sampled_old_probs = np.reshape(np.asarray(sampled_old_probs), [-1])
+        return sampled_trace, sampled_rewards, sampled_actions, sampled_old_probs
 
 
     # Train loop
@@ -254,7 +260,7 @@ class PPO:
                 rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
             else:
                 # Sampling from batch but with recurrent shape (real_batch_size = batch_size * length)
-                states_mini_batch, rewards_mini_batch = \
+                states_mini_batch, rewards_mini_batch, _, _ = \
                     self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
 
             # Get DeepCrawl state
@@ -271,7 +277,7 @@ class PPO:
                 # If recurrent, we need to pass the internal state and the recurrent_length
                 state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = state_train
-                feed_dict[self.recurrent_train_length] = 5
+                feed_dict[self.recurrent_train_length] = self.recurrent_length
                 v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
 
             v_losses.append(v_loss)
@@ -290,10 +296,15 @@ class PPO:
             # Take a mini-batch of batch_size experience
             mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
-            old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            if not self.recurrent:
+                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+                actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
+                old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
+                rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            else:
+                # Sampling from batch but with recurrent shape (real_batch_size = batch_size * length)
+                states_mini_batch, rewards_mini_batch, actions_mini_batch, old_probs_mini_batch = \
+                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
 
             # Get DeepCrawl state
             # Convert the observation to states
@@ -314,7 +325,15 @@ class PPO:
             feed_dict[self.eval_action] = actions_mini_batch
             feed_dict[self.baseline_values] = v_values_mini_batch
 
-            loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
+            if not self.recurrent:
+                loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
+            else:
+                # If recurrent, we need to pass the internal state and the recurrent_length
+                state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
+                feed_dict[self.state_in] = state_train
+                feed_dict[self.recurrent_train_length] = self.recurrent_length
+                loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
+                input('...')
             
             losses.append(loss)
 
