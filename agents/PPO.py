@@ -226,7 +226,7 @@ class PPO:
                 min_index = np.sum(self.buffer['episode_lengths'][:ep])
                 max_index = min_index + (ep_lenght)
                 tmp_idxs = np.arange(int(min_index), int(max_index))
-                minibatch_idxs = np.concatenate(tmp_idxs, np.ones((length - len(tmp_idxs)))*int(max_index-1))
+                minibatch_idxs = np.concatenate((tmp_idxs, np.ones((length - len(tmp_idxs)))*int(max_index-1)))
             else:
                 point = np.random.randint(0, ep_lenght - length)
                 min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
