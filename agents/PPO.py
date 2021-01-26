@@ -226,9 +226,8 @@ class PPO:
             #sampled_actions.append(self.buffer['actions'][point * ep:point * ep + length])
             #sampled_old_probs.append(self.buffer['old_probs'][point * ep:point * ep + length])
             #sampled_rewards.append(discounted_rewards[point * ep:point * ep + length])
-        print(minibatch_idxs)
-        print(np.shape(np.asarray(minibatch_idxs)))
-        input('...')
+
+        minibatch_idxs = np.reshape(np.asarray(minibatch_idxs), [-1])
         #sampled_trace = np.reshape(np.asarray(sampled_trace), [-1])
         #sampled_rewards = np.reshape(np.asarray(sampled_rewards), [-1])
         #sampled_actions = np.reshape(np.asarray(sampled_actions), [-1])
@@ -254,15 +253,14 @@ class PPO:
             if not self.recurrent:
                 # Take a mini-batch of batch_size experience
                 mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-
-                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-                # Reshape problem, why?
-                rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
             else:
-                # Sampling from batch but with recurrent shape (real_batch_size = batch_size * length)
-                states_mini_batch, rewards_mini_batch, _, _ = \
-                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
+                mini_batch_idxs = self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
+
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            # Reshape problem, why?
+            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
+
 
             # Get DeepCrawl state
             # Convert the observation to states
@@ -294,22 +292,24 @@ class PPO:
         # Train the policy
         for it in range(self.p_num_itr):
 
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-
-            if not self.recurrent:
-                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
-                old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
-                rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            if not self.recurrent_length:
+                # Take a mini-batch of batch_size experience
+                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
             else:
-                # Sampling from batch but with recurrent shape (real_batch_size = batch_size * length)
-                states_mini_batch, rewards_mini_batch, actions_mini_batch, old_probs_mini_batch = \
-                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
+                mini_batch_idxs = self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
+
+
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
+            old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
+            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
 
             # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
+
+            print(np.shape(states))
+
             feed_dict = self.create_state_feed_dict(states)
 
             # Get the baseline values
