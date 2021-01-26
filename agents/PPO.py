@@ -216,6 +216,7 @@ class PPO:
         # Get a random number of episode in buffer
         episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
         # For each episode, get a sequence of length states with their discounted rewards
+        print(self.buffer['episode_lengths'])
         for ep in episode_numbers:
             ep_lenght = self.buffer['episode_lengths'][ep]
             if ep_lenght < length:
