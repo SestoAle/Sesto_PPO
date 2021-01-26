@@ -215,6 +215,7 @@ class PPO:
         minibatch_idxs = []
         # Get a random number of episode in buffer
         episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
+
         # For each episode, get a sequence of length states with their discounted rewards
         print(self.buffer['episode_lengths'])
         for ep in episode_numbers:
@@ -222,6 +223,10 @@ class PPO:
             if ep_lenght < length:
                 continue
             point = np.random.randint(0, ep_lenght - length)
+            min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
+            max_index = min_index + length
+            minibatch_idxs.append(np.arange(min_index, max_index))
+
             minibatch_idxs.append(np.arange(point*ep,point*ep + length))
             #sampled_trace.append(self.buffer['states'][point*ep:point*ep + length])
             #sampled_actions.append(self.buffer['actions'][point * ep:point * ep + length])
