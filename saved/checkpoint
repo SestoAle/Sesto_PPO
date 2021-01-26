@@ -1,2 +1,2 @@
-model_checkpoint_path: "rl_fountain_100"
-all_model_checkpoint_paths: "rl_fountain_100"
+model_checkpoint_path: "rl_fountain"
+all_model_checkpoint_paths: "rl_fountain"
