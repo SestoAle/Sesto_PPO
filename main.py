@@ -8,7 +8,7 @@ import argparse
 
 from reward_model.reward_model import RewardModel
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -35,7 +35,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=True)
+parser.set_defaults(recurrent=False)
 
 args = parser.parse_args()
 
@@ -59,22 +59,22 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
-                'minTargetHp': [20, 10, 10, 10, 10],
-                'maxTargetHp': [20, 10, 20, 20, 20],
-                'minAgentHp': [10, 10, 5, 5, 10],
+                'minTargetHp': [1, 10, 10, 10, 10],
+                'maxTargetHp': [1, 10, 20, 20, 20],
+                'minAgentHp': [15, 10, 5, 5, 10],
                 'maxAgentHp': [20, 20, 20, 20, 20],
                 'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
                 'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
-                'minAgentMp': [20, 10, 10, 5, 5],
-                'maxAgentMp': [20, 10, 10, 10, 10],
+                'minAgentMp': [0, 0, 0, 0, 0],
+                'maxAgentMp': [0, 0, 0, 0, 0],
                 'numActions': [17, 17, 17, 17, 17],
                 # Agent statistics
-                'agentAtk': [-100, -100, -100, -100, -100],
+                'agentAtk': [3, 3, 3, 3, 3],
                 'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [-100, -100, -100, -100, -100],
+                'agentDes': [3, 3, 3, 3, 3],
 
                 'minStartingInitiative': [1, 1, 1, 1, 1],
                 'maxStartingInitiative': [1, 1, 1, 1, 1],

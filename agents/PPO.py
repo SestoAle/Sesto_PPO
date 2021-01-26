@@ -48,7 +48,6 @@ class PPO:
         self.buffer = dict()
         self.clear_buffer()
         self.memory = memory
-
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
@@ -220,12 +219,14 @@ class PPO:
         # For each episode, get a sequence of length states with their discounted rewards
         for ep in episode_numbers:
             ep_lenght = self.buffer['episode_lengths'][ep]
+            if ep_lenght < length:
+                continue
             point = np.random.randint(0, ep_lenght - length)
             sampled_trace.append(self.buffer['states'][point*ep:point*ep + length])
             sampled_rewards.append(discounted_rewards[point * ep:point * ep + length])
 
-        sampled_trace = np.reshape(np.asarray(sampled_trace), [batch_size * length])
-        sampled_rewards = np.reshape(np.asarray(sampled_rewards), [batch_size * length])
+        sampled_trace = np.reshape(np.asarray(sampled_trace), [-1])
+        sampled_rewards = np.reshape(np.asarray(sampled_rewards), [-1])
         return sampled_trace, sampled_rewards
 
 
@@ -270,7 +271,7 @@ class PPO:
                 # If recurrent, we need to pass the internal state and the recurrent_length
                 state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = state_train
-                feed_dict[self.recurrent_train_length] = self.recurrent_length
+                feed_dict[self.recurrent_train_length] = 5
                 v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
 
             v_losses.append(v_loss)
