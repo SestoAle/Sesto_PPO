@@ -111,7 +111,7 @@ class Runner:
 
             # If recurrent, initialize hidden state
             if self.recurrent:
-                internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1,self.agent.recurrent_size]))
+                internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
 
             # Episode loop
             while True:
