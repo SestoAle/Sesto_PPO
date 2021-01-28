@@ -12,8 +12,8 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class SAC:
     # PPO agent
-    def __init__(self, sess, p_lr=0.0003, v_lr=0.0003, batch_fraction=32, p_num_itr=20, v_num_itr=20, action_size=3,
-                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=128, p_num_itr=5, v_num_itr=20, action_size=3,
+                 epsilon=0.2, c1=0.5, c2=5e-6, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
 
                  alpha = 0.2, q_lr=0.0003,
 
@@ -160,37 +160,40 @@ class SAC:
             self.q1_values = tf.compat.v1.placeholder(tf.float32, [None, action_size], name='q1_values')
             self.q2_values = tf.compat.v1.placeholder(tf.float32, [None, action_size], name='q2_values')
             self.p_loss = self.alpha * tf.math.log(self.probs) - tf.minimum(self.q1_values, self.q2_values)
+            self.p_loss = tf.expand_dims(self.p_loss, axis=2)
             self.probs_mat = tf.expand_dims(self.probs, axis=1)
-            self.p_loss = - tf.reduce_mean(tf.matmul(self.probs_mat, self.p_loss))
+            self.p_loss = tf.reduce_mean(tf.matmul(self.probs_mat, self.p_loss))
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.p_loss)
 
+            # The primary and target Q networks should match.
+            self.q1_vars = self.scope_vars('ppo/q1')
+            self.q1_target_vars = self.scope_vars('ppo/t_q1')
+            assert len(self.q1_vars) == len(self.q1_target_vars), "Two Q-networks are not same."
+
+            # The primary and target Q networks should match.
+            self.q2_vars = self.scope_vars('ppo/q2')
+            self.q2_target_vars = self.scope_vars('ppo/t_q2')
+            assert len(self.q2_vars) == len(self.q2_target_vars), "Two Q-networks are not same."
+
         self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
+
+    def scope_vars(self, scope, only_trainable=True):
+        collection = tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES if only_trainable else tf.compat.v1.GraphKeys.VARIABLES
+        variables = tf.compat.v1.get_collection(collection, scope=scope)
+        assert len(variables) > 0
+        return variables
 
     # Update target q networks with hard update
     def update_target_q_net_hard(self):
-        q1_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q1")
-        q1_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q1")
-        # Hard update
-        self.sess.run([v_t.assign(v) for v_t, v in zip(q1_t_vars, q1_vars)])
-
-        q2_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q2")
-        q2_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q2")
-        # Hard update
-        self.sess.run([v_t.assign(v) for v_t, v in zip(q2_t_vars, q2_vars)])
+        self.sess.run([v_t.assign(v) for v_t, v in zip(self.q1_target_vars, self.q1_vars)])
+        self.sess.run([v_t.assign(v) for v_t, v in zip(self.q2_target_vars, self.q2_vars)])
 
     # Update target q networks with soft update
     def update_target_q_net_soft(self, tau=0.05):
-        q1_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q1")
-        q1_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q1")
-
-        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(q1_t_vars, q1_vars)])
-
-        q2_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q2")
-        q2_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q2")
-
-        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(q2_t_vars, q2_vars)])
+        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(self.q1_target_vars, self.q1_vars)])
+        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(self.q2_target_vars, self.q2_vars)])
 
     # Compute targets for policy update
     def compute_targets(self, rewards, dones, q1_t_values, q2_t_values, probs):
@@ -201,11 +204,8 @@ class SAC:
         q2_t_values = np.asarray(q2_t_values)
         probs = np.squeeze(np.asarray(probs))
 
-        q1_t_values = np.expand_dims(q1_t_values, axis=2)
-        q2_t_values = np.expand_dims(q2_t_values, axis=2)
-
-        matmul = (np.matmul(np.expand_dims(probs, axis=1) ,
-                            (np.minimum(q1_t_values, q2_t_values) - self.alpha*np.log(np.expand_dims(probs, axis=2)))))
+        matmul = (np.matmul(np.expand_dims(probs, axis=1),
+                            np.expand_dims((np.minimum(q1_t_values, q2_t_values) - self.alpha*np.log(probs)), axis=2)))
         matmul = np.reshape(matmul, [-1,])
 
         targets = rewards + (1-dones)*self.discount*matmul
@@ -296,21 +296,23 @@ class SAC:
             # Compute target values with target networks
             q1_t_values, q2_t_values = self.sess.run([self.q1_t, self.q2_t], feed_dict=feed_dict)
 
-            states = self.obs_to_state(states_mini_batch)
-            feed_dict = self.create_state_feed_dict(states)
             rewards_mini_batch = [self.buffer['rewards'][id] for id in mini_batch_idxs]
             terminals_mini_batch = [self.buffer['terminals'][id] for id in mini_batch_idxs]
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
 
             actions_mini_batch = np.asarray(actions_mini_batch)
-            actions_mini_batch = [[b,a] for b,a in zip(np.arange(batch_size), actions_mini_batch)]
+            actions_mini_batch = [[b, a] for b, a in zip(np.arange(batch_size), actions_mini_batch)]
 
             _, _, probs = self.eval(states_n_mini_batch)
 
-            targets_mini_batch = self.compute_targets(rewards_mini_batch, terminals_mini_batch, q1_t_values, q2_t_values, probs)
+            targets_mini_batch = self.compute_targets(rewards_mini_batch, terminals_mini_batch, q1_t_values,
+                                                      q2_t_values, probs)
 
+            states = self.obs_to_state(states_mini_batch)
+            feed_dict = self.create_state_feed_dict(states)
             feed_dict[self.targets] = targets_mini_batch
             feed_dict[self.action_idxs] = actions_mini_batch
+
 
             # Update q functions
             q1_loss, q2_loss, q1_step, q2_step = self.sess.run([self.q1_loss, self.q2_loss, self.q1_step, self.q2_step],
@@ -324,13 +326,8 @@ class SAC:
             # Update policy
             loss, step = self.sess.run([self.p_loss, self.p_step], feed_dict=feed_dict)
 
-            q1_values, q2_values = self.sess.run([self.q1, self.q2], feed_dict=feed_dict)
-
-            self.update_target_q_net_soft(0.05)
-            
             losses.append(loss)
-
-        print(np.mean(losses))
+            self.update_target_q_net_soft(0.05)
 
         return np.mean(losses)
 
@@ -412,7 +409,7 @@ class SAC:
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['states']) + 1 >= self.memory + 1:
-            idxs_to_remove = np.random.randint(0,self.memory)
+            idxs_to_remove = np.random.randint(0, self.memory)
             del self.buffer['states'][idxs_to_remove]
             del self.buffer['actions'][idxs_to_remove]
             del self.buffer['old_probs'][idxs_to_remove]
