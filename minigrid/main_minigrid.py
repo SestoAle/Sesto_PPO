@@ -47,11 +47,14 @@ args = parser.parse_args()
 
 class MiniGrid:
 
-    def __init__(self):
+    def __init__(self, graphics=False):
         self.env = gym.make('MiniGrid-Empty-6x6-v0')
         self._max_episode_timesteps = 100
+        self.graphics = graphics
 
     def reset(self):
+        if self.graphics:
+            self.env.render('human')
         state = self.env.reset()
         return dict(input=np.reshape(state['image'][:,:,0], [7*7]))
 
@@ -59,6 +62,8 @@ class MiniGrid:
         return
 
     def execute(self, actions):
+        if self.graphics:
+            self.env.render('human')
         state, reward, done, _ = self.env.step(actions)
 
         state = dict(input=np.reshape(state['image'][:,:,0], [7*7]))
@@ -97,7 +102,7 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 5
     # Memory of the agent (in episode)
-    memory = 10
+    memory = 100000
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -108,6 +113,7 @@ if __name__ == "__main__":
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
+        agent.update_target_q_net_hard()
 
     # Open the environment with all the desired flags
     env = MiniGrid()

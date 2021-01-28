@@ -12,15 +12,15 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class SAC:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=3,
+    def __init__(self, sess, p_lr=0.0003, v_lr=0.0003, batch_fraction=32, p_num_itr=20, v_num_itr=20, action_size=3,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
 
-                 alpha = 0.2,
+                 alpha = 0.2, q_lr=0.0003,
 
                  model_name='agent',
 
                  # LSTM
-                 recurrent = True, recurrent_length = 5,
+                 recurrent = False, recurrent_length = 5,
 
                  **kwargs):
 
@@ -45,6 +45,7 @@ class SAC:
 
         # SAC hyper-parameters
         self.alpha = alpha
+        self.q_lr = q_lr
 
         # Recurrent paramtere
         self.recurrent = recurrent
@@ -118,77 +119,98 @@ class SAC:
                     self.eval_action = tf.compat.v1.placeholder(tf.int32, [None,], name='eval_action')
                     self.log_prob_with_action = self.dist.log_prob(self.eval_action)
 
+            self.action_idxs = tf.compat.v1.placeholder(tf.int32, [None, 2], name='action_idxs')
             # Q1 network
             with tf.compat.v1.variable_scope('q1'):
                 self.q1 = self.linear(self.input, 256, name='q1_fc1', activation=tf.nn.relu)
                 self.q1 = self.linear(self.q1, 256, name='q1_fc2', activation=tf.nn.relu)
                 self.q1 = self.linear(self.q1, self.action_size, name='q1_values')
+            self.q1_action = tf.gather_nd(self.q1, self.action_idxs)
 
             # Q2 network
             with tf.compat.v1.variable_scope('q2'):
                 self.q2 = self.linear(self.input, 256, name='q2_fc1', activation=tf.nn.relu)
                 self.q2 = self.linear(self.q2, 256, name='q2_fc2', activation=tf.nn.relu)
                 self.q2 = self.linear(self.q2, self.action_size, name='q2_values')
+            self.q2_action = tf.gather_nd(self.q2, self.action_idxs)
 
             # Q1 target network
-            with tf.compat.v1.variable_scope('q1_t'):
+            with tf.compat.v1.variable_scope('t_q1'):
                 self.q1_t = self.linear(self.input, 256, name='q1_t_fc1', activation=tf.nn.relu)
                 self.q1_t = self.linear(self.q1_t, 256, name='q1_t_fc2', activation=tf.nn.relu)
                 self.q1_t = self.linear(self.q1_t, self.action_size, name='q1_t_values')
 
             # Q2 network
-            with tf.compat.v1.variable_scope('q2_t'):
+            with tf.compat.v1.variable_scope('t_q2'):
                 self.q2_t = self.linear(self.input, 256, name='q2_t_fc1', activation=tf.nn.relu)
-                self.q2_t = self.linear(self.q2, 256, name='q2_t_fc2', activation=tf.nn.relu)
-                self.q2_t = self.linear(self.q2, self.action_size, name='q2_t_values')
-
+                self.q2_t = self.linear(self.q2_t, 256, name='q2_t_fc2', activation=tf.nn.relu)
+                self.q2_t = self.linear(self.q2_t, self.action_size, name='q2_t_values')
 
             # Update the q-functions
-            self.q1 = self.q1 - self.alpha * tf.math.log(self.probs)
-            self.probs = tf.expand_dims(self.probs, axis=1)
-            # TODO: CAMBIARE
-            self.q1 = tf.expand_dims(self.q1, axis=2)
-            self.soft_value_q1 = tf.matmul(self.probs, self.q1)
-            print(self.soft_value_q1.shape)
-            input('...')
+            self.targets = tf.compat.v1.placeholder(tf.float32, [None,], name='targets')
 
-            # Advantage
-            # Advantage (reward - baseline)
-            self.advantage = self.reward - self.baseline_values
+            self.q1_loss = tf.reduce_mean(0.5 * tf.pow(self.q1_action - self.targets, 2))
+            self.q2_loss = tf.reduce_mean(0.5 * tf.pow(self.q2_action - self.targets, 2))
 
-            # L_clip loss
-            self.ratio = tf.exp(self.log_prob_with_action - self.old_logprob)
-            self.surr1 = self.ratio * self.advantage
-            self.surr2 = tf.clip_by_value(self.ratio, 1 - self.epsilon, 1 + self.epsilon) * self.advantage
-            self.clip_loss = tf.minimum(self.surr1, self.surr2)
+            # Q Optimizers
+            self.q1_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.q_lr).minimize(self.q1_loss)
+            self.q2_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.q_lr).minimize(self.q2_loss)
 
-            # Value function loss
-            self.mse_loss = tf.compat.v1.losses.mean_squared_error(self.reward, self.value)
-
-            # Entropy bonus
-            self.entr_loss = self.dist.entropy()
-
-            # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*(self.entr_loss + eps))
+            # Update policy
+            self.q1_values = tf.compat.v1.placeholder(tf.float32, [None, action_size], name='q1_values')
+            self.q2_values = tf.compat.v1.placeholder(tf.float32, [None, action_size], name='q2_values')
+            self.p_loss = self.alpha * tf.math.log(self.probs) - tf.minimum(self.q1_values, self.q2_values)
+            self.probs_mat = tf.expand_dims(self.probs, axis=1)
+            self.p_loss = - tf.reduce_mean(tf.matmul(self.probs_mat, self.p_loss))
 
             # Policy Optimizer
-            self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
-            # Value Optimizer
-            self.v_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.v_lr).minimize(self.mse_loss)
+            self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.p_loss)
 
         self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
+
+    # Update target q networks with hard update
+    def update_target_q_net_hard(self):
+        q1_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q1")
+        q1_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q1")
+        # Hard update
+        self.sess.run([v_t.assign(v) for v_t, v in zip(q1_t_vars, q1_vars)])
+
+        q2_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q2")
+        q2_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q2")
+        # Hard update
+        self.sess.run([v_t.assign(v) for v_t, v in zip(q2_t_vars, q2_vars)])
 
     # Update target q networks with soft update
     def update_target_q_net_soft(self, tau=0.05):
         q1_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q1")
-        q1_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q1_t")
+        q1_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q1")
 
         self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(q1_t_vars, q1_vars)])
 
         q2_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q2")
-        q2_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/q2_t")
+        q2_t_vars = tf.compat.v1.get_collection(tf.compat.v1.GraphKeys.GLOBAL_VARIABLES, scope="ppo/t_q2")
 
         self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(q2_t_vars, q2_vars)])
+
+    # Compute targets for policy update
+    def compute_targets(self, rewards, dones, q1_t_values, q2_t_values, probs):
+
+        rewards = np.asarray(rewards)
+        dones = np.asarray(dones)
+        q1_t_values = np.asarray(q1_t_values)
+        q2_t_values = np.asarray(q2_t_values)
+        probs = np.squeeze(np.asarray(probs))
+
+        q1_t_values = np.expand_dims(q1_t_values, axis=2)
+        q2_t_values = np.expand_dims(q2_t_values, axis=2)
+
+        matmul = (np.matmul(np.expand_dims(probs, axis=1) ,
+                            (np.minimum(q1_t_values, q2_t_values) - self.alpha*np.log(np.expand_dims(probs, axis=2)))))
+        matmul = np.reshape(matmul, [-1,])
+
+        targets = rewards + (1-dones)*self.discount*matmul
+
+        return targets
 
     ## Layers
     def linear(self, inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -251,42 +273,6 @@ class SAC:
 
         return all_flat
 
-    # Sample a batch of consequent states for recurrent
-    def sample_batch_for_recurrent(self, length, batch_size, discounted_rewards):
-        minibatch_idxs = []
-        # Get a random number of episode in buffer
-        episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
-
-        # For each episode, get a sequence of length states with their discounted rewards
-        for ep in episode_numbers:
-            ep_lenght = self.buffer['episode_lengths'][ep]
-
-            if ep_lenght <= length:
-                print(self.buffer['episode_lengths'])
-                print(ep_lenght)
-                min_index = np.sum(self.buffer['episode_lengths'][:ep])
-                max_index = min_index + (ep_lenght)
-                tmp_idxs = np.arange(int(min_index), int(max_index))
-                minibatch_idxs = np.concatenate((tmp_idxs, np.ones((length - len(tmp_idxs)))*int(max_index-1)))
-            else:
-                point = np.random.randint(0, ep_lenght - length)
-                min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
-                max_index = min_index + length
-                minibatch_idxs.append(np.arange(int(min_index),int( max_index)))
-
-            #sampled_trace.append(self.buffer['states'][point*ep:point*ep + length])
-            #sampled_actions.append(self.buffer['actions'][point * ep:point * ep + length])
-            #sampled_old_probs.append(self.buffer['old_probs'][point * ep:point * ep + length])
-            #sampled_rewards.append(discounted_rewards[point * ep:point * ep + length])
-
-        minibatch_idxs = np.reshape(np.asarray(minibatch_idxs), [-1])
-        #sampled_trace = np.reshape(np.asarray(sampled_trace), [-1])
-        #sampled_rewards = np.reshape(np.asarray(sampled_rewards), [-1])
-        #sampled_actions = np.reshape(np.asarray(sampled_actions), [-1])
-        #sampled_old_probs = np.reshape(np.asarray(sampled_old_probs), [-1])
-        #return sampled_trace, sampled_rewards, sampled_actions, sampled_old_probs
-        return minibatch_idxs
-
 
     # Train loop
     def train(self):
@@ -294,98 +280,57 @@ class SAC:
         v_losses = []
 
         # Get batch size based on batch_fraction
-        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
-
-        # Before training, compute discounted reward
-        discounted_rewards = self.compute_discounted_reward()
+        batch_size = self.batch_fraction
 
         # Train the value function
-        for it in range(self.v_num_itr):
-
-            if not self.recurrent:
-                # Take a mini-batch of batch_size experience
-                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-            else:
-                mini_batch_idxs = self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
-
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            # Reshape problem, why?
-            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
-
-
-            # Get DeepCrawl state
-            # Convert the observation to states
-            states = self.obs_to_state(states_mini_batch)
-
-            feed_dict = self.create_state_feed_dict(states)
-
-            # Update feed dict for training
-            feed_dict[self.reward] = rewards_mini_batch
-            if not self.recurrent:
-                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-            else:
-                # If recurrent, we need to pass the internal state and the recurrent_length
-                state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
-                feed_dict[self.state_in] = state_train
-                feed_dict[self.recurrent_train_length] = self.recurrent_length
-                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-
-            v_losses.append(v_loss)
-
-        # Compute GAE for rewards. If lambda == 1, they are discounted rewards
-        # Compute values for each state
-        states = self.obs_to_state(self.buffer['states'])
-        feed_dict = self.create_state_feed_dict(states)
-
-        v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        v_values = np.append(v_values, 0)
-        discounted_rewards = self.compute_gae(v_values)
-
-        # Train the policy
         for it in range(self.p_num_itr):
-
-            if not self.recurrent_length:
-                # Take a mini-batch of batch_size experience
-                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-            else:
-                mini_batch_idxs = self.sample_batch_for_recurrent(self.recurrent_length, batch_size, discounted_rewards)
-
+            # Take a mini-batch of batch_size experience
+            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
             states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
-            old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-
-            # Get DeepCrawl state
+            states_n_mini_batch = [self.buffer['states_n'][id] for id in mini_batch_idxs]
             # Convert the observation to states
+            states_n = self.obs_to_state(states_n_mini_batch)
+            feed_dict = self.create_state_feed_dict(states_n)
+
+            # Compute target values with target networks
+            q1_t_values, q2_t_values = self.sess.run([self.q1_t, self.q2_t], feed_dict=feed_dict)
+
             states = self.obs_to_state(states_mini_batch)
             feed_dict = self.create_state_feed_dict(states)
+            rewards_mini_batch = [self.buffer['rewards'][id] for id in mini_batch_idxs]
+            terminals_mini_batch = [self.buffer['terminals'][id] for id in mini_batch_idxs]
+            actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
 
-            # Get the baseline values
-            v_values_mini_batch = [v_values[id] for id in mini_batch_idxs]
+            actions_mini_batch = np.asarray(actions_mini_batch)
+            actions_mini_batch = [[b,a] for b,a in zip(np.arange(batch_size), actions_mini_batch)]
 
-            # Reshape problem, why?
-            rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
-            old_probs_mini_batch = np.reshape(old_probs_mini_batch, [-1, ])
-            v_values_mini_batch = np.reshape(v_values_mini_batch, [-1, ])
+            _, _, probs = self.eval(states_n_mini_batch)
 
-            # Update feed dict for training
-            feed_dict[self.reward] = rewards_mini_batch
-            feed_dict[self.old_logprob] = old_probs_mini_batch
-            feed_dict[self.eval_action] = actions_mini_batch
-            feed_dict[self.baseline_values] = v_values_mini_batch
+            targets_mini_batch = self.compute_targets(rewards_mini_batch, terminals_mini_batch, q1_t_values, q2_t_values, probs)
 
-            if not self.recurrent:
-                loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
-            else:
-                # If recurrent, we need to pass the internal state and the recurrent_length
-                state_train = (np.zeros([batch_size, self.recurrent_size]), np.zeros([batch_size, self.recurrent_size]))
-                feed_dict[self.state_in] = state_train
-                feed_dict[self.recurrent_train_length] = self.recurrent_length
-                loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
+            feed_dict[self.targets] = targets_mini_batch
+            feed_dict[self.action_idxs] = actions_mini_batch
+
+            # Update q functions
+            q1_loss, q2_loss, q1_step, q2_step = self.sess.run([self.q1_loss, self.q2_loss, self.q1_step, self.q2_step],
+                                                               feed_dict=feed_dict)
+
+            # Get new Q values
+            q1_values, q2_values = self.sess.run([self.q1, self.q2], feed_dict=feed_dict)
+            feed_dict[self.q1_values] = q1_values
+            feed_dict[self.q2_values] = q2_values
+
+            # Update policy
+            loss, step = self.sess.run([self.p_loss, self.p_step], feed_dict=feed_dict)
+
+            q1_values, q2_values = self.sess.run([self.q1, self.q2], feed_dict=feed_dict)
+
+            self.update_target_q_net_soft(0.05)
             
             losses.append(loss)
+
+        print(np.mean(losses))
 
         return np.mean(losses)
 
@@ -454,27 +399,27 @@ class SAC:
     # Clear the memory buffer
     def clear_buffer(self):
 
-        self.buffer['episode_lengths'] = []
         self.buffer['states'] = []
         self.buffer['actions'] = []
         self.buffer['old_probs'] = []
         self.buffer['states_n'] = []
         self.buffer['rewards'] = []
         self.buffer['terminals'] = []
+        self.buffer['probs'] = []
 
     # Add a transition to the buffer
-    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
+    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals, probs):
 
         # If we store more than memory episodes, remove the last episode
-        if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
-            idxs_to_remove = self.buffer['episode_lengths'][0]
-            del self.buffer['states'][:idxs_to_remove]
-            del self.buffer['actions'][:idxs_to_remove]
-            del self.buffer['old_probs'][:idxs_to_remove]
-            del self.buffer['states_n'][:idxs_to_remove]
-            del self.buffer['rewards'][:idxs_to_remove]
-            del self.buffer['terminals'][:idxs_to_remove]
-            del self.buffer['episode_lengths'][0]
+        if len(self.buffer['states']) + 1 >= self.memory + 1:
+            idxs_to_remove = np.random.randint(0,self.memory)
+            del self.buffer['states'][idxs_to_remove]
+            del self.buffer['actions'][idxs_to_remove]
+            del self.buffer['old_probs'][idxs_to_remove]
+            del self.buffer['states_n'][idxs_to_remove]
+            del self.buffer['rewards'][idxs_to_remove]
+            del self.buffer['terminals'][idxs_to_remove]
+            del self.buffer['probs'][idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -482,9 +427,7 @@ class SAC:
         self.buffer['states_n'].append(state_n)
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
-        # If its terminal, update the episode length count (all states - sum(previous episode lengths)
-        if terminals:
-            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+        self.buffer['probs'].append(probs)
 
 
     # Change rewards in buffer to discounted rewards

@@ -148,7 +148,7 @@ class Runner:
                 episode_reward += reward
 
                 # Update PPO memory
-                self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, probs)
                 state = state_n
 
                 step += 1
