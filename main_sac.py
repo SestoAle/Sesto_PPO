@@ -3,14 +3,8 @@ from runner.runner import Runner
 import os
 import time
 import tensorflow as tf
-import numpy as np
+from unity_env_wrapper import UnityEnvWrapper
 import argparse
-import gym
-import gym_minigrid
-import math
-
-eps = 1e-12
-
 
 from reward_model.reward_model import RewardModel
 
@@ -45,41 +39,6 @@ parser.set_defaults(recurrent=False)
 
 args = parser.parse_args()
 
-class MiniGrid:
-
-    def __init__(self, graphics=False):
-        self.env = gym.make('MiniGrid-Empty-6x6-v0')
-        self._max_episode_timesteps = 100
-        self.graphics = graphics
-
-    def reset(self):
-        if self.graphics:
-            self.env.render('human')
-        state = self.env.reset()
-        return dict(input=np.reshape(state['image'][:,:,0], [7*7]))
-
-    def set_config(self, config):
-        return
-
-    def execute(self, actions):
-        if self.graphics:
-            self.env.render('human')
-        state, reward, done, _ = self.env.step(actions)
-
-        state = dict(input=np.reshape(state['image'][:,:,0], [7*7]))
-
-        return state, done, reward
-
-    def entropy(self, probs):
-        entropy = 0
-        for prob in probs:
-            entropy += (prob + eps) * (math.log(prob + eps) + eps)
-
-        return -entropy
-
-
-
-
 if __name__ == "__main__":
 
     # DeepCrawl arguments
@@ -97,26 +56,62 @@ if __name__ == "__main__":
     dems_name = args.dems_name
     reward_frequency = int(args.reward_frequency)
 
+    # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
+    curriculum = {
+        'current_step': 0,
+        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
+        'parameters':
+            {
+                'minTargetHp': [1, 10, 10, 10, 10],
+                'maxTargetHp': [1, 10, 20, 20, 20],
+                'minAgentHp': [15, 10, 5, 5, 10],
+                'maxAgentHp': [20, 20, 20, 20, 20],
+                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
+                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
+                'minAgentMp': [0, 0, 0, 0, 0],
+                'maxAgentMp': [0, 0, 0, 0, 0],
+                'numActions': [17, 17, 17, 17, 17],
+                # Agent statistics
+                'agentAtk': [3, 3, 3, 3, 3],
+                'agentDef': [3, 3, 3, 3, 3],
+                'agentDes': [3, 3, 3, 3, 3],
+
+                'minStartingInitiative': [1, 1, 1, 1, 1],
+                'maxStartingInitiative': [1, 1, 1, 1, 1],
+
+                #'sampledEnv': [sampled_env]
+            }
+    }
+
     # Total episode of training
     total_episode = 1e10
+    # Units of training (episodes or timesteps)
+    frequency_mode = 'timesteps'
     # Frequency of training (in episode)
-    frequency = 5
+    frequency = 50
     # Memory of the agent (in episode)
-    memory = 100000
+    memory = 1e6
+    # Number of random actions before updating
+    random_actions = 10000
 
     # Create agent
     graph = tf.compat.v1.Graph()
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = SAC(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent)
+        agent = SAC(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent, action_size=19)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
-        agent.update_target_q_net_hard()
 
     # Open the environment with all the desired flags
-    env = MiniGrid()
+    env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
+                                  worker_id=work_id, with_stats=True, size_stats=31,
+                                  size_global=10, agent_separate=False, with_class=False, with_hp=False,
+                                  with_previous=True, verbose=False, manual_input=False,
+                                  _max_episode_timesteps=max_episode_timestep)
+
+
 
     # If we want to use IRL, create a reward model
     reward_model = None
@@ -135,7 +130,7 @@ if __name__ == "__main__":
 
     # Create runner
     runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
-                    logging=logging, total_episode=total_episode, curriculum=None,
+                    logging=logging, total_episode=total_episode, curriculum=curriculum,
 
                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                     fixed_reward_model=fixed_reward_model)

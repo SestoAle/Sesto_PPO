@@ -6,6 +6,7 @@ import time
 
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
+                 frequency_mode='episodes', random_actions=None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  **kwargs):
@@ -15,6 +16,8 @@ class Runner:
         self.curriculum = curriculum
         self.total_episode = total_episode
         self.frequency = frequency
+        self.frequency_mode = frequency_mode
+        self.random_actions = random_actions
         self.logging = logging
         self.save_frequency = save_frequency
         self.env = env
@@ -116,11 +119,16 @@ class Runner:
             # Episode loop
             while True:
 
+
+
                 # Evaluation - Execute step
                 if not self.recurrent:
                     action, logprob, probs = self.agent.eval([state])
                 else:
                     action, logprob, probs, internal = self.agent.eval_recurrent([state], internal)
+
+                if self.random_actions is not None and self.total_step < self.random_actions:
+                    action = [np.random.randint(self.agent.action_size)]
 
                 action = action[0]
                 # Save probabilities for entropy
@@ -148,11 +156,20 @@ class Runner:
                 episode_reward += reward
 
                 # Update PPO memory
-                self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, probs)
+                self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
                 state = state_n
 
                 step += 1
                 self.total_step += 1
+
+                # If frequency episodes are passed, update the policy
+                if self.frequency_mode == 'timesteps' and \
+                        self.total_step > 0 and self.total_step % self.frequency == 0:
+                    if self.random_actions is not None:
+                        if self.total_step > self.random_actions:
+                            self.agent.train()
+                    else:
+                        self.agent.train()
 
                 # If done, end the episode and save statistics
                 if done:
@@ -177,7 +194,7 @@ class Runner:
                 self.timer(start_time, time.time())
 
             # If frequency episodes are passed, update the policy
-            if self.ep > 0 and self.ep % self.frequency == 0:
+            if self.frequency_mode == 'episodes' and self.ep > 0 and self.ep % self.frequency == 0:
                 self.agent.train()
 
             # If IRL, update the reward model after reward_frequency episode

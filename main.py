@@ -85,6 +85,8 @@ if __name__ == "__main__":
 
     # Total episode of training
     total_episode = 1e10
+    # Units of training (episodes or timesteps)
+    frequency_mode = 'episodes'
     # Frequency of training (in episode)
     frequency = 5
     # Memory of the agent (in episode)
@@ -127,7 +129,7 @@ if __name__ == "__main__":
     # Create runner
     runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                     logging=logging, total_episode=total_episode, curriculum=curriculum,
-
+                    frequency_mode=frequency_mode,
                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                     fixed_reward_model=fixed_reward_model)
     try:

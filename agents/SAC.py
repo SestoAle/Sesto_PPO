@@ -12,40 +12,30 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class SAC:
     # PPO agent
-    def __init__(self, sess, p_lr=0.0003, v_lr=5e-6, batch_fraction=64, p_num_itr=4, v_num_itr=20, action_size=3,
-                 epsilon=0.2, c1=0.5, c2=5e-6, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
-
-                 alpha=0.2, q_lr=0.0003,
-
+    def __init__(self, sess, lr=5e-6, batch_size=256, p_num_itr=1, action_size=3,
+                 discount=0.99, name='sac', memory=10, norm_reward=False,
+                 alpha=0.2, tau=0.005,
                  model_name='agent',
 
                  # LSTM
-                 recurrent = False, recurrent_length = 5,
+                 recurrent = False, recurrent_length=5,
 
                  **kwargs):
 
         # Model parameters
         self.sess = sess
-        self.p_lr = p_lr
-        self.v_lr = v_lr
-        self.batch_fraction = batch_fraction
+        self.lr = lr
+        self.batch_size = batch_size
         self.p_num_itr = p_num_itr
-        self.v_num_itr = v_num_itr
         self.name = name
         self.action_size = action_size
         self.norm_reward = norm_reward
         self.model_name = model_name
 
-        # PPO hyper-parameters
-        self.epsilon = epsilon
-        self.c1 = c1
-        self.c2 = c2
-        self.discount = discount
-        self.lmbda = lmbda
-
         # SAC hyper-parameters
         self.alpha = alpha
-        self.q_lr = q_lr
+        self.tau = 0.005
+        self.discount = discount
 
         # Recurrent paramtere
         self.recurrent = recurrent
@@ -58,13 +48,12 @@ class SAC:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            # self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 53], name='global_state')
-            # self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 53], name='local_state')
-            # self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 53], name='local_two_state')
-            # self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
-            # self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
-            # self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
-            self.input = tf.compat.v1.placeholder(tf.float32, [None, 7*7], name='input')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
+            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+            self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
+            self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
+            self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
 
             # Actor network
             with tf.compat.v1.variable_scope('policy'):
@@ -74,14 +63,12 @@ class SAC:
                 self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
-                #self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                #                               self.agent_stats, self.target_stats)
-
-                self.conv_network = self.input
+                self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats)
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
-                #self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
+                self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
 
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
@@ -122,39 +109,47 @@ class SAC:
             self.action_idxs = tf.compat.v1.placeholder(tf.int32, [None, 2], name='action_idxs')
             # Q1 network
             with tf.compat.v1.variable_scope('q1'):
-                self.q1 = self.linear(self.input, 256, name='q1_fc1', activation=tf.nn.relu)
+                self.q1 = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats)
+                self.q1 = self.linear(self.q1, 256, name='q1_fc1', activation=tf.nn.relu)
                 self.q1 = self.linear(self.q1, 256, name='q1_fc2', activation=tf.nn.relu)
                 self.q1 = self.linear(self.q1, self.action_size, name='q1_values')
             self.q1_action = tf.gather_nd(self.q1, self.action_idxs)
 
             # Q2 network
             with tf.compat.v1.variable_scope('q2'):
-                self.q2 = self.linear(self.input, 256, name='q2_fc1', activation=tf.nn.relu)
+                self.q2 = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats)
+                self.q2 = self.linear(self.q2, 256, name='q2_fc1', activation=tf.nn.relu)
                 self.q2 = self.linear(self.q2, 256, name='q2_fc2', activation=tf.nn.relu)
                 self.q2 = self.linear(self.q2, self.action_size, name='q2_values')
             self.q2_action = tf.gather_nd(self.q2, self.action_idxs)
 
             # Q1 target network
             with tf.compat.v1.variable_scope('t_q1'):
-                self.q1_t = self.linear(self.input, 256, name='q1_t_fc1', activation=tf.nn.relu)
+                self.q1_t = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats)
+                self.q1_t = self.linear(self.q1_t, 256, name='q1_t_fc1', activation=tf.nn.relu)
                 self.q1_t = self.linear(self.q1_t, 256, name='q1_t_fc2', activation=tf.nn.relu)
                 self.q1_t = self.linear(self.q1_t, self.action_size, name='q1_t_values')
 
             # Q2 network
             with tf.compat.v1.variable_scope('t_q2'):
-                self.q2_t = self.linear(self.input, 256, name='q2_t_fc1', activation=tf.nn.relu)
+                self.q2_t = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats)
+                self.q2_t = self.linear(self.q2_t, 256, name='q2_t_fc1', activation=tf.nn.relu)
                 self.q2_t = self.linear(self.q2_t, 256, name='q2_t_fc2', activation=tf.nn.relu)
                 self.q2_t = self.linear(self.q2_t, self.action_size, name='q2_t_values')
 
             # Update the q-functions
             self.targets = tf.compat.v1.placeholder(tf.float32, [None,], name='targets')
 
-            self.q1_loss = tf.reduce_mean(0.5 * tf.pow(self.q1_action - self.targets, 2))
-            self.q2_loss = tf.reduce_mean(0.5 * tf.pow(self.q2_action - self.targets, 2))
+            self.q1_loss = tf.losses.mean_squared_error(self.q1_action, self.targets)
+            self.q2_loss = tf.losses.mean_squared_error(self.q2_action, self.targets)
 
             # Q Optimizers
-            self.q1_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.q_lr).minimize(self.q1_loss)
-            self.q2_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.q_lr).minimize(self.q2_loss)
+            self.q1_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.q1_loss)
+            self.q2_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.q2_loss)
 
             # Update policy
             self.q1_values = tf.compat.v1.placeholder(tf.float32, [None, action_size], name='q1_values')
@@ -165,17 +160,24 @@ class SAC:
             self.p_loss = tf.reduce_mean(tf.matmul(self.probs_mat, self.p_loss))
 
             # Policy Optimizer
-            self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.p_loss)
+            self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.p_loss)
 
-            # The primary and target Q networks should match.
-            self.q1_vars = self.scope_vars('ppo/q1')
-            self.q1_target_vars = self.scope_vars('ppo/t_q1')
-            assert len(self.q1_vars) == len(self.q1_target_vars), "Two Q-networks are not same."
+            self.update_hard_q1_weights = [tf.compat.v1.assign(t_q1, q1) for (q1, t_q1) in
+                              zip(tf.compat.v1.trainable_variables('sac/q1'),
+                                  tf.compat.v1.trainable_variables('sac/t_q1'))]
 
-            # The primary and target Q networks should match.
-            self.q2_vars = self.scope_vars('ppo/q2')
-            self.q2_target_vars = self.scope_vars('ppo/t_q2')
-            assert len(self.q2_vars) == len(self.q2_target_vars), "Two Q-networks are not same."
+            self.update_hard_q2_weights = [tf.compat.v1.assign(t_q2, q2) for (q2, t_q2) in
+                                           zip(tf.compat.v1.trainable_variables('sac/q2'),
+                                               tf.compat.v1.trainable_variables('sac/t_q2'))]
+
+            self.update_soft_q1_weights = [tf.compat.v1.assign(t_q1, t_q1 * (1. - self.tau) + q1 * tau) for (q1, t_q1) in
+                                      zip(tf.compat.v1.trainable_variables('sac/q1'),
+                                          tf.compat.v1.trainable_variables('sac/t_q1'))]
+
+            self.update_soft_q2_weights = [tf.compat.v1.assign(t_q2, t_q2 * (1. - self.tau) + q2 * tau) for (q2, t_q2) in
+                                      zip(tf.compat.v1.trainable_variables('sac/q2'),
+                                          tf.compat.v1.trainable_variables('sac/t_q2'))]
+
 
         self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
 
@@ -187,13 +189,13 @@ class SAC:
 
     # Update target q networks with hard update
     def update_target_q_net_hard(self):
-        self.sess.run([v_t.assign(v) for v_t, v in zip(self.q1_target_vars, self.q1_vars)])
-        self.sess.run([v_t.assign(v) for v_t, v in zip(self.q2_target_vars, self.q2_vars)])
+        self.sess.run(self.update_hard_q1_weights)
+        self.sess.run(self.update_hard_q2_weights)
 
     # Update target q networks with soft update
-    def update_target_q_net_soft(self, tau=0.05):
-        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(self.q1_target_vars, self.q1_vars)])
-        self.sess.run([v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(self.q2_target_vars, self.q2_vars)])
+    def update_target_q_net_soft(self):
+        self.sess.run(self.update_soft_q1_weights)
+        self.sess.run(self.update_soft_q2_weights)
 
     # Compute targets for policy update
     def compute_targets(self, rewards, dones, q1_t_values, q2_t_values, probs):
@@ -273,20 +275,24 @@ class SAC:
 
         return all_flat
 
+    # Normalize rewards
+    def normalize_reward(self):
+        self.buffer['rewards'] = (self.buffer['rewards'] - np.mean(self.buffer['rewards'])) / \
+                                 (np.std(self.buffer['rewards']) + eps)
 
     # Train loop
     def train(self):
         losses = []
-        v_losses = []
-
         # Get batch size based on batch_fraction
-        batch_size = self.batch_fraction
+        batch_size = self.batch_size
+
+        if self.norm_reward:
+            self.normalize_reward()
 
         # Train the value function
         for it in range(self.p_num_itr):
             # Take a mini-batch of batch_size experience
             mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-
 
             states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
             states_n_mini_batch = [self.buffer['states_n'][id] for id in mini_batch_idxs]
@@ -328,7 +334,7 @@ class SAC:
             loss, step = self.sess.run([self.p_loss, self.p_step], feed_dict=feed_dict)
 
             losses.append(loss)
-            self.update_target_q_net_soft(0.0005)
+            self.update_target_q_net_soft()
 
         return np.mean(losses)
 
@@ -379,17 +385,31 @@ class SAC:
 
     # Transform an observation to a DeepCrawl state
     def obs_to_state(self, obs):
+        global_batch = np.stack([np.asarray(state['global_in']) for state in obs])
+        local_batch = np.stack([np.asarray(state['local_in']) for state in obs])
+        local_two_batch = np.stack([np.asarray(state['local_in_two']) for state in obs])
+        agent_stats_batch = np.stack([np.asarray(state['agent_stats']) for state in obs])
+        target_stats_batch = np.stack([np.asarray(state['target_stats']) for state in obs])
+        prev_act_batch = np.stack([np.asarray(state['prev_action']) for state in obs])
 
-        input_batch = np.stack([np.asarray(state['input']) for state in obs])
-
-        return input_batch
+        return global_batch, local_batch, local_two_batch, agent_stats_batch, target_stats_batch, prev_act_batch
 
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
-        all_input = states
+        all_global = states[0]
+        all_local = states[1]
+        all_local_two = states[2]
+        all_agent_stats = states[3]
+        all_target_stats = states[4]
+        all_prev_acts = states[5]
 
         feed_dict = {
-            self.input: all_input,
+            self.global_state: all_global,
+            self.local_state: all_local,
+            self.local_two_state: all_local_two,
+            self.agent_stats: all_agent_stats,
+            self.target_stats: all_target_stats,
+            self.previous_acts: all_prev_acts
         }
 
         return feed_dict
@@ -406,7 +426,7 @@ class SAC:
         self.buffer['probs'] = []
 
     # Add a transition to the buffer
-    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals, probs):
+    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['states']) + 1 >= self.memory + 1:
@@ -417,7 +437,6 @@ class SAC:
             del self.buffer['states_n'][idxs_to_remove]
             del self.buffer['rewards'][idxs_to_remove]
             del self.buffer['terminals'][idxs_to_remove]
-            del self.buffer['probs'][idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -425,52 +444,6 @@ class SAC:
         self.buffer['states_n'].append(state_n)
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
-        self.buffer['probs'].append(probs)
-
-
-    # Change rewards in buffer to discounted rewards
-    def compute_discounted_reward(self):
-
-        discounted_rewards = []
-        discounted_reward = 0
-        # The discounted reward can be computed in reverse
-        for (terminal, reward) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards'])):
-            if terminal:
-                discounted_reward = 0
-
-            discounted_reward = reward + (self.discount*discounted_reward)
-            discounted_rewards.insert(0, discounted_reward)
-
-        # Normalizing reward
-        if self.norm_reward:
-            discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
-
-        return discounted_rewards
-
-    # Change rewards in buffer to discounted rewards or GAE rewards (if lambda == 1, gae == discounted)
-    def compute_gae(self, v_values):
-
-        rewards = []
-        gae = 0
-
-        # The gae rewards can be computed in reverse
-        for i in reversed(range(len(self.buffer['rewards']))):
-            terminal = self.buffer['terminals'][i]
-            m = 1
-            if terminal:
-                m = 0
-
-            delta = self.buffer['rewards'][i] + self.discount * v_values[i + 1] * m - v_values[i]
-            gae = delta + self.discount * self.lmbda * m * gae
-            reward = gae + v_values[i]
-
-            rewards.insert(0, reward)
-
-        # Normalizing
-        if self.norm_reward:
-            rewards = (rewards - np.mean(rewards)) / (np.std(rewards) + eps)
-
-        return rewards
 
     # Save the entire model
     def save_model(self, name=None, folder='saved'):
@@ -485,9 +458,9 @@ class SAC:
 
             graph_def = tf.compat.v1.graph_util.remove_training_nodes(input_graph=graph_def)
             output_node_names = [
-                'ppo/actor/add',
-                'ppo/actor/ppo_actor_Categorical/action/Reshape_2',
-                'ppo/critic/Squeeze'
+                'sac/actor/add',
+                'sac/actor/ppo_actor_Categorical/action/Reshape_2',
+                'sac/critic/Squeeze'
             ]
 
             # implies tf.compat.v1.graph_util.extract_sub_graph
