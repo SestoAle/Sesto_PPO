@@ -12,10 +12,10 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class SAC:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=128, p_num_itr=5, v_num_itr=20, action_size=3,
+    def __init__(self, sess, p_lr=0.0003, v_lr=5e-6, batch_fraction=64, p_num_itr=4, v_num_itr=20, action_size=3,
                  epsilon=0.2, c1=0.5, c2=5e-6, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
 
-                 alpha = 0.2, q_lr=0.0003,
+                 alpha=0.2, q_lr=0.0003,
 
                  model_name='agent',
 
@@ -287,6 +287,7 @@ class SAC:
             # Take a mini-batch of batch_size experience
             mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
+
             states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
             states_n_mini_batch = [self.buffer['states_n'][id] for id in mini_batch_idxs]
             # Convert the observation to states
@@ -327,7 +328,7 @@ class SAC:
             loss, step = self.sess.run([self.p_loss, self.p_step], feed_dict=feed_dict)
 
             losses.append(loss)
-            self.update_target_q_net_soft(0.05)
+            self.update_target_q_net_soft(0.0005)
 
         return np.mean(losses)
 

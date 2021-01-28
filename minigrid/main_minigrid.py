@@ -26,7 +26,7 @@ parser.add_argument('-mn', '--model-name', help="The name of the model", default
 parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
