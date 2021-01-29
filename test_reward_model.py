@@ -193,6 +193,7 @@ if __name__ == "__main__":
             for i in range(num_reward_models + 1):
                 step_rewards["reward_{}".format(i)] = []
             state = env.reset(raw_obs=True)
+            action = 0
             while not done:
 
                 if args.ensemble_mode == 'mult':
@@ -206,9 +207,10 @@ if __name__ == "__main__":
                 temperatures = [float(t) for t in args.temperatures.split(",")]
                 for (i, agent) in enumerate(agents):
                     if i == 0:
-                        state = env.get_input_observation(state)
+                        print(state)
+                        state = env.get_input_observation(state, action)
                     else:
-                        state = env.get_input_observation_adapter(state)
+                        state = env.get_input_observation_adapter(state, action)
                         print(np.shape(state['global_in']))
                         input('...')
                     _, _, probs = agent.eval([state])
@@ -251,7 +253,7 @@ if __name__ == "__main__":
                 else:
                     action = np.argmax(total_probs)
 
-                state_n, done, reward = env.execute(action)
+                state_n, done, reward = env.execute(action, raw_obs=True)
 
                 r_fountain = get_fountain_reward(state, state_n, action, env)
                 state = state_n
