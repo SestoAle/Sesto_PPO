@@ -66,10 +66,11 @@ def norm(arrays):
 
 def get_fountain_reward(state, state_n, action, env):
     
+    state = env.get_input_observation_adapter(state)
     state_n = env.get_input_observation_adapter(state_n)
 
-    local_state = state['local_two_in']
-    local_state_n = state_n['local_two_in']
+    local_state = state['local_in_two']
+    local_state_n = state_n['local_in_two']
 
     sum = local_state[:, :, 0] * 0
     for i in range(1, 8):
@@ -149,8 +150,6 @@ if __name__ == "__main__":
             if i == 1:
                 agent = PPO_adapter(sess=sess, model_name=model_name, recurrent=False)
             else:
-                print('yeah')
-                input('...')
                 agent = PPO(sess=sess, model_name=model_name, recurrent=False)
             # Load agent
             agent.load_model(m, 'saved')
@@ -207,13 +206,10 @@ if __name__ == "__main__":
                 temperatures = [float(t) for t in args.temperatures.split(",")]
                 for (i, agent) in enumerate(agents):
                     if i == 0:
-                        print(state)
-                        state = env.get_input_observation(state, action)
+                        state_r = env.get_input_observation(state, action)
                     else:
-                        state = env.get_input_observation_adapter(state, action)
-                        print(np.shape(state['global_in']))
-                        input('...')
-                    _, _, probs = agent.eval([state])
+                        state_r = env.get_input_observation_adapter(state, action)
+                    _, _, probs = agent.eval([state_r])
                     probs = probs[0]
                     probs = boltzmann(probs, temperatures[i])
                     if args.ensemble_mode == 'mult':
@@ -234,7 +230,6 @@ if __name__ == "__main__":
                         if entropy(probs) < min_entropy:
                             min_entropy = entropy(probs)
                             min_entropy_idx = i
-
                 if args.ensemble_mode == 'add':
                     total_probs /= (num_reward_models + 1)
 
@@ -247,8 +242,9 @@ if __name__ == "__main__":
                         action = np.argmax(agents[0].eval([state])[2])
                 elif args.ensemble_mode == 'entr_add':
                     min_entropy = np.clip(min_entropy, 0, 1)
-                    main_probs = agents[0].eval([state])[2] * (min_entropy)
-                    main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
+
+                    main_probs = agents[0].eval([env.get_input_observation(state)])[2] * (min_entropy)
+                    main_probs += (agents[min_entropy_idx].eval([env.get_input_observation_adapter(state)])[2] * (1. - min_entropy))
                     action = np.argmax(main_probs)
                 else:
                     action = np.argmax(total_probs)
