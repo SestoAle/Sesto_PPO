@@ -236,10 +236,10 @@ if __name__ == "__main__":
                 if args.ensemble_mode == 'entr':
                     if min_entropy < main_entropy + 0.01:
                         #action = np.argmax(agents[min_entropy_idx].eval([state])[2])
-                        action = np.argmax(agents[min_entropy_idx].eval([state])[2])
+                        action = np.argmax(agents[min_entropy_idx].eval([env.get_input_observation_adapter(state)])[2])
                     else:
                         #action = np.argmax(agents[0].eval([state])[2])
-                        action = np.argmax(agents[0].eval([state])[2])
+                        action = np.argmax(agents[0].eval([env.get_input_observation(state)])[2])
                 elif args.ensemble_mode == 'entr_add':
                     min_entropy = np.clip(min_entropy, 0, 1)
 
