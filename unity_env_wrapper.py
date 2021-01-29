@@ -211,6 +211,151 @@ class UnityEnvWrapper(Environment):
 
         return observation
 
+    def get_input_observation_adapter(self, env_info, action = None):
+        size = self.size_global * self.size_global * self.input_channels
+
+        global_in = env_info.vector_observations[0][:size]
+        global_in = np.reshape(global_in, (self.size_global, self.size_global, self.input_channels))
+        if self.one_hot:
+            global_in_one_hot = self.to_one_hot(global_in[:,:,0], 8)
+            for i in range(1, self.input_channels):
+                global_in_one_hot = np.append(global_in_one_hot, self.to_one_hot(global_in[:,:,i], 9), axis = 2)
+
+        if self.with_local:
+            size_local = self.size_two * self.size_two * self.input_channels
+            local_in = env_info.vector_observations[0][size:(size + size_local)]
+            local_in = np.reshape(local_in, (self.size_two, self.size_two, self.input_channels))
+            if self.one_hot:
+                local_in_one_hot = self.to_one_hot(local_in[:, :, 0], 8)
+                for i in range(1, self.input_channels):
+                    local_in_one_hot = np.append(local_in_one_hot, self.to_one_hot(local_in[:, :, i], 9), axis=2)
+
+            size_local_two = self.size_three * self.size_three * self.input_channels
+            local_in_two = env_info.vector_observations[0][(size + size_local):(
+                    size + size_local + size_local_two)]
+            local_in_two = np.reshape(local_in_two, (self.size_three, self.size_three, self.input_channels))
+            if self.one_hot:
+                local_in_two_one_hot = self.to_one_hot(local_in_two[:, :, 0], 8)
+                for i in range(1, self.input_channels):
+                    local_in_two_one_hot = np.append(local_in_two_one_hot, self.to_one_hot(local_in_two[:, :, i], 9), axis=2)
+
+        if self.with_local and self.with_stats:
+            stats = env_info.vector_observations[0][
+                    (size + size_local + size_local_two):
+                    (size + size_local + size_local_two + self.size_stats)]
+
+        if self.with_local and self.with_stats and self.with_hp:
+            hp = env_info.vector_observations[0][
+                 (size + (self.size_two * self.size_two) + (self.size_three * self.size_three)):
+                 (size + (self.size_two * self.size_two) + (self.size_three * self.size_three) + 4)]
+            stats = env_info.vector_observations[0][
+                    (size + (self.size_two * self.size_two) + (self.size_three * self.size_three) + 4):
+                    (size + (self.size_two * self.size_two) + (
+                                self.size_three * self.size_three) + self.size_stats + 4)]
+            self.size_stats += 4
+
+        if self.with_local and self.with_stats and self.with_class:
+            agent_class = env_info.vector_observations[0][
+                          (size + (self.size_two * self.size_two) + (
+                                      self.size_three * self.size_three) + self.size_stats):
+                          (size + (self.size_two * self.size_two) + (
+                                      self.size_three * self.size_three) + self.size_stats + self.size_class)]
+
+            enemy_class = env_info.vector_observations[0][
+                          (size + (self.size_two * self.size_two) + (
+                                      self.size_three * self.size_three) + self.size_stats + self.size_class):
+                          (size + (self.size_two * self.size_two) + (
+                                      self.size_three * self.size_three) + self.size_stats + self.size_class * 2)]
+
+        observation = {
+            'global_in': global_in,
+            'local_in': local_in
+        }
+
+        if self.with_local:
+            observation = {
+                'global_in': global_in,
+                'local_in': local_in,
+                'local_in_two': local_in_two
+            }
+        if self.with_local and self.with_stats:
+            observation = {
+                'global_in': global_in,
+                'local_in': local_in,
+                'local_in_two': local_in_two,
+                'stats': stats
+            }
+
+        if self.with_local and self.with_stats and self.with_previous:
+            action_vector = np.zeros(19)
+            if action != None:
+                action_vector[action] = 1
+
+            observation = {
+                # Global View
+                'global_in': global_in_one_hot,
+                # 'attr_global_1': global_in[:, :, 1],
+                # 'attr_global_2': global_in[:, :, 2],
+                # 'attr_global_3': global_in[:, :, 3],
+                # 'attr_global_4': global_in[:, :, 4],
+                # 'attr_global_5': global_in[:, :, 5],
+                #'global_in_attributes': global_in[:, :, 1:]/5.,
+
+                # Local View
+                'local_in': local_in_one_hot,
+                # 'attr_local_1': local_in[:, :, 1],
+                # 'attr_local_2': local_in[:, :, 2],
+                # 'attr_local_3': local_in[:, :, 3],
+                # 'attr_local_4': local_in[:, :, 4],
+                # 'attr_local_5': local_in[:, :, 5],
+                #'local_in_attributes': local_in[:, :, 1:]/5.,
+
+                # Local Two View
+                'local_in_two': local_in_two_one_hot,
+                # 'attr_local_two_1': local_in_two[:, :, 1],
+                # 'attr_local_two_2': local_in_two[:, :, 2],
+                # 'attr_local_two_3': local_in_two[:, :, 3],
+                # 'attr_local_two_4': local_in_two[:, :, 4],
+                # 'attr_local_two_5': local_in_two[:, :, 5],
+                #'local_in_two_attributes': local_in_two[:, :, 1:],
+
+                # Stats
+                'agent_stats': stats[:16],
+                'target_stats': stats[16:],
+                'prev_action': action_vector
+            }
+
+        if self.with_local and self.with_stats and self.with_previous and self.with_class:
+            action_vector = np.zeros(17)
+            if action != None:
+                action_vector[action] = 1
+
+            observation = {
+                'global_in': global_in,
+                'local_in': local_in,
+                'local_in_two': local_in_two,
+                'stats': stats,
+                'agent_class': agent_class,
+                'enemy_class': enemy_class,
+                'action': action_vector
+            }
+
+        if self.with_local and self.with_stats and self.with_previous and self.with_hp:
+            action_vector = np.zeros(17)
+            if action != None:
+                action_vector[action] = 1
+
+            observation = {
+                'global_in': global_in,
+                'local_in': local_in,
+                'local_in_two': local_in_two,
+                'hp': hp,
+                'stats': stats,
+                'prev_action': action_vector
+            }
+
+        return observation
+
     def print_observation(self, observation, actions = None, reward = None):
         try:
             # print(observation)
@@ -231,7 +376,8 @@ class UnityEnvWrapper(Environment):
         except Exception as e:
             pass
 
-    def execute(self, actions):
+
+    def execute(self, actions, raw_obs=False):
 
         if self.manual_input:
             input_action = input('...')
@@ -289,7 +435,10 @@ class UnityEnvWrapper(Environment):
         if self.verbose:
             self.print_observation(observation, reward=reward, actions=actions)
 
-        return [observation, done, reward]
+        if not raw_obs:
+            return [observation, done, reward]
+        else:
+            return [env_info, done, reward]
 
     def command_to_action(self, command):
 
@@ -325,7 +474,7 @@ class UnityEnvWrapper(Environment):
         print("Timeout!")
         raise Exception("end of time")
 
-    def reset(self):
+    def reset(self, raw_obs=False):
 
         self.count = 0
 
@@ -353,7 +502,10 @@ class UnityEnvWrapper(Environment):
         if self.verbose:
             self.print_observation(observation)
 
-        return observation
+        if not raw_obs:
+            return observation
+        else:
+            return env_info
 
     def close(self):
         self.unity_env.close()

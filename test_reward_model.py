@@ -1,4 +1,5 @@
 from agents.PPO import PPO
+from agents.PPO_adapter import PPO as PPO_adapter
 from runner.runner import Runner
 import os
 import time
@@ -63,6 +64,29 @@ def softmax(probs, temperature = 1.):
 def norm(arrays):
     return (arrays - np.min(arrays)) / (np.max(arrays) - np.min(arrays))
 
+def get_fountain_reward(state, state_n, action, env):
+    
+    state_n = env.get_input_observation_adapter(state_n)
+
+    local_state = state['local_two_in']
+    local_state_n = state_n['local_two_in']
+
+    sum = local_state[:, :, 0] * 0
+    for i in range(1, 8):
+        sum += local_state[:, :, i] * i
+    local_state = np.flip(np.transpose(sum), 0)
+
+    sum = local_state_n[:, :, 0] * 0
+    for i in range(1, 8):
+        sum += local_state_n[:, :, i] * i
+    local_state_n = np.flip(np.transpose(sum), 0)
+
+    if 7 in local_state:
+        if state['agent_stats'][0] < 20 and state_n['agent_stats'][0] == 20:
+            return 1.0
+
+    return 0.0
+
 if __name__ == "__main__":
 
     # DeepCrawl arguments
@@ -122,7 +146,10 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             sess = tf.compat.v1.Session(graph=graph)
-            agent = PPO(sess=sess, model_name=model_name)
+            if 'fountain' in model_name:
+                agent = PPO_adapter(sess=sess, model_name=model_name)
+            else:
+                agent = PPO(sess=sess, model_name=model_name)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -163,7 +190,7 @@ if __name__ == "__main__":
             current_step = 0
             for i in range(num_reward_models + 1):
                 step_rewards["reward_{}".format(i)] = []
-            state = env.reset()
+            state = env.reset(raw_obs=True)
             while not done:
 
                 if args.ensemble_mode == 'mult':
@@ -209,13 +236,17 @@ if __name__ == "__main__":
                         #action = np.argmax(agents[0].eval([state])[2])
                         action = np.argmax(agents[0].eval([state])[2])
                 elif args.ensemble_mode == 'entr_add':
+                    min_entropy = np.clip(min_entropy, 0, 1)
                     main_probs = agents[0].eval([state])[2] * (min_entropy)
                     main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
                     action = np.argmax(main_probs)
                 else:
                     action = np.argmax(total_probs)
 
-                state, done, reward = env.execute(action)
+                state_n, done, reward = env.execute(action)
+
+                r_fountain = get_fountain_reward(state, state_n, action)
+                state = state_n
 
                 if reward < min_dict["reward_{}".format(0)]:
                     min_dict["reward_{}".format(0)] = reward
@@ -225,16 +256,18 @@ if __name__ == "__main__":
                 step_rewards["reward_0"].append(reward)
 
                 for (i, reward_model) in enumerate(reward_models):
-                    if i == 0:
+                    if i == 99:
                         r = 0
                         if state['agent_stats'][6] >= 55:
                             r += 1
                         if state['agent_stats'][9] >= 79:
                             r += 1
-                    elif i==1:
+                    elif i==99:
                         r = 0
                         if state['agent_stats'][1] == 21:
                             r += 1
+                    elif i == 0:
+                        r = r_fountain
                     else:
                         r = reward_model.eval([state], [state], [action])[0]
                     step_rewards["reward_{}".format(i + 1)].append(r)
@@ -265,8 +298,6 @@ if __name__ == "__main__":
         f.write(json_str)
         f.close()
         print("Experiment saved with name {}!".format(args.save_name))
-
-
 
     finally:
         #save_model(history, model_name, curriculum, agent)
