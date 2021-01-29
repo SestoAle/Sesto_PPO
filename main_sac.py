@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 50
     # Memory of the agent (in episode)
-    memory = 2e5
+    memory = 5e5
     # Number of random actions before updating
     random_actions = 10000
 

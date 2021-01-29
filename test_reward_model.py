@@ -109,7 +109,7 @@ if __name__ == "__main__":
             {
                 'minTargetHp': [20],
                 'maxTargetHp': [20],
-                'minAgentHp': [20],
+                'minAgentHp': [10],
                 'maxAgentHp': [20],
                 'minNumLoot': [0.2],
                 'maxNumLoot': [0.2],
