@@ -13,7 +13,7 @@ from utils import NumpyEncoder
 
 from reward_model.reward_model import RewardModel
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -140,16 +140,18 @@ if __name__ == "__main__":
     # Load the agents
     agents = []
     models = args.model_name.split(",")
-    for m in models:
+    for i,m in enumerate(models):
         # Create agent
         graph = tf.compat.v1.Graph()
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             sess = tf.compat.v1.Session(graph=graph)
-            if 'fountain' in model_name:
-                agent = PPO_adapter(sess=sess, model_name=model_name)
+            if i == 1:
+                agent = PPO_adapter(sess=sess, model_name=model_name, recurrent=False)
             else:
-                agent = PPO(sess=sess, model_name=model_name)
+                print('yeah')
+                input('...')
+                agent = PPO(sess=sess, model_name=model_name, recurrent=False)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -203,6 +205,12 @@ if __name__ == "__main__":
                 min_entropy_idx = np.inf
                 temperatures = [float(t) for t in args.temperatures.split(",")]
                 for (i, agent) in enumerate(agents):
+                    if i == 0:
+                        state = env.get_input_observation(state)
+                    else:
+                        state = env.get_input_observation_adapter(state)
+                        print(np.shape(state['global_in']))
+                        input('...')
                     _, _, probs = agent.eval([state])
                     probs = probs[0]
                     probs = boltzmann(probs, temperatures[i])
@@ -245,7 +253,7 @@ if __name__ == "__main__":
 
                 state_n, done, reward = env.execute(action)
 
-                r_fountain = get_fountain_reward(state, state_n, action)
+                r_fountain = get_fountain_reward(state, state_n, action, env)
                 state = state_n
 
                 if reward < min_dict["reward_{}".format(0)]:

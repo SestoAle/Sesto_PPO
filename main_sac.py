@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'timesteps'
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 50
     # Memory of the agent (in episode)
     memory = 2e5
     # Number of random actions before updating
