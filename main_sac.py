@@ -8,7 +8,7 @@ import argparse
 
 from reward_model.reward_model import RewardModel
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'timesteps'
     # Frequency of training (in episode)
-    frequency = 50
+    frequency = 10
     # Memory of the agent (in episode)
-    memory = 1e6
+    memory = 2e5
     # Number of random actions before updating
     random_actions = 10000
 
@@ -131,6 +131,8 @@ if __name__ == "__main__":
     # Create runner
     runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                     logging=logging, total_episode=total_episode, curriculum=curriculum,
+
+                    frequency_mode=frequency_mode, random_actions=random_actions,
 
                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                     fixed_reward_model=fixed_reward_model)
