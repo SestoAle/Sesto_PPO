@@ -51,9 +51,9 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
-            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 53], name='global_state')
+            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 53], name='local_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 53], name='local_two_state')
             self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
             self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
             self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')

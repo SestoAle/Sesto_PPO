@@ -90,7 +90,7 @@ class UnityEnvWrapper(Environment):
                     size + size_local + size_local_two)]
             local_in_two = np.reshape(local_in_two, (self.size_three, self.size_three, self.input_channels))
             if self.one_hot:
-                local_in_two_one_hot = self.to_one_hot(local_in_two[:, :, 0],7)
+                local_in_two_one_hot = self.to_one_hot(local_in_two[:, :, 0], 7)
                 for i in range(1, self.input_channels):
                     local_in_two_one_hot = np.append(local_in_two_one_hot, self.to_one_hot(local_in_two[:, :, i], 9), axis=2)
 

@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [0.5e6, 0.5e6, 0.5e6, 0.5e6],
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'timesteps'
     # Frequency of training (in episode)
-    frequency = 500
+    frequency = 50
     # Memory of the agent (in episode)
-    memory = 5e5
+    memory = 2e5
     # Number of random actions before updating
     random_actions = 10000
 

@@ -63,8 +63,8 @@ if __name__ == "__main__":
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
-                'maxTargetHp': [1, 10, 20, 20, 20],
-                'minAgentHp': [15, 10, 5, 5, 10],
+                'maxTargetHp': [20, 10, 20, 20, 20],
+                'minAgentHp': [1, 10, 5, 5, 10],
                 'maxAgentHp': [20, 20, 20, 20, 20],
                 'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
                 'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
