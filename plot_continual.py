@@ -11,7 +11,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='ranger_def_entr*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain*')
 
 args = parser.parse_args()
 
