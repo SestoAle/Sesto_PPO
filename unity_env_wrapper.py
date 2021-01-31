@@ -72,7 +72,7 @@ class UnityEnvWrapper(Environment):
         global_in = env_info.vector_observations[0][:size]
         global_in = np.reshape(global_in, (self.size_global, self.size_global, self.input_channels))
         if self.one_hot:
-            global_in_one_hot = self.to_one_hot(global_in[:,:,0], 7)
+            global_in_one_hot = self.to_one_hot(global_in[:,:,0], 8)
             for i in range(1, self.input_channels):
                 global_in_one_hot = np.append(global_in_one_hot, self.to_one_hot(global_in[:,:,i], 9), axis = 2)
 
@@ -81,7 +81,7 @@ class UnityEnvWrapper(Environment):
             local_in = env_info.vector_observations[0][size:(size + size_local)]
             local_in = np.reshape(local_in, (self.size_two, self.size_two, self.input_channels))
             if self.one_hot:
-                local_in_one_hot = self.to_one_hot(local_in[:, :, 0], 7)
+                local_in_one_hot = self.to_one_hot(local_in[:, :, 0], 8)
                 for i in range(1, self.input_channels):
                     local_in_one_hot = np.append(local_in_one_hot, self.to_one_hot(local_in[:, :, i], 9), axis=2)
 
@@ -90,7 +90,7 @@ class UnityEnvWrapper(Environment):
                     size + size_local + size_local_two)]
             local_in_two = np.reshape(local_in_two, (self.size_three, self.size_three, self.input_channels))
             if self.one_hot:
-                local_in_two_one_hot = self.to_one_hot(local_in_two[:, :, 0], 7)
+                local_in_two_one_hot = self.to_one_hot(local_in_two[:, :, 0], 8)
                 for i in range(1, self.input_channels):
                     local_in_two_one_hot = np.append(local_in_two_one_hot, self.to_one_hot(local_in_two[:, :, i], 9), axis=2)
 
