@@ -123,7 +123,12 @@ class Runner:
                 if not self.recurrent:
                     action, logprob, probs = self.agent.eval([state])
                 else:
-                    action, logprob, probs, internal = self.agent.eval_recurrent([state], internal)
+                    action, logprob, probs, _ = self.agent.eval_recurrent([state], internal)
+                
+                if len(self.history['episode_rewards']) > 110 and np.mean(self.history['episode_rewards'][-100:]) < -3:
+                    print(probs)
+                    input('..')
+
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
                     action = [np.random.randint(self.agent.action_size)]

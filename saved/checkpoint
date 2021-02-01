@@ -1,2 +1,2 @@
-model_checkpoint_path: "ranger_sac"
-all_model_checkpoint_paths: "ranger_sac"
+model_checkpoint_path: "ranger_fountain_from_scratch"
+all_model_checkpoint_paths: "ranger_fountain_from_scratch"

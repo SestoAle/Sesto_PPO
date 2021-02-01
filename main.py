@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 5
     # Memory of the agent (in episode)
     memory = 10
 
