@@ -304,8 +304,13 @@ class PPO:
                 # Take the idxs of the sequences AND the idx of the last state of the sequence
                 mini_batch_idxs, mini_batch_idxs_last_step, sequence_lengths = self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                internal_states = [self.buffer['internal_states'][id] for id in mini_batch_idxs]
-                #internal_states = np.reshape(internal_states, [2, batch_size, -1])
+                internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs]
+                internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs]
+                internal_states_c = np.reshape(internal_states_c, [batch_size, -1])
+                internal_states_h = np.reshape(internal_states_h, [batch_size, -1])
+                internal_states = (internal_states_c, internal_states_h)
+                print(np.shape(internal_states))
+
                 mini_batch_idxs = mini_batch_idxs_last_step
 
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
@@ -437,7 +442,8 @@ class PPO:
             self.buffer['internal_states'] = []
 
     # Add a transition to the buffer
-    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals, internal_states = None):
+    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
+                      internal_states_c=None, internal_states_h=None):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
@@ -459,7 +465,8 @@ class PPO:
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
         if self.recurrent:
-            self.buffer['internal_states'].append(internal_states)
+            self.buffer['internal_states_c'].append(internal_states_c)
+            self.buffer['internal_states_h'].append(internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
             self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
