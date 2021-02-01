@@ -123,11 +123,7 @@ class Runner:
                 if not self.recurrent:
                     action, logprob, probs = self.agent.eval([state])
                 else:
-                    action, logprob, probs, _ = self.agent.eval_recurrent([state], internal)
-                
-                if len(self.history['episode_rewards']) > 110 and np.mean(self.history['episode_rewards'][-100:]) < -3:
-                    print(probs)
-                    input('..')
+                    action, logprob, probs, internal = self.agent.eval_recurrent([state], internal)
 
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
@@ -159,7 +155,10 @@ class Runner:
                 episode_reward += reward
 
                 # Update PPO memory
-                self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                if not self.recurrent:
+                    self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                else:
+                    self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, internal)
                 state = state_n
 
                 step += 1

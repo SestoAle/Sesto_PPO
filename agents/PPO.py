@@ -17,7 +17,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=1,
+                 recurrent=True, recurrent_length=8,
 
                  **kwargs):
 
@@ -290,8 +290,8 @@ class PPO:
         v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
 
-        #if self.recurrent:
-        #    batch_size = int(len(self.buffer['states']) * self.batch_fraction / self.recurrent_length)
+        if self.recurrent:
+            batch_size = int(len(self.buffer['states']) * self.batch_fraction / self.recurrent_length)
 
         # Train the policy
         for it in range(self.p_num_itr):
@@ -304,6 +304,7 @@ class PPO:
                 # Take the idxs of the sequences AND the idx of the last state of the sequence
                 mini_batch_idxs, mini_batch_idxs_last_step, sequence_lengths = self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+                internal_states = [self.buffer['internal_states'][id] for id in mini_batch_idxs]
                 mini_batch_idxs = mini_batch_idxs_last_step
 
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
@@ -334,8 +335,8 @@ class PPO:
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
                 tmp_batch_size = len(states_mini_batch)//self.recurrent_length
-                state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
-                feed_dict[self.state_in] = state_train
+                #state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
+                feed_dict[self.state_in] = internal_states
                 feed_dict[self.sequence_lengths] = sequence_lengths
                 feed_dict[self.recurrent_train_length] = self.recurrent_length
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
@@ -431,9 +432,11 @@ class PPO:
         self.buffer['states_n'] = []
         self.buffer['rewards'] = []
         self.buffer['terminals'] = []
+        if self.recurrent:
+            self.buffer['internal_states'] = []
 
     # Add a transition to the buffer
-    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals):
+    def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals, internal_states = None):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
@@ -445,6 +448,8 @@ class PPO:
             del self.buffer['rewards'][:idxs_to_remove]
             del self.buffer['terminals'][:idxs_to_remove]
             del self.buffer['episode_lengths'][0]
+            if self.recurrent:
+                del self.buffer['internal_states'][:idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -452,6 +457,8 @@ class PPO:
         self.buffer['states_n'].append(state_n)
         self.buffer['rewards'].append(reward)
         self.buffer['terminals'].append(terminals)
+        if self.recurrent:
+            self.buffer['internal_states'].append(internal_states)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
             self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
