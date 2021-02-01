@@ -4,6 +4,12 @@ import json
 from utils import NumpyEncoder
 import time
 
+from dataclasses import dataclass
+@dataclass
+class Internal:
+    c: []
+    h: []
+
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
                  frequency_mode='episodes', random_actions=None,
@@ -114,6 +120,7 @@ class Runner:
 
             # If recurrent, initialize hidden state
             if self.recurrent:
+                #internal = Internal([np.zeros([1, self.agent.recurrent_size])], [np.zeros([1, self.agent.recurrent_size])])
                 internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
 
             # Episode loop
@@ -123,7 +130,7 @@ class Runner:
                 if not self.recurrent:
                     action, logprob, probs = self.agent.eval([state])
                 else:
-                    action, logprob, probs, internal = self.agent.eval_recurrent([state], internal)
+                    action, logprob, probs, internal_n = self.agent.eval_recurrent([state], internal)
 
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
@@ -158,7 +165,12 @@ class Runner:
                 if not self.recurrent:
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
                 else:
-                    self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, internal.c[0], internal.h[0])
+                    try:
+                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, internal.c[0], internal.h[0])
+                    except Exception as e:
+                        zero_state = np.reshape(internal[0], [-1,])
+                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, zero_state, zero_state)
+                    internal = internal_n
                 state = state_n
 
                 step += 1

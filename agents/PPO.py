@@ -17,7 +17,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=1,
+                 recurrent=True, recurrent_length=8,
 
                  **kwargs):
 
@@ -221,6 +221,7 @@ class PPO:
         minibatch_idxs = []
         sequence_lengths = []
         minibatch_idxs_last_step = []
+        minibatch_idxs_first_step = []
         # Get a random number of episode in buffer
         episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
 
@@ -235,6 +236,7 @@ class PPO:
                 minibatch_idxs.append(np.concatenate((tmp_idxs, np.ones((length - len(tmp_idxs)), np.int32)*int(max_index-1))))
                 sequence_lengths.append(len(tmp_idxs))
                 minibatch_idxs_last_step.append(tmp_idxs[-1])
+                minibatch_idxs_first_step.append(tmp_idxs[0])
             else:
                 point = np.random.randint(0, ep_lenght + 1 - length)
                 min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
@@ -243,9 +245,10 @@ class PPO:
                 minibatch_idxs.append(idxs)
                 sequence_lengths.append(length)
                 minibatch_idxs_last_step.append(idxs[-1])
+                minibatch_idxs_first_step.append(idxs[0])
 
         minibatch_idxs = np.reshape(np.asarray(minibatch_idxs), [-1])
-        return minibatch_idxs, minibatch_idxs_last_step, sequence_lengths
+        return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
 
 
     # Train loop
@@ -302,15 +305,14 @@ class PPO:
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
             else:
                 # Take the idxs of the sequences AND the idx of the last state of the sequence
-                mini_batch_idxs, mini_batch_idxs_last_step, sequence_lengths = self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
+                mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs]
-                internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs]
-                internal_states_c = np.reshape(internal_states_c, [batch_size, -1])
-                internal_states_h = np.reshape(internal_states_h, [batch_size, -1])
+                internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
+                internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
+                tmp_batch_size = len(states_mini_batch)//self.recurrent_length
+                internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
+                internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
                 internal_states = (internal_states_c, internal_states_h)
-                print(np.shape(internal_states))
-
                 mini_batch_idxs = mini_batch_idxs_last_step
 
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
@@ -439,7 +441,8 @@ class PPO:
         self.buffer['rewards'] = []
         self.buffer['terminals'] = []
         if self.recurrent:
-            self.buffer['internal_states'] = []
+            self.buffer['internal_states_c'] = []
+            self.buffer['internal_states_h'] = []
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
@@ -456,7 +459,8 @@ class PPO:
             del self.buffer['terminals'][:idxs_to_remove]
             del self.buffer['episode_lengths'][0]
             if self.recurrent:
-                del self.buffer['internal_states'][:idxs_to_remove]
+                del self.buffer['internal_states_c'][:idxs_to_remove]
+                del self.buffer['internal_states_h'][:idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
