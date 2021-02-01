@@ -158,6 +158,7 @@ class Runner:
                 if not self.recurrent:
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
                 else:
+                    internal = (internal.c[0], internal.h[0])
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, internal)
                 state = state_n
 

@@ -17,7 +17,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=8,
+                 recurrent=True, recurrent_length=1,
 
                  **kwargs):
 
@@ -305,6 +305,7 @@ class PPO:
                 mini_batch_idxs, mini_batch_idxs_last_step, sequence_lengths = self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
                 internal_states = [self.buffer['internal_states'][id] for id in mini_batch_idxs]
+                #internal_states = np.reshape(internal_states, [2, batch_size, -1])
                 mini_batch_idxs = mini_batch_idxs_last_step
 
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
