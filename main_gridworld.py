@@ -48,7 +48,7 @@ eps = 1e-12
 class GridWorld:
 
     def __init__(self):
-        self.env = gym.make("CartPole-v0")
+        self.env = gym.make("CartPole-v1")
         self._max_episode_timesteps = 200
         self.graphics = False
 
