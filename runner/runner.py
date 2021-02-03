@@ -4,12 +4,6 @@ import json
 from utils import NumpyEncoder
 import time
 
-from dataclasses import dataclass
-@dataclass
-class Internal:
-    c: []
-    h: []
-
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
                  frequency_mode='episodes', random_actions=None,
@@ -121,6 +115,7 @@ class Runner:
             # If recurrent, initialize hidden state
             if self.recurrent:
                 internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+                v_internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
 
             # Episode loop
             while True:
@@ -129,7 +124,7 @@ class Runner:
                 if not self.recurrent:
                     action, logprob, probs = self.agent.eval([state])
                 else:
-                    action, logprob, probs, _ = self.agent.eval_recurrent([state], internal)
+                    action, logprob, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal, v_internal)
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
                     action = [np.random.randint(self.agent.action_size)]
@@ -164,10 +159,12 @@ class Runner:
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
                 else:
                     try:
-                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, internal.c[0], internal.h[0])
+                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
+                                                 internal.c[0], internal.h[0], v_internal.c[0], v_internal.h[0])
                     except Exception as e:
                         zero_state = np.reshape(internal[0], [-1,])
-                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done, zero_state, zero_state)
+                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
+                                                 zero_state, zero_state, zero_state, zero_state)
                     #internal = internal_n
                 state = state_n
 
