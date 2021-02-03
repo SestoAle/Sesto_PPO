@@ -106,9 +106,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 5
+    frequency = 20
     # Memory of the agent (in episode)
-    memory = 5
+    memory = 20
 
     # Create agent
     graph = tf.compat.v1.Graph()
