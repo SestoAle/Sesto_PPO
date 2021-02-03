@@ -462,7 +462,6 @@ class UnityEnvWrapper(Environment):
             "t": 16,
             "f": 17,
             "r": 18
-
         }
 
         return switcher.get(command, 99)

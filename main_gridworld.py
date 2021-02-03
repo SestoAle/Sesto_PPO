@@ -1,10 +1,15 @@
-from agents.PPO import PPO
+from agents.PPO_gridworld import PPO
 from runner.runner import Runner
 import os
 import time
 import tensorflow as tf
 from unity_env_wrapper import UnityEnvWrapper
 import argparse
+from gridworld import gameEnv
+import numpy as np
+import math
+import gym
+import gym_minigrid
 
 from reward_model.reward_model import RewardModel
 
@@ -16,12 +21,11 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='lstm')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='grid')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=50)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 
@@ -39,10 +43,48 @@ parser.set_defaults(recurrent=False)
 
 args = parser.parse_args()
 
+eps = 1e-12
+
+class GridWorld:
+
+    def __init__(self):
+        self.env = gym.make("CartPole-v0")
+        self._max_episode_timesteps = 200
+        self.graphics = False
+
+    def reset(self):
+        if self.graphics:
+            self.env.render('human')
+        state = self.env.reset()
+        #state = state['image'][:,:,0]
+        state = np.reshape(state, [4])
+        state *= [1.0, 0., 1., 0.]
+        return dict(global_in=state)
+
+    def execute(self, actions):
+        if self.graphics:
+            self.env.render('human')
+        state, reward, done, _ = self.env.step(actions)
+        #state = state['image'][:, :, 0]
+        state = np.reshape(state, [4])
+        state *= [1.0, 0., 1., 0.]
+        state = dict(global_in=state)
+        return state, done, reward
+
+    def set_config(self, config):
+        return
+
+    def entropy(self, probs):
+        entropy = 0
+        for prob in probs:
+            entropy += (prob + eps) * (math.log(prob + eps) + eps)
+
+        return -entropy
+
+
 if __name__ == "__main__":
 
     # DeepCrawl arguments
-    game_name = args.game_name
     model_name = args.model_name
     work_id = int(args.work_id)
     save_frequency = int(args.save_frequency)
@@ -57,31 +99,7 @@ if __name__ == "__main__":
     reward_frequency = int(args.reward_frequency)
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
-    curriculum = {
-        'current_step': 0,
-        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
-        'parameters':
-            {
-                'minTargetHp': [1, 10, 10, 10, 10],
-                'maxTargetHp': [1, 10, 20, 20, 20],
-                'minAgentHp': [15, 10, 5, 5, 10],
-                'maxAgentHp': [20, 20, 20, 20, 20],
-                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
-                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
-                'minAgentMp': [0, 0, 0, 0, 0],
-                'maxAgentMp': [0, 0, 0, 0, 0],
-                'numActions': [17, 17, 17, 17, 17],
-                # Agent statistics
-                'agentAtk': [3, 3, 3, 3, 3],
-                'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [3, 3, 3, 3, 3],
-
-                'minStartingInitiative': [1, 1, 1, 1, 1],
-                'maxStartingInitiative': [1, 1, 1, 1, 1],
-
-                #'sampledEnv': [sampled_env]
-            }
-    }
+    curriculum = None
 
     # Total episode of training
     total_episode = 1e10
@@ -90,7 +108,7 @@ if __name__ == "__main__":
     # Frequency of training (in episode)
     frequency = 5
     # Memory of the agent (in episode)
-    memory = 10
+    memory = 5
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -103,13 +121,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
-                                  worker_id=work_id, with_stats=True, size_stats=31,
-                                  size_global=10, agent_separate=False, with_class=False, with_hp=False,
-                                  with_previous=True, verbose=False, manual_input=False,
-                                  _max_episode_timesteps=max_episode_timestep)
-
-
+    env = GridWorld()
 
     # If we want to use IRL, create a reward model
     reward_model = None
@@ -117,7 +129,7 @@ if __name__ == "__main__":
         graph = tf.compat.v1.Graph()
         with graph.as_default():
             reward_sess = tf.compat.v1.Session(graph=graph)
-            reward_model = RewardModel(actions_size=19, policy=agent, sess=reward_sess, name=model_name)
+            reward_model = RewardModel(actions_size=4, policy=agent, sess=reward_sess, name=model_name)
             # Initialize variables of models
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)
