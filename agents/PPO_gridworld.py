@@ -308,7 +308,6 @@ class PPO:
                 v_internal_states_c = np.reshape(v_internal_states_c, [tmp_batch_size, -1])
                 v_internal_states_h = np.reshape(v_internal_states_h, [tmp_batch_size, -1])
                 v_internal_states = (v_internal_states_c, v_internal_states_h)
-
                 states = self.obs_to_state(states_mini_batch)
                 feed_dict = self.create_state_feed_dict(states)
                 feed_dict[self.v_state_in] = v_internal_states

@@ -165,7 +165,8 @@ class Runner:
                         zero_state = np.reshape(internal[0], [-1,])
                         self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
                                                  zero_state, zero_state, zero_state, zero_state)
-                    #internal = internal_n
+                    internal = internal_n
+                    v_internal = v_internal_n
                 state = state_n
 
                 step += 1
