@@ -4,20 +4,22 @@ import random
 import numpy as np
 from math import sqrt
 import utils
+from copy import deepcopy
 
 import os
 
 eps = 1e-5
 
+
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=1e-3, v_lr=1e-3, batch_fraction=0.33, p_num_itr=20, v_num_itr=20, action_size=2,
+    def __init__(self, sess, p_lr=1e-4, v_lr=1e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=20, action_size=3,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=8,
+                 recurrent=True, recurrent_length=180,
 
                  **kwargs):
 
@@ -51,13 +53,13 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 4], name='global_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 49], name='global_state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
                 # Previous prob, for training
-                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None,], name='old_prob')
-                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None,], name='baseline_values')
+                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None, ], name='old_prob')
+                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None, ], name='baseline_values')
                 self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
@@ -65,6 +67,7 @@ class PPO:
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
+                #self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
 
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
@@ -75,8 +78,8 @@ class PPO:
                     # Get batch size and number of feature of the previous layer
                     bs, feature = utils.shape_list(self.p_network)
                     self.recurrent_train_length = tf.compat.v1.placeholder(tf.int32)
-                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None,])
-                    self.p_network = tf.reshape(self.p_network, [bs/self.recurrent_train_length,
+                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None, ])
+                    self.p_network = tf.reshape(self.p_network, [bs / self.recurrent_train_length,
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
@@ -104,7 +107,7 @@ class PPO:
 
                 # Get probability of a given action - useful for training
                 with tf.compat.v1.variable_scope('eval_with_action'):
-                    self.eval_action = tf.compat.v1.placeholder(tf.int32, [None,], name='eval_action')
+                    self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
                     self.log_prob_with_action = self.dist.log_prob(self.eval_action)
 
             # Critic network
@@ -115,31 +118,7 @@ class PPO:
 
                 # Final p_layers
                 self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
-
-                if not self.recurrent:
-                    self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
-                else:
-                    # The last FC layer will be replaced by an LSTM layer.
-                    # Recurrent network needs more variables
-
-                    # Get batch size and number of feature of the previous layer
-                    bs, feature = utils.shape_list(self.v_network)
-                    self.v_network = tf.reshape(self.v_network, [bs/self.recurrent_train_length,
-                                                                 self.recurrent_train_length, feature])
-                    # Define the RNN cell
-                    self.v_rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
-                                                                           state_is_tuple=True, activation=tf.nn.relu)
-                    # Define state_in for the cell
-                    self.v_state_in = self.rnn_cell.zero_state(bs, tf.float32)
-
-                    # Apply rnn
-                    self.v_rnn, self.v_rnn_state = tf.compat.v1.nn.dynamic_rnn(
-                        inputs=self.v_network, cell=self.v_rnn_cell, dtype=tf.float32, initial_state=self.v_state_in,
-                        sequence_length=self.sequence_lengths
-                    )
-
-                    # Take only the last state of the sequence
-                    self.v_network = self.v_rnn_state.h
+                self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
                 self.value = tf.squeeze(self.linear(self.v_network, 1))
@@ -161,8 +140,7 @@ class PPO:
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*(self.entr_loss + eps))
-
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2 * (self.entr_loss + eps))
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
@@ -178,7 +156,7 @@ class PPO:
                                             kernel_initializer=init)
             return lin
 
-    def conv_layer_2d(self, input, filters, kernel_size, strides=(1, 1), padding="VALID", name='conv',
+    def conv_layer_2d(self, input, filters, kernel_size, strides=(1, 1), padding="SAME", name='conv',
                       activation=None, bias=True):
 
         with tf.compat.v1.variable_scope(name):
@@ -204,19 +182,20 @@ class PPO:
 
     # Sample a batch of consequent states for recurrent
     def sample_batch_for_recurrent(self, length, batch_size):
-
         max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
         min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
-        val_idxs = np.concatenate([np.arange(min, max) for min,max in zip(min_seq_steps, max_seq_steps)])
+        val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
+
+        batch_size = np.minimum(len(val_idxs), batch_size)
 
         minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
         minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
-        minibatch_idxs = np.concatenate([np.arange(min, max) for min,max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
+        minibatch_idxs = np.concatenate(
+            [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
         minibatch_idxs_last_step -= 1
         sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
 
         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
-
 
     # Train loop
     def train(self):
@@ -224,7 +203,6 @@ class PPO:
         v_losses = []
 
         # Get batch size based on batch_fraction
-
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Before training, compute discounted reward
@@ -232,23 +210,10 @@ class PPO:
 
         # Train the value function
         for it in range(self.v_num_itr):
-            if not self.recurrent_length:
-                # Take a mini-batch of batch_size experience
-                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
-                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-            else:
-                # Take the idxs of the sequences AND the idx of the last state of the sequence
-                mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = \
-                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
-                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                internal_states_c = [self.buffer['v_internal_states_c'][id] for id in mini_batch_idxs_first_step]
-                internal_states_h = [self.buffer['v_internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
-                internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
-                internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
-                internal_states = (internal_states_c, internal_states_h)
-                mini_batch_idxs = mini_batch_idxs_last_step
+            # Take a mini-batch of batch_size experience
+            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
 
+            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
             rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -256,32 +221,23 @@ class PPO:
             # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
-
             feed_dict = self.create_state_feed_dict(states)
 
             # Update feed dict for training
             feed_dict[self.reward] = rewards_mini_batch
-            if not self.recurrent:
-                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
-            else:
-                # If recurrent, we need to pass the internal state and the recurrent_length
-                #tmp_batch_size = len(states_mini_batch)//self.recurrent_length
-                #state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
-                feed_dict[self.v_state_in] = internal_states
-                feed_dict[self.sequence_lengths] = sequence_lengths
-                feed_dict[self.recurrent_train_length] = self.recurrent_length
-                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
 
+            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
             v_losses.append(v_loss)
 
-        if not self.recurrent_length:
-            # Compute GAE for rewards. If lambda == 1, they are discounted rewards
-            # Compute values for each state
-            states = self.obs_to_state(self.buffer['states'])
-            feed_dict = self.create_state_feed_dict(states)
-            v_values = self.sess.run(self.value, feed_dict=feed_dict)
-            v_values = np.append(v_values, 0)
-            discounted_rewards = self.compute_gae(v_values)
+        # Compute GAE for rewards. If lambda == 1, they are discounted rewards
+        # Compute values for each state
+        states = self.obs_to_state(self.buffer['states'])
+        feed_dict = self.create_state_feed_dict(states)
+        v_values = self.sess.run(self.value, feed_dict=feed_dict)
+        v_values = np.append(v_values, 0)
+        discounted_rewards = self.compute_gae(v_values)
+        if self.recurrent:
+            batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Train the policy
         for it in range(self.p_num_itr):
@@ -297,38 +253,23 @@ class PPO:
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
                 internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
                 internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                tmp_batch_size = len(states_mini_batch)//self.recurrent_length
+                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
                 internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
                 internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
                 internal_states = (internal_states_c, internal_states_h)
-
-                v_internal_states_c = [self.buffer['v_internal_states_c'][id] for id in mini_batch_idxs_first_step]
-                v_internal_states_h = [self.buffer['v_internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
-                v_internal_states_c = np.reshape(v_internal_states_c, [tmp_batch_size, -1])
-                v_internal_states_h = np.reshape(v_internal_states_h, [tmp_batch_size, -1])
-                v_internal_states = (v_internal_states_c, v_internal_states_h)
-                states = self.obs_to_state(states_mini_batch)
-                feed_dict = self.create_state_feed_dict(states)
-                feed_dict[self.v_state_in] = v_internal_states
-                feed_dict[self.sequence_lengths] = sequence_lengths
-                feed_dict[self.recurrent_train_length] = self.recurrent_length
-                v_values_mini_batch = self.sess.run(self.value, feed_dict=feed_dict)
-
                 mini_batch_idxs = mini_batch_idxs_last_step
 
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
             old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
             rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            
+
             # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
             feed_dict = self.create_state_feed_dict(states)
 
-            if not self.recurrent:
-                # Get the baseline values
-                v_values_mini_batch = [v_values[id] for id in mini_batch_idxs]
+            # Get the baseline values
+            v_values_mini_batch = [v_values[id] for id in mini_batch_idxs]
 
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -345,12 +286,12 @@ class PPO:
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
-                #tmp_batch_size = len(states_mini_batch)//self.recurrent_length
-                #state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
+                # tmp_batch_size = len(states_mini_batch)//self.recurrent_length
+                # state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = internal_states
                 feed_dict[self.sequence_lengths] = sequence_lengths
                 feed_dict[self.recurrent_train_length] = self.recurrent_length
-                rnn_state, loss, step = self.sess.run([self.rnn_state, self.total_loss, self.p_step], feed_dict=feed_dict)
+                loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
             losses.append(loss)
 
         return np.mean(losses)
@@ -366,21 +307,19 @@ class PPO:
         return action, logprob, probs
 
     # Eval sampling the action, but with recurrent: it needs the internal hidden state
-    def eval_recurrent(self, state, internal, v_internal):
+    def eval_recurrent(self, state, internal):
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
         # Pass the internal state
         feed_dict[self.state_in] = internal
-        feed_dict[self.v_state_in] = v_internal
         feed_dict[self.recurrent_train_length] = 1
         feed_dict[self.sequence_lengths] = [1]
-        action, logprob, probs, internal, v_internal = self.sess.run([self.action, self.log_prob, self.probs,
-                                                                      self.rnn_state, self.v_rnn_state],
-                                                                     feed_dict=feed_dict)
+        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state],
+                                                         feed_dict=feed_dict)
 
         # Return is equal to eval(), but with the new internal state
-        return action, logprob, probs, internal, v_internal
+        return action, logprob, probs, internal
 
     # Eval with argmax
     def eval_max(self, state):
@@ -433,13 +372,10 @@ class PPO:
         if self.recurrent:
             self.buffer['internal_states_c'] = []
             self.buffer['internal_states_h'] = []
-            self.buffer['v_internal_states_c'] = []
-            self.buffer['v_internal_states_h'] = []
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
-                      internal_states_c=None, internal_states_h=None,
-                      v_internal_states_c=None, v_internal_states_h=None):
+                      internal_states_c=None, internal_states_h=None):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
@@ -454,8 +390,6 @@ class PPO:
             if self.recurrent:
                 del self.buffer['internal_states_c'][:idxs_to_remove]
                 del self.buffer['internal_states_h'][:idxs_to_remove]
-                del self.buffer['v_internal_states_c'][:idxs_to_remove]
-                del self.buffer['v_internal_states_h'][:idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -466,12 +400,10 @@ class PPO:
         if self.recurrent:
             self.buffer['internal_states_c'].append(internal_states_c)
             self.buffer['internal_states_h'].append(internal_states_h)
-            self.buffer['v_internal_states_c'].append(v_internal_states_c)
-            self.buffer['v_internal_states_h'].append(v_internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
-            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
-
+            self.buffer['episode_lengths'].append(
+                int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
 
     # Change rewards in buffer to discounted rewards
     def compute_discounted_reward(self):
@@ -483,7 +415,7 @@ class PPO:
             if terminal:
                 discounted_reward = 0
 
-            discounted_reward = reward + (self.discount*discounted_reward)
+            discounted_reward = reward + (self.discount * discounted_reward)
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
@@ -504,6 +436,7 @@ class PPO:
             m = 1
             if terminal:
                 m = 0
+
             delta = self.buffer['rewards'][i] + self.discount * v_values[i + 1] * m - v_values[i]
             gae = delta + self.discount * self.lmbda * m * gae
             reward = gae + v_values[i]
@@ -548,7 +481,7 @@ class PPO:
 
     # Load entire model
     def load_model(self, name=None, folder='saved'):
-        #self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        # self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
         self.saver.restore(self.sess, '{}/{}'.format(folder, name))
 
         print('Model loaded correctly!')

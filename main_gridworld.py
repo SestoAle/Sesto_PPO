@@ -48,7 +48,8 @@ eps = 1e-12
 class GridWorld:
 
     def __init__(self):
-        self.env = gym.make("CartPole-v1")
+        #self.env = gym.make("CartPole-v1")
+        self.env = gym.make("MiniGrid-Empty-8x8-v0")
         self._max_episode_timesteps = 200
         self.graphics = False
 
@@ -56,18 +57,18 @@ class GridWorld:
         if self.graphics:
             self.env.render('human')
         state = self.env.reset()
-        #state = state['image'][:,:,0]
-        state = np.reshape(state, [4])
-        state *= [1.0, 0., 1., 0.]
+        state = state['image'][:,:,0]
+        state = np.reshape(state, [49])
+        #state *= [1.0, 0., 1., 0.]
         return dict(global_in=state)
 
     def execute(self, actions):
         if self.graphics:
             self.env.render('human')
         state, reward, done, _ = self.env.step(actions)
-        #state = state['image'][:, :, 0]
-        state = np.reshape(state, [4])
-        state *= [1.0, 0., 1., 0.]
+        state = state['image'][:, :, 0]
+        state = np.reshape(state, [49])
+        #state *= [1.0, 0., 1., 0.]
         state = dict(global_in=state)
         return state, done, reward
 
@@ -106,9 +107,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 5
+    frequency = 10
     # Memory of the agent (in episode)
-    memory = 5
+    memory = 10
 
     # Create agent
     graph = tf.compat.v1.Graph()

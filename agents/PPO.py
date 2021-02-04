@@ -17,7 +17,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=4,
+                 recurrent=True, recurrent_length=8,
 
                  **kwargs):
 
@@ -87,7 +87,7 @@ class PPO:
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
-                                                                           state_is_tuple=True, activation=tf.nn.relu)
+                                                                           state_is_tuple=True, activation=tf.nn.tanh)
                     # Define state_in for the cell
                     self.state_in = self.rnn_cell.zero_state(bs, tf.float32)
 
@@ -217,39 +217,55 @@ class PPO:
         return all_flat
 
     # Sample a batch of consequent states for recurrent
+    # def sample_batch_for_recurrent(self, length, batch_size):
+    #     minibatch_idxs = []
+    #     sequence_lengths = []
+    #     minibatch_idxs_last_step = []
+    #     minibatch_idxs_first_step = []
+    #     # Get a random number of episode in buffer
+    #     episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
+    #
+    #     # For each episode, get a sequence of length states with their discounted rewards
+    #     for ep in episode_numbers:
+    #         ep_lenght = self.buffer['episode_lengths'][ep]
+    #
+    #         if ep_lenght <= length:
+    #             min_index = np.sum(self.buffer['episode_lengths'][:ep])
+    #             max_index = min_index + ep_lenght
+    #             tmp_idxs = np.arange(int(min_index), int(max_index))
+    #             minibatch_idxs.append(np.concatenate((tmp_idxs, np.ones((length - len(tmp_idxs)), np.int32)*int(max_index-1))))
+    #             sequence_lengths.append(len(tmp_idxs))
+    #             minibatch_idxs_last_step.append(tmp_idxs[-1])
+    #             minibatch_idxs_first_step.append(tmp_idxs[0])
+    #         else:
+    #             point = np.random.randint(0, ep_lenght + 1 - length)
+    #             min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
+    #             max_index = min_index + length
+    #             idxs = np.arange(int(min_index), int(max_index))
+    #             minibatch_idxs.append(idxs)
+    #             sequence_lengths.append(length)
+    #             minibatch_idxs_last_step.append(idxs[-1])
+    #             minibatch_idxs_first_step.append(idxs[0])
+    #
+    #     minibatch_idxs = np.reshape(np.asarray(minibatch_idxs), [-1])
+    #     return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
+
+    # Sample a batch of consequent states for recurrent
     def sample_batch_for_recurrent(self, length, batch_size):
-        minibatch_idxs = []
-        sequence_lengths = []
-        minibatch_idxs_last_step = []
-        minibatch_idxs_first_step = []
-        # Get a random number of episode in buffer
-        episode_numbers = np.random.randint(0, len(self.buffer['episode_lengths']), batch_size)
+        max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
+        min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
+        val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
 
-        # For each episode, get a sequence of length states with their discounted rewards
-        for ep in episode_numbers:
-            ep_lenght = self.buffer['episode_lengths'][ep]
+        batch_size = np.minimum(len(val_idxs), batch_size)
 
-            if ep_lenght <= length:
-                min_index = np.sum(self.buffer['episode_lengths'][:ep])
-                max_index = min_index + ep_lenght
-                tmp_idxs = np.arange(int(min_index), int(max_index))
-                minibatch_idxs.append(np.concatenate((tmp_idxs, np.ones((length - len(tmp_idxs)), np.int32)*int(max_index-1))))
-                sequence_lengths.append(len(tmp_idxs))
-                minibatch_idxs_last_step.append(tmp_idxs[-1])
-                minibatch_idxs_first_step.append(tmp_idxs[0])
-            else:
-                point = np.random.randint(0, ep_lenght + 1 - length)
-                min_index = np.sum(self.buffer['episode_lengths'][:ep]) + point
-                max_index = min_index + length
-                idxs = np.arange(int(min_index), int(max_index))
-                minibatch_idxs.append(idxs)
-                sequence_lengths.append(length)
-                minibatch_idxs_last_step.append(idxs[-1])
-                minibatch_idxs_first_step.append(idxs[0])
+        minibatch_idxs_first_step = np.asarray(random.sample(list(val_idxs), batch_size))
+        minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
+        minibatch_idxs = np.concatenate(
+            [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
+        minibatch_idxs_last_step -= 1
+        sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * self.recurrent_length
 
-        minibatch_idxs = np.reshape(np.asarray(minibatch_idxs), [-1])
         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
-
 
     # Train loop
     def train(self):
@@ -340,7 +356,7 @@ class PPO:
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
-                t#mp_batch_size = len(states_mini_batch)//self.recurrent_length
+                #tmp_batch_size = len(states_mini_batch)//self.recurrent_length
                 #state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = internal_states
                 feed_dict[self.sequence_lengths] = sequence_lengths
