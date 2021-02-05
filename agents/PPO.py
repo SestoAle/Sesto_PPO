@@ -321,8 +321,13 @@ class PPO:
                 mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = \
                     self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
-                internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
+                try:
+                    internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
+                    internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
+                except Exception as e:
+                    print(len(self.buffer['states']))
+                    print(mini_batch_idxs_first_step)
+                    input('...')
                 tmp_batch_size = len(states_mini_batch)//self.recurrent_length
                 internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
                 internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
