@@ -180,52 +180,55 @@ class PPO:
 
         return global_state
 
-    # Sample a batch of consequent states for recurrent
+    # # Sample a batch of consequent states for recurrent
+    # def sample_batch_for_recurrent(self, length, batch_size):
+    #      max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
+    #      min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
+    #      val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
+    #
+    #      batch_size = np.minimum(len(val_idxs), batch_size)
+    #
+    #      minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
+    #      minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
+    #      minibatch_idxs = np.concatenate(
+    #          [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
+    #      minibatch_idxs_last_step -= 1
+    #      sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
+    #
+    #      return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
+
     def sample_batch_for_recurrent(self, length, batch_size):
-         max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
-         min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
-         val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
-    
-         batch_size = np.minimum(len(val_idxs), batch_size)
-    
-         minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
-         minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
-         minibatch_idxs = np.concatenate(
-             [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
-         minibatch_idxs_last_step -= 1
-         sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
-    
-         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
+        all_idxs = np.arange(len(self.buffer['states']))
+        new_ep_lengths = deepcopy(self.buffer['episode_lengths'])
 
-    #def sample_batch_for_recurrent(self, length, batch_size):
-    #    all_idxs = len(self.buffer['states'])
-    #    all_last_steps = np.cumsum(self.buffer['episode_lengths'])
-    #    #all_first_steps = np.concatenate([[0], all_last_steps[:-1]])
+        for i, ep in enumerate(self.buffer['episode_lengths']):
 
-    #    starting_idxs = random.sample(range(all_idxs), batch_size)
+            if ep < length:
+                index = np.cumsum(new_ep_lengths)[i] - 1
+                added_length = length - ep
+                all_idxs = np.insert(all_idxs, index, np.ones(added_length) * all_idxs[index])
+                new_ep_lengths[i] = length
+            else:
+                new_ep_lengths[i] = ep
 
-    #    minibatch_idxs = []
-    #    minibatch_first_steps = []
-    #    minibatch_last_steps = []
-    #    sequence_length = []
+        max_seq_steps = np.cumsum(new_ep_lengths) - length + 1
+        min_seq_steps = np.concatenate([[0], np.cumsum(new_ep_lengths)])
+        val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
 
-    #    for id in starting_idxs:
-    #        ep = np.sum(all_last_steps < id) - 1
-    #        if id + length > all_last_steps[ep + 1]:
-    #            idxs = np.concatenate([np.arange(id, int(all_last_steps[ep + 1])),
-    #                                   np.ones(length - (all_last_steps[ep + 1] - id)) * all_last_steps[ep + 1] - 1])
-    #            idxs = idxs.astype(int)
-    #            minibatch_idxs.extend(idxs)
-    #            minibatch_first_steps.append(idxs[0])
-    #            minibatch_last_steps.append(idxs[-1])
-    #            sequence_length.append(all_last_steps[ep + 1] - id)
-    #        else:
-    #            minibatch_idxs.extend(np.arange(id, id + length))
-    #            minibatch_first_steps.append(id)
-    #            minibatch_last_steps.append(id + length - 1)
-    #            sequence_length.append(length)
+        batch_size = np.minimum(len(val_idxs), batch_size)
 
-    #    return minibatch_idxs, minibatch_last_steps, minibatch_first_steps, sequence_length
+        minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
+        minibatch_idxs = []
+        minibatch_idxs_last_step = []
+        sequence_lengths = []
+        for first in minibatch_idxs_first_step:
+            minibatch_idxs.extend(all_idxs[first:first + length])
+            minibatch_idxs_last_step.append(all_idxs[first + length - 1])
+            parent_ep = np.sum(np.cumsum(self.buffer['episode_lengths']) <= all_idxs[first])
+
+            sequence_lengths.append(np.minimum(8, self.buffer['episode_lengths'][parent_ep]))
+
+        return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
 
     # Train loop
     def train(self):
