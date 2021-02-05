@@ -14,12 +14,12 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=1e-4, v_lr=1e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=20, action_size=3,
+    def __init__(self, sess, p_lr=1e-4, v_lr=1e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=20, action_size=2,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=180,
+                 recurrent=True, recurrent_length=8,
 
                  **kwargs):
 
@@ -53,7 +53,7 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 49], name='global_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 4], name='global_state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -83,7 +83,7 @@ class PPO:
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
-                                                                           state_is_tuple=True, activation=tf.nn.relu)
+                                                                           state_is_tuple=True, activation=tf.nn.tanh)
                     # Define state_in for the cell
                     self.state_in = self.rnn_cell.zero_state(bs, tf.float32)
 
@@ -182,20 +182,50 @@ class PPO:
 
     # Sample a batch of consequent states for recurrent
     def sample_batch_for_recurrent(self, length, batch_size):
-        max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
-        min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
-        val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
+         max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
+         min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
+         val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
+    
+         batch_size = np.minimum(len(val_idxs), batch_size)
+    
+         minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
+         minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
+         minibatch_idxs = np.concatenate(
+             [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
+         minibatch_idxs_last_step -= 1
+         sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
+    
+         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
 
-        batch_size = np.minimum(len(val_idxs), batch_size)
+    #def sample_batch_for_recurrent(self, length, batch_size):
+    #    all_idxs = len(self.buffer['states'])
+    #    all_last_steps = np.cumsum(self.buffer['episode_lengths'])
+    #    #all_first_steps = np.concatenate([[0], all_last_steps[:-1]])
 
-        minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
-        minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
-        minibatch_idxs = np.concatenate(
-            [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
-        minibatch_idxs_last_step -= 1
-        sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
+    #    starting_idxs = random.sample(range(all_idxs), batch_size)
 
-        return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
+    #    minibatch_idxs = []
+    #    minibatch_first_steps = []
+    #    minibatch_last_steps = []
+    #    sequence_length = []
+
+    #    for id in starting_idxs:
+    #        ep = np.sum(all_last_steps < id) - 1
+    #        if id + length > all_last_steps[ep + 1]:
+    #            idxs = np.concatenate([np.arange(id, int(all_last_steps[ep + 1])),
+    #                                   np.ones(length - (all_last_steps[ep + 1] - id)) * all_last_steps[ep + 1] - 1])
+    #            idxs = idxs.astype(int)
+    #            minibatch_idxs.extend(idxs)
+    #            minibatch_first_steps.append(idxs[0])
+    #            minibatch_last_steps.append(idxs[-1])
+    #            sequence_length.append(all_last_steps[ep + 1] - id)
+    #        else:
+    #            minibatch_idxs.extend(np.arange(id, id + length))
+    #            minibatch_first_steps.append(id)
+    #            minibatch_last_steps.append(id + length - 1)
+    #            sequence_length.append(length)
+
+    #    return minibatch_idxs, minibatch_last_steps, minibatch_first_steps, sequence_length
 
     # Train loop
     def train(self):

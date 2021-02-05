@@ -59,7 +59,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [100e6, 0.8e6, 1e6, 1e6],
+        'thresholds': [1e6, 0.8e6, 1e6, 1e6],
         'parameters':
             {
                 'minTargetHp': [1, 10, 10, 10, 10],
