@@ -18,7 +18,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=4,
+                 recurrent=True, recurrent_length=8,
 
                  **kwargs):
 
@@ -52,9 +52,9 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
-            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 53], name='global_state')
+            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 53], name='local_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 53], name='local_two_state')
             self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
             self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
             self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
@@ -237,16 +237,18 @@ class PPO:
 
         batch_size = np.minimum(len(val_idxs), batch_size)
 
-        minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
+        val_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
         minibatch_idxs = []
         minibatch_idxs_last_step = []
         sequence_lengths = []
-        for first in minibatch_idxs_first_step:
+        minibatch_idxs_first_step = []
+        for first in val_idxs_first_step:
             minibatch_idxs.extend(all_idxs[first:first + length])
             minibatch_idxs_last_step.append(all_idxs[first + length - 1])
+            minibatch_idxs_first_step.append(all_idxs[first])
             parent_ep = np.sum(np.cumsum(self.buffer['episode_lengths']) <= all_idxs[first])
 
-            sequence_lengths.append(np.minimum(8, self.buffer['episode_lengths'][parent_ep]))
+            sequence_lengths.append(np.minimum(length, self.buffer['episode_lengths'][parent_ep]))
 
         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
 
@@ -321,13 +323,8 @@ class PPO:
                 mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = \
                     self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
-                try:
-                    internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
-                    internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                except Exception as e:
-                    print(len(self.buffer['states']))
-                    print(mini_batch_idxs_first_step)
-                    input('...')
+                internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
+                internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
                 tmp_batch_size = len(states_mini_batch)//self.recurrent_length
                 internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
                 internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
