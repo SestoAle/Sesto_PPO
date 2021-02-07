@@ -13,7 +13,7 @@ from utils import NumpyEncoder
 
 from reward_model.reward_model import RewardModel
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -235,16 +235,16 @@ if __name__ == "__main__":
 
                 if args.ensemble_mode == 'entr':
                     if min_entropy < main_entropy + 0.01:
-                        #action = np.argmax(agents[min_entropy_idx].eval([state])[2])
-                        action = np.argmax(agents[min_entropy_idx].eval([env.get_input_observation_adapter(state)])[2])
+                        action = np.argmax(agents[min_entropy_idx].eval([state])[2])
+                        #action = np.argmax(agents[min_entropy_idx].eval([env.get_input_observation_adapter(state)])[2])
                     else:
-                        #action = np.argmax(agents[0].eval([state])[2])
-                        action = np.argmax(agents[0].eval([env.get_input_observation(state)])[2])
+                        action = np.argmax(agents[0].eval([state])[2])
+                        #action = np.argmax(agents[0].eval([env.get_input_observation(state)])[2])
                 elif args.ensemble_mode == 'entr_add':
                     min_entropy = np.clip(min_entropy, 0, 1)
 
-                    main_probs = agents[0].eval([env.get_input_observation(state)])[2] * (min_entropy)
-                    main_probs += (agents[min_entropy_idx].eval([env.get_input_observation_adapter(state)])[2] * (1. - min_entropy))
+                    main_probs = agents[0].eval([state])[2] * (min_entropy)
+                    main_probs += (agents[min_entropy_idx].eval([state])[2] * (1. - min_entropy))
                     action = np.argmax(main_probs)
                 else:
                     action = np.argmax(total_probs)
