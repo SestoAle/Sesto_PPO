@@ -12,7 +12,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain***')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*archer*')
 
 args = parser.parse_args()
 
@@ -102,17 +102,15 @@ for (i,plot) in enumerate(plots):
                 #current_rews = [(v - min_dict[k]) / (max_dict[k] - min_dict[k]) for v in r]
                 current_rews = r
                 episode_rewards.append(np.sum(current_rews))
-            #print(length)
+            print(length)
             data.append(np.mean(episode_rewards))
             all_rews.extend(episode_rewards)
 
             if k == 'reward_0':
                 percentages.append(np.sum(np.asarray(episode_rewards) > 0))
 
-        print(filenames)
         data = np.array(data)
         #data = (data - np.min(all_rews)) / (np.max(all_rews) - np.min(all_rews))
-        #print(data)
         print(data)
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
@@ -125,25 +123,29 @@ for (i,plot) in enumerate(plots):
     x1.set_xticks([])
     x1.legend(legends)
 
-
+width = 0.35
 try:
     # Percentages
-    percentages = []
+    melees = []
+    ranges = []
     for m in qual_metrics:
-        if 'items' in filename:
-            percentages.append(m['loot'][0])
-        else:
-            percentages.append(m['win_rate'][0])
+        melees.append(m['melee'][0]/m['episodes'][0])
+        ranges.append(m['range'][0]/m['episodes'][0])
 
-    if 'items' in filename:
-        pal = sns.color_palette("summer_r", len(percentages))
-    else:
-        pal = sns.color_palette("Reds_d", len(percentages))
-    rank = data.argsort().argsort()
-    x = np.array(range(len(percentages)))
-    x2.legend('win rate')
-    sns.barplot(x=x, y=(np.array(percentages)), palette=np.array(pal[::-1])[rank], ax=x2)
-    labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'From\nScratch', 'Fine\nTuning']
+    melees = np.asarray(melees)
+    ranges = np.asarray(ranges)
+
+    #melees = (melees - np.min(melees)) / (np.max(melees) - np.min(melees))
+    #ranges = (ranges - np.min(ranges)) / (np.max(ranges) - np.min(ranges))
+
+    labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'Real\nClass']
+    x = np.arange(len(filenames))
+    rect1 = x2.bar(x - width / 2, melees, width=width, label='Melee Attacks')
+    rect2 = x2.bar(x + width / 2, ranges, width=width, label='Ranged Attacks')
+    x2.set_xticks(x)
+    x2.set_xticklabels(labels)
+    x2.legend()
+
     x2.set_xticklabels(labels)
     for p in x2.patches:
         x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
@@ -151,18 +153,12 @@ try:
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:
     print(e)
-    labels = ['None', 'Mean', 'Mult', 'Entr Thresh', 'Entr Weight', 'From Scratch', 'Fine Tunining']
-    x1.set_xticklabels(labels)
     pass
 
 x1.set_title('Normalized Rewards', pad=20)
-if 'items' in filename:
-    x2.set_title('Number of Collected Loot', pad=20)
-else:
-    x2.set_title('Win Rates', pad=20)
-
+x2.set_title('Number of Attacks', pad=20)
 y = input('Do you want to save it? ')
 if y == 'y':
-    plt.savefig('imgs/results_fountain.eps', bbox_inches='tight', pad_inches=0, format='eps')
+    plt.savefig('imgs/results_archer.eps', bbox_inches='tight', pad_inches=0, format='eps')
 sns.despine()
 plt.show()

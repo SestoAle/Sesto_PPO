@@ -7,12 +7,13 @@ import os
 sns.set_theme(style="dark")
 sns.set(font="Times New Roman", font_scale=1.5)
 
+
 import argparse
 import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain***')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*dm*ret*')
 
 args = parser.parse_args()
 
@@ -53,21 +54,6 @@ for (i,plot) in enumerate(plots):
                 filenames.append(filename)
                 rewards.append(json.load(f))
 
-    try:
-        qual_metrics = []
-        for filename in filenames:
-            dictionary = dict()
-            filename = '{}.txt'.format(filename.replace('.json',''))
-            with open(os.path.join(filename), 'r') as f:
-                for line in f:
-                    if line.split(',')[0] in dictionary:
-                        dictionary[line.split(',')[0]].extend([float(line.split(',')[1])])
-                    else:
-                        dictionary[line.split(',')[0]] = [float(line.split(',')[1])]
-                qual_metrics.append(dictionary)
-    except Exception as e:
-        pass
-
     keys = rewards[0].keys()
 
     min_dict = dict()
@@ -91,6 +77,8 @@ for (i,plot) in enumerate(plots):
     all_data = []
     i = 0
     for k in keys:
+        if k == 'reward_2':
+            continue
         all_rews = []
         data = []
         for r_dict in rewards:
@@ -129,16 +117,14 @@ for (i,plot) in enumerate(plots):
 try:
     # Percentages
     percentages = []
-    for m in qual_metrics:
-        if 'items' in filename:
-            percentages.append(m['loot'][0])
-        else:
-            percentages.append(m['win_rate'][0])
 
-    if 'items' in filename:
-        pal = sns.color_palette("summer_r", len(percentages))
-    else:
-        pal = sns.color_palette("Reds_d", len(percentages))
+    for r in rewards:
+        tmp_r = []
+        for v in r['reward_2']:
+            tmp_r.append(np.sum(v))
+        percentages.append(np.mean(tmp_r))
+
+    pal = sns.color_palette("Reds_d", len(percentages))
     rank = data.argsort().argsort()
     x = np.array(range(len(percentages)))
     x2.legend('win rate')
@@ -150,19 +136,12 @@ try:
                        va = 'center', xytext = (0, 10), textcoords = 'offset points')
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:
-    print(e)
     labels = ['None', 'Mean', 'Mult', 'Entr Thresh', 'Entr Weight', 'From Scratch', 'Fine Tunining']
     x1.set_xticklabels(labels)
     pass
 
 x1.set_title('Normalized Rewards', pad=20)
-if 'items' in filename:
-    x2.set_title('Number of Collected Loot', pad=20)
-else:
-    x2.set_title('Win Rates', pad=20)
-
-y = input('Do you want to save it? ')
-if y == 'y':
-    plt.savefig('imgs/results_fountain.eps', bbox_inches='tight', pad_inches=0, format='eps')
+x2.set_title('Total Reward', pad=20)
+plt.savefig('imgs/results_miniworld.eps', bbox_inches='tight', pad_inches=0, format='eps')
 sns.despine()
 plt.show()

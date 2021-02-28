@@ -18,7 +18,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=4,
+                 recurrent=True, recurrent_length=4, recurrent_baseline=True,
 
                  **kwargs):
 
@@ -43,6 +43,7 @@ class PPO:
 
         # Recurrent paramtere
         self.recurrent = recurrent
+        self.recurrent_baseline = recurrent_baseline
         self.recurrent_length = recurrent_length
         self.recurrent_size = 256
 
@@ -123,7 +124,31 @@ class PPO:
                                               self.agent_stats, self.target_stats, baseline=True)
 
                 # Final p_layers
-                self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
+                if not self.recurrent_baseline:
+                    self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
+                else:
+                    # The last FC layer will be replaced by an LSTM layer.
+                    # Recurrent network needs more variables
+
+                    # Get batch size and number of feature of the previous layer
+                    bs, feature = utils.shape_list(self.v_network)
+                    self.v_network = tf.reshape(self.v_network, [bs / self.recurrent_train_length,
+                                                                 self.recurrent_train_length, feature])
+                    # Define the RNN cell
+                    self.v_rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
+                                                                           state_is_tuple=True, activation=tf.nn.tanh)
+                    # Define state_in for the cell
+                    self.v_state_in = self.rnn_cell.zero_state(bs, tf.float32)
+
+                    # Apply rnn
+                    self.v_rnn, self.v_rnn_state = tf.compat.v1.nn.dynamic_rnn(
+                        inputs=self.v_network, cell=self.v_rnn_cell, dtype=tf.float32, initial_state=self.v_state_in,
+                        sequence_length=self.sequence_lengths
+                    )
+
+                    # Take only the last state of the sequence
+                    self.v_network = self.v_rnn_state.h
+
                 self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
@@ -252,23 +277,6 @@ class PPO:
 
         return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
 
-    # # Sample a batch of consequent states for recurrent
-    # def sample_batch_for_recurrent(self, length, batch_size):
-    #     max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
-    #     min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
-    #     val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
-    #
-    #     batch_size = np.minimum(len(val_idxs), batch_size)
-    #
-    #     minibatch_idxs_first_step = np.asarray(random.sample(list(val_idxs), batch_size))
-    #     minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
-    #     minibatch_idxs = np.concatenate(
-    #         [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
-    #     minibatch_idxs_last_step -= 1
-    #     sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * self.recurrent_length
-    #
-    #     return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
-
     # Train loop
     def train(self):
         losses = []
@@ -282,10 +290,23 @@ class PPO:
 
         # Train the value function
         for it in range(self.v_num_itr):
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+            if not self.recurrent_baseline:
+                # Take a mini-batch of batch_size experience
+                mini_batch_idxs = random.sample(range(len(self.buffer['states'])), batch_size)
+                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+            else:
+                # Take the idxs of the sequences AND the idx of the last state of the sequence
+                mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = \
+                    self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
+                states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+                v_internal_states_c = [self.buffer['v_internal_states_c'][id] for id in mini_batch_idxs_first_step]
+                v_internal_states_h = [self.buffer['v_internal_states_h'][id] for id in mini_batch_idxs_first_step]
+                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
+                v_internal_states_c = np.reshape(v_internal_states_c, [tmp_batch_size, -1])
+                v_internal_states_h = np.reshape(v_internal_states_h, [tmp_batch_size, -1])
+                v_internal_states = (v_internal_states_c, v_internal_states_h)
+                mini_batch_idxs = mini_batch_idxs_last_step
 
-            states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
             rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
@@ -298,13 +319,30 @@ class PPO:
             # Update feed dict for training
             feed_dict[self.reward] = rewards_mini_batch
 
-            v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            if not self.recurrent:
+                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+            else:
+                # If recurrent, we need to pass the internal state and the recurrent_length
+                feed_dict[self.v_state_in] = v_internal_states
+                feed_dict[self.sequence_lengths] = sequence_lengths
+                feed_dict[self.recurrent_train_length] = self.recurrent_length
+                v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
+
             v_losses.append(v_loss)
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
+
         states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
+        if self.recurrent_baseline:
+            v_internal_states_c = self.buffer['v_internal_states_c']
+            v_internal_states_h = self.buffer['v_internal_states_h']
+            v_internal_states = (v_internal_states_c, v_internal_states_h)
+            feed_dict[self.v_state_in] = v_internal_states
+            feed_dict[self.sequence_lengths] = np.ones(len(v_internal_states))
+            feed_dict[self.recurrent_train_length] = 1
+
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
         v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
@@ -358,8 +396,6 @@ class PPO:
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
-                #tmp_batch_size = len(states_mini_batch)//self.recurrent_length
-                #state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = internal_states
                 feed_dict[self.sequence_lengths] = sequence_lengths
                 feed_dict[self.recurrent_train_length] = self.recurrent_length
@@ -379,7 +415,7 @@ class PPO:
         return action, logprob, probs
 
     # Eval sampling the action, but with recurrent: it needs the internal hidden state
-    def eval_recurrent(self, state, internal):
+    def eval_recurrent(self, state, internal, v_internal = None):
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
@@ -388,9 +424,12 @@ class PPO:
         feed_dict[self.recurrent_train_length] = 1
         feed_dict[self.sequence_lengths] = [1]
         action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state], feed_dict=feed_dict)
+        if self.recurrent_baseline:
+            feed_dict[self.v_state_in] = v_internal
+            v_internal = self.sess.run([self.v_state_in], feed_dict=feed_dict)
 
         # Return is equal to eval(), but with the new internal state
-        return action, logprob, probs, internal
+        return action, logprob, probs, internal, v_internal
 
     # Eval with argmax
     def eval_max(self, state):
@@ -461,7 +500,8 @@ class PPO:
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
-                      internal_states_c=None, internal_states_h=None):
+                      internal_states_c = None, internal_states_h = None,
+                      v_internal_states_c = None, v_internal_states_h = None):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
@@ -476,6 +516,9 @@ class PPO:
             if self.recurrent:
                 del self.buffer['internal_states_c'][:idxs_to_remove]
                 del self.buffer['internal_states_h'][:idxs_to_remove]
+            if self.recurrent_baseline:
+                del self.buffer['v_internal_states_c'][:idxs_to_remove]
+                del self.buffer['v_internal_states_h'][:idxs_to_remove]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -486,6 +529,9 @@ class PPO:
         if self.recurrent:
             self.buffer['internal_states_c'].append(internal_states_c)
             self.buffer['internal_states_h'].append(internal_states_h)
+        if self.recurrent_baseline:
+            self.buffer['v_internal_states_c'].append(v_internal_states_c)
+            self.buffer['v_internal_states_h'].append(v_internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
             self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
