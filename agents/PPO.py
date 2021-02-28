@@ -345,9 +345,9 @@ class PPO:
             feed_dict[self.v_state_in] = v_internal_states
             feed_dict[self.sequence_lengths] = np.ones(len(v_internal_states))
             feed_dict[self.recurrent_train_length] = 1
-        input('...')
 
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
+        input('...')
         v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
         if self.recurrent:
