@@ -18,7 +18,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=8,
+                 recurrent=True, recurrent_length=4,
 
                  **kwargs):
 
@@ -52,11 +52,11 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 53], name='global_state')
-            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 53], name='local_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 53], name='local_two_state')
-            self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
-            self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
+            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+            self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 17], name='agent_stats')
+            self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='target_stats')
             self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
 
             # Actor network
@@ -199,15 +199,15 @@ class PPO:
         conv_32 = self.conv_layer_2d(conv_31, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
         flat_31 = tf.reshape(conv_32, [-1, 3 * 3 * 64])
 
-        embs_41 = tf.nn.tanh(self.embedding(agent_stats, 129, 256, name='embs_41'))
-        embs_41 = tf.reshape(embs_41, [-1, 16 * 256])
+        embs_41 = tf.nn.tanh(self.embedding(agent_stats, 135, 256, name='embs_41'))
+        embs_41 = tf.reshape(embs_41, [-1, 17 * 256])
         if not baseline:
             flat_41 = self.linear(embs_41, 256, name='fc_41', activation=tf.nn.relu)
         else:
             flat_41 = self.linear(embs_41, 128, name='fc_41', activation=tf.nn.relu)
 
-        embs_51 = self.embedding(target_stats, 125, 256, name='embs_51')
-        embs_51 = tf.reshape(embs_51, [-1, 15 * 256])
+        embs_51 = self.embedding(target_stats, 131, 256, name='embs_51')
+        embs_51 = tf.reshape(embs_51, [-1, 16 * 256])
         if not baseline:
             flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
         else:

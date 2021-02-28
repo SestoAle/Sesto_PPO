@@ -76,8 +76,8 @@ if __name__ == "__main__":
                 'agentDef': [3, 3, 3, 3, 3],
                 'agentDes': [3, 3, 3, 3, 3],
 
-                'minStartingInitiative': [1, 1, 1, 1, 1],
-                'maxStartingInitiative': [1, 1, 1, 1, 1],
+                'minStartingInitiative': [5, 3, 1, 1, 1],
+                'maxStartingInitiative': [5, 5, 5, 5, 5],
 
                 #'sampledEnv': [sampled_env]
             }
@@ -104,7 +104,7 @@ if __name__ == "__main__":
 
     # Open the environment with all the desired flags
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
-                                  worker_id=work_id, with_stats=True, size_stats=31,
+                                  worker_id=work_id, with_stats=True, size_stats=33,
                                   size_global=10, agent_separate=False, with_class=False, with_hp=False,
                                   with_previous=True, verbose=False, manual_input=False,
                                   _max_episode_timesteps=max_episode_timestep)

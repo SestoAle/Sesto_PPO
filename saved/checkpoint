@@ -1,2 +1,2 @@
-model_checkpoint_path: "lstm"
-all_model_checkpoint_paths: "lstm"
+model_checkpoint_path: "ranger_init_no_lstm"
+all_model_checkpoint_paths: "ranger_init_no_lstm"

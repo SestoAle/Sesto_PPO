@@ -262,17 +262,17 @@ if __name__ == "__main__":
                 step_rewards["reward_0"].append(reward)
 
                 for (i, reward_model) in enumerate(reward_models):
-                    if i == 99:
+                    if i == 0:
                         r = 0
                         if state['agent_stats'][6] >= 55:
                             r += 1
                         if state['agent_stats'][9] >= 79:
                             r += 1
-                    elif i==99:
+                    elif i==1:
                         r = 0
                         if state['agent_stats'][1] == 21:
                             r += 1
-                    elif i == 0:
+                    elif i == 99:
                         r = r_fountain
                     else:
                         r = reward_model.eval([state], [state], [action])[0]
