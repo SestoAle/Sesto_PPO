@@ -66,7 +66,7 @@ class UnityEnvWrapper(Environment):
     def to_one_hot(self, a, channels):
         return (np.arange(channels) == a[..., None]).astype(float)
 
-    def get_input_observation(self, env_info, action = None):
+    def get_input_observation(self, env_info, action=None, transformer=True):
         size = self.size_global * self.size_global * self.input_channels
 
         global_in = env_info.vector_observations[0][:size]
@@ -146,6 +146,33 @@ class UnityEnvWrapper(Environment):
             if action != None:
                 action_vector[action] = 1
 
+            if transformer:
+                x_map = np.asarray([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+
+                y_map = np.asarray([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                                     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                                     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                                     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+                                     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+                                     [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+                                     [7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+                                     [8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+                                     [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
+                x_map = np.reshape(x_map, [10, 10, 1])
+                y_map = np.reshape(y_map, [10, 10, 1])
+
+                global_in_one_hot = np.concatenate([global_in_one_hot, x_map, y_map], axis=2)
+
             observation = {
                 # Global View
                 'global_in': global_in_one_hot,
@@ -175,8 +202,8 @@ class UnityEnvWrapper(Environment):
                 #'local_in_two_attributes': local_in_two[:, :, 1:],
 
                 # Stats
-                'agent_stats': stats[:17],
-                'target_stats': stats[17:],
+                'agent_stats': stats[:16],
+                'target_stats': stats[16:],
                 'prev_action': action_vector
             }
 
@@ -363,7 +390,7 @@ class UnityEnvWrapper(Environment):
             print('action = ' + str(actions))
             print('reward = ' + str(reward))
             sum = observation['global_in'][:,:,0]*0
-            for i in range(1, 8):
+            for i in range(1, 7):
                 sum += observation['global_in'][:,:,i]*i
             sum = np.flip(np.transpose(sum), 0)
             print(sum)
