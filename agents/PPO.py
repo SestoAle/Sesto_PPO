@@ -337,24 +337,17 @@ class PPO:
 
         states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
-        input('...')
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
             v_internal_states_h = self.buffer['v_internal_states_h']
             v_internal_states_c = np.reshape(v_internal_states_c, [len(self.buffer['states']), -1])
             v_internal_states_h = np.reshape(v_internal_states_h, [len(self.buffer['states']), -1])
             v_internal_states = (v_internal_states_c, v_internal_states_h)
-            print(np.shape(v_internal_states_c))
-            print(np.shape(v_internal_states_h))
-            print(np.shape(v_internal_states))
-            print(np.ones(len(states)))
             feed_dict[self.v_state_in] = v_internal_states
             feed_dict[self.sequence_lengths] = np.ones(len(self.buffer['states']))
             feed_dict[self.recurrent_train_length] = 1
-            input('...')
 
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        input('...')
         v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
         if self.recurrent:
