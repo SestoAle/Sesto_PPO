@@ -497,6 +497,8 @@ class PPO:
         if self.recurrent:
             self.buffer['internal_states_c'] = []
             self.buffer['internal_states_h'] = []
+            self.buffer['v_internal_states_c'] = []
+            self.buffer['v_internal_states_h'] = []
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
