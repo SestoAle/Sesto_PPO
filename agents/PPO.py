@@ -284,6 +284,8 @@ class PPO:
 
         # Get batch size based on batch_fraction
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
+        if self.recurrent_baseline:
+            batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Before training, compute discounted reward
         discounted_rewards = self.compute_discounted_reward()
@@ -335,6 +337,7 @@ class PPO:
 
         states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
+        input('...')
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
             v_internal_states_h = self.buffer['v_internal_states_h']
@@ -342,6 +345,7 @@ class PPO:
             feed_dict[self.v_state_in] = v_internal_states
             feed_dict[self.sequence_lengths] = np.ones(len(v_internal_states))
             feed_dict[self.recurrent_train_length] = 1
+        input('...')
 
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
         v_values = np.append(v_values, 0)
