@@ -188,8 +188,8 @@ class UnityEnvWrapper(Environment):
                 x_local_two_map = self.to_one_hot(x_local_two_map, 3)
                 y_local_two_map = self.to_one_hot(y_local_two_map, 3)
 
-                x_local_two_map = np.reshape(x_local_two_map, [10, 10, 3])
-                y_local_two_map = np.reshape(y_local_two_map, [10, 10, 3])
+                x_local_two_map = np.reshape(x_local_two_map, [3, 3, 3])
+                y_local_two_map = np.reshape(y_local_two_map, [3, 3, 3])
                 local_in_two_one_hot = np.concatenate([local_in_two_one_hot, x_local_two_map, y_local_two_map], axis=2)
 
             observation = {
