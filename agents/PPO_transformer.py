@@ -54,8 +54,12 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 72], name='global_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 58], name='local_two_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+
+            self.global_positions = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 2], name='global_positions')
+            self.local_two_positions = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 2], name='local_two_positions')
+
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -206,24 +210,28 @@ class PPO:
 
         if conv_net:
             conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
+            conv_10 = tf.concat([conv_10, self.global_positions], axis=3)
             conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
             conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
             flat_11 = tf.reshape(conv_12, [-1, 10 * 10 * 64])
 
             conv_30 = self.conv_layer_2d(local_two_state, 32, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
+            conv_30 = tf.concat([conv_30, self.local_two_positions], axis=3)
             conv_31 = self.conv_layer_2d(conv_30, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
             conv_32 = self.conv_layer_2d(conv_31, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
             flat_31 = tf.reshape(conv_32, [-1, 3 * 3 * 64])
 
 
         else:
-            global_state = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
-            entities = tf.reshape(global_state, [-1, 10*10, 32])
-            flat_11 = transformer(entities, 4, 32, 99, with_embeddings=False, name='transformer_global')
+            global_state = self.conv_layer_2d(global_state, 62, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
+            global_state = tf.concat([global_state, self.global_positions], axis=3)
+            entities = tf.reshape(global_state, [-1, 10*10, 64])
+            flat_11 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_global')
 
-            local_two_state = self.conv_layer_2d(local_two_state, 32, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
-            entities = tf.reshape(local_two_state, [-1, 3 * 3, 32])
-            flat_31 = transformer(entities, 4, 32, 99, with_embeddings=False, name='transformer_local_two')
+            local_two_state = self.conv_layer_2d(local_two_state, 62, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
+            local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
+            entities = tf.reshape(local_two_state, [-1, 3 * 3, 64])
+            flat_31 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_local_two')
 
 
         all_flat = tf.concat([flat_11, flat_31], axis=1)
@@ -454,16 +462,26 @@ class PPO:
         target_stats_batch = np.stack([np.asarray(state['target_stats']) for state in obs])
         prev_act_batch = np.stack([np.asarray(state['prev_action']) for state in obs])
 
-        return global_batch, local_batch, local_two_batch, agent_stats_batch, target_stats_batch, prev_act_batch
+        global_positions_batch = np.stack([np.asarray(state['global_positions']) for state in obs])
+        local_two_positions_batch = np.stack([np.asarray(state['local_two_positions']) for state in obs])
+
+        return global_batch, local_batch, local_two_batch, agent_stats_batch, target_stats_batch, prev_act_batch, \
+               global_positions_batch, local_two_positions_batch
 
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
         all_global = states[0]
         all_local_two = states[2]
 
+        all_global_positions = states[6]
+        all_local_two_positions = states[7]
+
         feed_dict = {
             self.global_state: all_global,
             self.local_two_state: all_local_two,
+
+            self.global_positions: all_global_positions,
+            self.local_two_positions: all_local_two_positions
         }
 
         return feed_dict

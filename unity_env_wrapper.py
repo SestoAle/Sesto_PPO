@@ -146,52 +146,6 @@ class UnityEnvWrapper(Environment):
             if action != None:
                 action_vector[action] = 1
 
-            if transformer:
-                x_map = np.asarray([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
-
-                y_map = np.asarray([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                                     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-                                     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
-                                     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-                                     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
-                                     [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
-                                     [7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
-                                     [8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
-                                     [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
-
-                x_map = self.to_one_hot(x_map, 10)
-                y_map = self.to_one_hot(y_map, 10)
-
-                x_map = np.reshape(x_map, [10, 10, 10])
-                y_map = np.reshape(y_map, [10, 10, 10])
-
-                global_in_one_hot = np.concatenate([global_in_one_hot, x_map, y_map], axis=2)
-
-                x_local_two_map = np.asarray([[0, 1, 2],
-                                              [0, 1, 2],
-                                              [0, 1, 2]])
-
-                y_local_two_map = np.asarray([[0, 0, 0],
-                                              [1, 1, 1],
-                                              [2, 2, 2]])
-
-                x_local_two_map = self.to_one_hot(x_local_two_map, 3)
-                y_local_two_map = self.to_one_hot(y_local_two_map, 3)
-
-                x_local_two_map = np.reshape(x_local_two_map, [3, 3, 3])
-                y_local_two_map = np.reshape(y_local_two_map, [3, 3, 3])
-                local_in_two_one_hot = np.concatenate([local_in_two_one_hot, x_local_two_map, y_local_two_map], axis=2)
-
             observation = {
                 # Global View
                 'global_in': global_in_one_hot,
@@ -225,6 +179,54 @@ class UnityEnvWrapper(Environment):
                 'target_stats': stats[16:],
                 'prev_action': action_vector
             }
+
+            if transformer:
+                x_map = np.asarray([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                                     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+
+                y_map = np.asarray([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                     [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                                     [2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+                                     [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                                     [4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+                                     [5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+                                     [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+                                     [7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
+                                     [8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+                                     [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
+
+
+                x_map = np.reshape(x_map, [10, 10, 1])
+                y_map = np.reshape(y_map, [10, 10, 1])
+
+                x_map = 2 * (x_map - 0) / (9 - 0) - 1
+                y_map = 2 * (y_map - 0) / (9 - 0) - 1
+
+                x_local_two_map = np.asarray([[0, 1, 2],
+                                              [0, 1, 2],
+                                              [0, 1, 2]])
+
+                y_local_two_map = np.asarray([[0, 0, 0],
+                                              [1, 1, 1],
+                                              [2, 2, 2]])
+
+
+                x_local_two_map = np.reshape(x_local_two_map, [3, 3, 1])
+                y_local_two_map = np.reshape(y_local_two_map, [3, 3, 1])
+
+                x_local_two_map = 2 * (x_local_two_map - 0) / (3 - 0) - 1
+                y_local_two_map = 2 * (y_local_two_map - 0) / (3 - 0) - 1
+
+                observation['global_positions'] = np.concatenate([x_map, y_map], axis=2)
+                observation['local_two_positions'] = np.concatenate([x_local_two_map, y_local_two_map], axis=2)
 
         if self.with_local and self.with_stats and self.with_previous and self.with_class:
             action_vector = np.zeros(17)
