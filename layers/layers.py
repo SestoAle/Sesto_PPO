@@ -8,7 +8,7 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
                                         kernel_initializer=init)
         return lin
 
-def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='avg',
+def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='max',
                     residual=True, with_embeddings=True, with_ffn=True, post_norm=True,
                     pre_norm = True, name='transformer'):
 
@@ -18,13 +18,13 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             if pre_norm:
                 input = layer_norm(input, axis=3)
 
-            qk = linear(input, hidden_size*2, activation=tf.nn.relu, name='qk')
+            qk = linear(input, hidden_size*2, name='qk')
             qk = tf.reshape(qk, (bs, T, NE, heads, n_embd // heads, 2))
 
             # (bs, T, NE, heads, features)
             query, key = [tf.squeeze(x, -1) for x in tf.split(qk, 2, -1)]
 
-            value = linear(input, hidden_size, activation=tf.nn.relu, name='v')
+            value = linear(input, hidden_size, name='v')
             value = tf.reshape(value, (bs, T, NE, heads, n_embd // heads))
 
             query = tf.transpose(query, (0, 1, 3, 2, 4),
@@ -78,7 +78,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
 
         if with_ffn:
             for i in range(mlp_layer):
-                a = linear(a, hidden_size, activation=tf.nn.relu, name='mlp_{}'.format(i))
+                a = linear(a, hidden_size, name='mlp_{}'.format(i))
 
         if residual:
             input = a + input

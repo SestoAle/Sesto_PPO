@@ -168,8 +168,12 @@ class UnityEnvWrapper(Environment):
                                      [7, 7, 7, 7, 7, 7, 7, 7, 7, 7],
                                      [8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
                                      [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]])
-                x_map = np.reshape(x_map, [10, 10, 1])
-                y_map = np.reshape(y_map, [10, 10, 1])
+
+                x_map = self.to_one_hot(x_map, 10)
+                y_map = self.to_one_hot(y_map, 10)
+
+                x_map = np.reshape(x_map, [10, 10, 10])
+                y_map = np.reshape(y_map, [10, 10, 10])
 
                 global_in_one_hot = np.concatenate([global_in_one_hot, x_map, y_map], axis=2)
 
