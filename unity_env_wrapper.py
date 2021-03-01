@@ -177,6 +177,21 @@ class UnityEnvWrapper(Environment):
 
                 global_in_one_hot = np.concatenate([global_in_one_hot, x_map, y_map], axis=2)
 
+                x_local_two_map = np.asarray([[0, 1, 2],
+                                              [0, 1, 2],
+                                              [0, 1, 2]])
+
+                y_local_two_map = np.asarray([[0, 0, 0],
+                                              [1, 1, 1],
+                                              [2, 2, 2]])
+
+                x_local_two_map = self.to_one_hot(x_local_two_map, 3)
+                y_local_two_map = self.to_one_hot(y_local_two_map, 3)
+
+                x_local_two_map = np.reshape(x_local_two_map, [10, 10, 3])
+                y_local_two_map = np.reshape(y_local_two_map, [10, 10, 3])
+                local_in_two_one_hot = np.concatenate([local_in_two_one_hot, x_local_two_map, y_local_two_map], axis=2)
+
             observation = {
                 # Global View
                 'global_in': global_in_one_hot,
