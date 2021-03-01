@@ -55,7 +55,7 @@ class PPO:
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
             self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 72], name='global_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 55], name='local_two_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 58], name='local_two_state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
