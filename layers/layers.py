@@ -59,7 +59,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             '''
 
             # x = bs, NE, feature
-            mask = 1 - tf.cast(tf.equal(input[:,:,:,0], value), tf.float32)
+            mask = tf.cast(tf.equal(input[:,:,:,0], value), tf.float32)
             return mask
 
         #Initialize
