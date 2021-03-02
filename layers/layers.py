@@ -42,6 +42,8 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             logits /= np.sqrt(n_embd / heads)
             softmax = stable_masked_softmax(logits, mask)
 
+            softmax = tf.compat.v1.Print(softmax, [softmax], 'Softmax: ', summarize=1e5)
+
             att_sum = tf.matmul(softmax, value, name="matmul_softmax_value")  # (bs, T, heads, NE, features)
 
             out = tf.transpose(att_sum, (0, 1, 3, 2, 4))  # (bs, T, n_output_entities, heads, features)
