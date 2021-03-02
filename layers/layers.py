@@ -9,8 +9,8 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
         return lin
 
 def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='max',
-                    residual=True, with_embeddings=True, with_ffn=True, post_norm=True,
-                    pre_norm = True, name='transformer'):
+                    residual=True, with_embeddings=True, with_ffn=True, post_norm=False,
+                    pre_norm=False, name='transformer'):
 
     with tf.compat.v1.variable_scope(name):
         # Utility functions
@@ -42,8 +42,6 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             logits /= np.sqrt(n_embd / heads)
             softmax = stable_masked_softmax(logits, mask)
 
-            softmax = tf.compat.v1.Print(softmax, [softmax], 'Softmax: ', summarize=1e5)
-
             att_sum = tf.matmul(softmax, value, name="matmul_softmax_value")  # (bs, T, heads, NE, features)
 
             out = tf.transpose(att_sum, (0, 1, 3, 2, 4))  # (bs, T, n_output_entities, heads, features)
@@ -59,7 +57,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             '''
 
             # x = bs, NE, feature
-            mask = tf.cast(tf.equal(input[:,:,:,0], value), tf.float32)
+            mask = 1 - tf.cast(tf.equal(input[:,:,:,0], value), tf.float32)
             return mask
 
         #Initialize
@@ -75,19 +73,20 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
 
         if with_embeddings:
             input = linear(input, hidden_size, activation=tf.nn.tanh, name='embs')
-
-        mask = tf.compat.v1.Print(mask, [mask], "Mask: ", summarize=1e5)
         a = self_attention(input, mask, n_head, hidden_size)
 
+        if residual:
+            a = input + a
 
         if with_ffn:
-            for i in range(mlp_layer):
-                a = linear(a, hidden_size, name='mlp_{}'.format(i))
+            for i in range(mlp_layer - 1):
+                a = linear(a, hidden_size*2, name='mlp_{}'.format(i))
+            a = linear(a, hidden_size, name='mlp_{}'.format(i))
 
-        if residual:
-            input = a + input
-        else:
-            input = a
+            if residual:
+                a = a + input
+
+        input = a
 
         if post_norm:
             input = layer_norm(input, axis=3)
@@ -96,11 +95,16 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
 
         if pooling == 'avg':
             input = entity_avg_pooling_masked(input, mask)
+            bs, T, features = shape_list(input)
+            input = tf.reshape(input, (bs, features))
         elif pooling == 'max':
             input = entity_max_pooling_masked(input, mask)
+            bs, T, features = shape_list(input)
+            input = tf.reshape(input, (bs, features))
 
-        bs, T, features = shape_list(input)
-        input = tf.reshape(input, (bs, features))
+
+        print(input.shape)
+
 
     return input
 
