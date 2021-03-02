@@ -80,7 +80,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
 
         if with_ffn:
             for i in range(mlp_layer - 1):
-                a = linear(a, hidden_size*2, name='mlp_{}'.format(i))
+                a = linear(a, hidden_size*2, name='mlp_{}'.format(i), activation=tf.nn.relu)
             a = linear(a, hidden_size, name='mlp_{}'.format(mlp_layer))
 
             if residual:

@@ -227,11 +227,13 @@ class PPO:
             global_state = tf.concat([global_state, self.global_positions], axis=3)
             entities = tf.reshape(global_state, [-1, 10*10, 64])
             flat_11 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_global')
+            flat_11 = tf.reshape(flat_11, [-1, 10 * 10 * 64])
 
             local_two_state = self.conv_layer_2d(local_two_state, 62, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
             local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
             entities = tf.reshape(local_two_state, [-1, 3 * 3, 64])
             flat_31 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_local_two')
+            flat_31 = tf.reshape(flat_31, [-1, 3 * 3 * 64])
 
 
         all_flat = tf.concat([flat_11, flat_31], axis=1)
