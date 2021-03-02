@@ -8,7 +8,7 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
                                         kernel_initializer=init)
         return lin
 
-def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='max',
+def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='None',
                     residual=True, with_embeddings=True, with_ffn=True, post_norm=False,
                     pre_norm=False, name='transformer'):
 
