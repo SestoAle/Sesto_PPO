@@ -74,7 +74,9 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
         if with_embeddings:
             input = linear(input, hidden_size, activation=tf.nn.tanh, name='embs')
 
+        mask = tf.compat.v1.Print(mask, [mask], "Mask: ", summarize=1e5)
         a = self_attention(input, mask, n_head, hidden_size)
+
 
         if with_ffn:
             for i in range(mlp_layer):
