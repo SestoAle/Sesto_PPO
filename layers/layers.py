@@ -102,10 +102,6 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             bs, T, features = shape_list(input)
             input = tf.reshape(input, (bs, features))
 
-
-        print(input.shape)
-
-
     return input
 
 def layer_norm(input_tensor, axis):
