@@ -10,9 +10,9 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
 
 def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='None',
                     residual=True, with_embeddings=True, with_ffn=True, post_norm=False,
-                    pre_norm=False, name='transformer'):
+                    pre_norm=False, name='transformer', reuse=False):
 
-    with tf.compat.v1.variable_scope(name):
+    with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Utility functions
         def qkv_embed(input, heads, n_embd):
             if pre_norm:
