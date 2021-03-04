@@ -16,7 +16,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='lstm')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='trans')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
@@ -66,8 +66,8 @@ if __name__ == "__main__":
                 'maxTargetHp': [1, 10, 20, 20, 20],
                 'minAgentHp': [20, 10, 5, 5, 10],
                 'maxAgentHp': [20, 20, 20, 20, 20],
-                'minNumLoot': [0.1, 0.2, 0.2, 0.08, 0.04],
-                'maxNumLoot': [0.1, 0.2, 0.2, 0.3, 0.3],
+                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
+                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
                 'minAgentMp': [0, 0, 0, 0, 0],
                 'maxAgentMp': [0, 0, 0, 0, 0],
                 'numActions': [17, 17, 17, 17, 17],
