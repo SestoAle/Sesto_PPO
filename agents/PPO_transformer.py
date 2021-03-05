@@ -410,11 +410,7 @@ class PPO:
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
-        action, logprob, probs, att_weight = self.sess.run([self.action, self.log_prob, self.probs, self.att_weight], feed_dict=feed_dict)
-        print(np.shape(att_weight))
-        for i in range(9):
-            print(i)
-            self.print_attention_weights(att_weight[0,0,0,i,:])
+        action, logprob, probs = self.sess.run([self.action, self.log_prob, self.probs], feed_dict=feed_dict)
 
         return action, logprob, probs
 
