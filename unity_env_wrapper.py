@@ -444,7 +444,7 @@ class UnityEnvWrapper(Environment):
         signal.alarm(0)
         while env_info == None:
             signal.signal(signal.SIGALRM, self.handler)
-            signal.alarm(3000)
+            signal.alarm(300000)
             try:
                 if self.use_double_agent:
                     info = self.unity_env.step({self.default_brain : [actions], self.double_brain : []})

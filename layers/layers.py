@@ -8,12 +8,13 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
                                         kernel_initializer=init)
         return lin
 
-def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, mlp_layer=2, pooling='None',
-                    residual=True, with_embeddings=True, with_ffn=True, post_norm=False,
+def transformer(input, n_head, hidden_size, mask_value=None, mlp_layer=1, pooling='None',
+                    residual=True, with_embeddings=False, with_ffn=False, post_norm=False,
                     pre_norm=False, name='transformer', reuse=False):
 
     with tf.compat.v1.variable_scope(name, reuse=reuse):
         # Utility functions
+        # Compute q,k,v vectors
         def qkv_embed(input, heads, n_embd):
             if pre_norm:
                 input = layer_norm(input, axis=3)
@@ -48,7 +49,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             n_output_entities = shape_list(out)[2]
             out = tf.reshape(out, (bs, T, n_output_entities, n_embd))  # (bs, T, n_output_entities, n_embd)
 
-            return out
+            return out, softmax
 
         def create_mask(input, value):
             '''
@@ -71,16 +72,21 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
                 f"Mask and input should have the same first 3 dimensions. {shape_list(mask)} -- {shape_list(input)}"
             mask = tf.expand_dims(mask, -2)  # (BS, T, 1, NE)
 
+        # Make a initial embeddings
         if with_embeddings:
             input = linear(input, hidden_size, activation=tf.nn.tanh, name='embs')
-        a = self_attention(input, mask, n_head, hidden_size)
+
+        # Get the output of the transformer (B, T, NE, F) and attention weights (B, T, NE, NE)
+        a, att_weights = self_attention(input, mask, n_head, hidden_size)
+
+        a = linear(a, hidden_size, name='mlp_0')
 
         if residual:
             a = input + a
 
-        if with_ffn:
-            for i in range(mlp_layer - 1):
-                a = linear(a, hidden_size*2, name='mlp_{}'.format(i), activation=tf.nn.relu)
+        if with_ffn and mlp_layer > 3:
+            for i in range(mlp_layer - 2):
+                a = linear(a, hidden_size, name='mlp_{}'.format(i))
             a = linear(a, hidden_size, name='mlp_{}'.format(mlp_layer))
 
             if residual:
@@ -102,7 +108,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, num_entities=None, 
             bs, T, features = shape_list(input)
             input = tf.reshape(input, (bs, features))
 
-    return input
+    return input, att_weights
 
 def layer_norm(input_tensor, axis):
   """Run layer normalization on the axis dimension of the tensor."""

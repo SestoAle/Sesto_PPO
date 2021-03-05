@@ -6,6 +6,7 @@ from math import sqrt
 import utils
 from copy import deepcopy
 from layers.layers import transformer
+import matplotlib.pyplot as plt
 
 import os
 
@@ -209,36 +210,29 @@ class PPO:
     def conv_net(self, global_state, local_two_state, baseline=False, conv_net=False):
 
         if conv_net:
+            global_state = tf.concat([global_state, self.global_positions], axis=3)
             conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
-            conv_10 = tf.concat([conv_10, self.global_positions], axis=3)
             conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
             conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
             flat_11 = tf.reshape(conv_12, [-1, 10 * 10 * 64])
 
+            local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
             conv_30 = self.conv_layer_2d(local_two_state, 32, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
-            conv_30 = tf.concat([conv_30, self.local_two_positions], axis=3)
             conv_31 = self.conv_layer_2d(conv_30, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
             conv_32 = self.conv_layer_2d(conv_31, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
             flat_31 = tf.reshape(conv_32, [-1, 3 * 3 * 64])
-
-
         else:
-            global_state = self.conv_layer_2d(global_state, 62, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
             global_state = tf.concat([global_state, self.global_positions], axis=3)
+            global_state = self.conv_layer_2d(global_state, 64, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
             entities = tf.reshape(global_state, [-1, 10*10, 64])
-            flat_11 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_global')
-            flat_11 = tf.reshape(flat_11, [-1, 10*10, 64])
-            flat_11 = transformer(flat_11, 4, 64, 99, with_embeddings=False, name='transformer_global', reuse=True)
-            flat_11 = tf.reshape(flat_11, [-1, 10 * 10 * 64])
+            flat_11, _ = transformer(entities, n_head=2, hidden_size=64, mask_value=99, with_embeddings=False, name='transformer_global')
+            flat_11 = tf.reshape(flat_11, [-1, 3 * 3, 64])
 
-            local_two_state = self.conv_layer_2d(local_two_state, 62, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
             local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
+            local_two_state = self.conv_layer_2d(local_two_state, 64, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
             entities = tf.reshape(local_two_state, [-1, 3 * 3, 64])
-            flat_31 = transformer(entities, 4, 64, 99, with_embeddings=False, name='transformer_local_two')
+            flat_31, _ = transformer(entities, n_head=2, hidden_size=64, mask_value=99, with_embeddings=False, name='transformer_local_two')
             flat_31 = tf.reshape(flat_31, [-1, 3 * 3, 64])
-            flat_31 = transformer(flat_31, 4, 64, 99, with_embeddings=False, name='transformer_local_two', reuse=True)
-            flat_31 = tf.reshape(flat_31, [-1, 3 * 3 * 64])
-
 
         all_flat = tf.concat([flat_11, flat_31], axis=1)
 
@@ -416,7 +410,11 @@ class PPO:
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
-        action, logprob, probs = self.sess.run([self.action, self.log_prob, self.probs], feed_dict=feed_dict)
+        action, logprob, probs, att_weight = self.sess.run([self.action, self.log_prob, self.probs, self.att_weight], feed_dict=feed_dict)
+        print(np.shape(att_weight))
+        for i in range(9):
+            print(i)
+            self.print_attention_weights(att_weight[0,0,0,i,:])
 
         return action, logprob, probs
 
@@ -628,3 +626,11 @@ class PPO:
 
         print('Model loaded correctly!')
         return
+
+    def print_attention_weights(self, x):
+        # x -> (1, NE)
+        width = int(sqrt(np.shape(x)[0]))
+        x = np.reshape(x, [width, width])
+        x = (x - np.min(x)) / (np.max(x) - np.min(x))
+        plt.imshow(x)
+        plt.waitforbuttonpress()
