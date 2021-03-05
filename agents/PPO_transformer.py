@@ -226,7 +226,7 @@ class PPO:
             global_state = self.conv_layer_2d(global_state, 64, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
             entities = tf.reshape(global_state, [-1, 10*10, 64])
             flat_11, _ = transformer(entities, n_head=2, hidden_size=64, mask_value=99, with_embeddings=False, name='transformer_global')
-            flat_11 = tf.reshape(flat_11, [-1, 3 * 3, 64])
+            flat_11 = tf.reshape(flat_11, [-1, 10 * 10, 64])
 
             local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
             local_two_state = self.conv_layer_2d(local_two_state, 64, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
