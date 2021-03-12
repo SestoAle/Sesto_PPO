@@ -5,14 +5,14 @@ import seaborn as sns
 import os
 
 sns.set_theme(style="dark")
-sns.set(font="Times New Roman", font_scale=1.5)
+sns.set(font="Times New Roman", font_scale=2)
 
 import argparse
 import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*archer*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*warrior*')
 
 args = parser.parse_args()
 
@@ -68,6 +68,19 @@ for (i,plot) in enumerate(plots):
     except Exception as e:
         pass
 
+    # Create legends
+    if any('warrior' in f for f in filenames):
+        legends.append('$R_0$')
+        legends.append('$R_w$')
+    elif any('archer' in f for f in filenames):
+        legends.append('$R_0$')
+        legends.append('$R_a$')
+    else:
+        legends.append('$R_0$')
+        legends.append('$R_1$')
+        legends.append('$R_2$')
+
+
     keys = rewards[0].keys()
 
     min_dict = dict()
@@ -115,9 +128,9 @@ for (i,plot) in enumerate(plots):
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
 
-        x1.plot(range(len(data)), data, '-o', ms=12, linewidth=4)
+        x1.plot(range(len(data)), data, '-o', ms=14, linewidth=5)
 
-        legends.append("$R_{}$".format(i))
+        #legends.append("$R_{}$".format(i))
         i += 1
 
     x1.set_xticks([])
@@ -140,15 +153,15 @@ try:
 
     labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'Real\nClass']
     x = np.arange(len(filenames))
-    rect1 = x2.bar(x - width / 2, melees, width=width, label='Melee Attacks')
-    rect2 = x2.bar(x + width / 2, ranges, width=width, label='Ranged Attacks')
+    rect1 = x2.bar(x - width / 2, melees, width=width, label='Melee')
+    rect2 = x2.bar(x + width / 2, ranges, width=width, label='Ranged')
     x2.set_xticks(x)
     x2.set_xticklabels(labels)
     x2.legend()
 
     x2.set_xticklabels(labels)
     for p in x2.patches:
-        x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
+        x2.annotate(format(p.get_height(), '.1f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
                        va = 'center', xytext = (0, 10), textcoords = 'offset points')
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:
@@ -156,9 +169,9 @@ except Exception as e:
     pass
 
 x1.set_title('Normalized Rewards', pad=20)
-x2.set_title('Number of Attacks', pad=20)
+x2.set_title('Average Number of Attacks', pad=20)
 y = input('Do you want to save it? ')
 if y == 'y':
-    plt.savefig('imgs/results_archer.eps', bbox_inches='tight', pad_inches=0, format='eps')
+    plt.savefig('imgs/results_warrior.eps', bbox_inches='tight', pad_inches=0, format='eps')
 sns.despine()
 plt.show()

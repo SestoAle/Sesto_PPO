@@ -413,7 +413,7 @@ class UnityEnvWrapper(Environment):
             sum = observation['global_in'][:,:,0]*0
             for i in range(1, 7):
                 sum += observation['global_in'][:,:,i]*i
-            sum = np.flip(np.transpose(sum), 0)
+            #sum = np.flip(np.transpose(sum), 0)
             print(sum)
             print(" ")
             print(observation['agent_stats'])

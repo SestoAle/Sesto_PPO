@@ -5,20 +5,21 @@ import seaborn as sns
 import os
 
 sns.set_theme(style="dark")
-sns.set(font="Times New Roman", font_scale=1.5)
+sns.set(font="Times New Roman", font_scale=2)
 
 import argparse
 import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain***')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*def_buf*')
 
 args = parser.parse_args()
 
 plots = args.models_name.split(";")
 
 legends = []
+colors = []
 f, (x1, x2) = plt.subplots(2,1, figsize=(10,6))
 f.tight_layout(pad=0.5)
 for (i,plot) in enumerate(plots):
@@ -67,6 +68,33 @@ for (i,plot) in enumerate(plots):
                 qual_metrics.append(dictionary)
     except Exception as e:
         pass
+
+    # Create legends
+    colors = []
+    if any('def_entr' in f for f in filenames):
+        legends.append('$R_0$')
+        legends.append('$R_1$')
+        colors.append('b')
+        colors.append('chocolate')
+    elif any('buff_entr' in f for f in filenames):
+        legends.append('$R_0$')
+        legends.append('$R_2$')
+        colors.append('b')
+        colors.append('g')
+    elif any('def_buff' in f for f in filenames):
+        legends.append('$R_0$')
+        legends.append('$R_1$')
+        legends.append('$R_2$')
+        colors.append('b')
+        colors.append('chocolate')
+        colors.append('g')
+    else:
+        legends.append('$R_0$')
+        legends.append('$R_1$')
+        legends.append('$R_2$')
+        colors.append('b')
+        colors.append('chocolate')
+        colors.append('g')
 
     keys = rewards[0].keys()
 
@@ -117,9 +145,8 @@ for (i,plot) in enumerate(plots):
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
 
-        x1.plot(range(len(data)), data, '-o', ms=12, linewidth=4)
+        x1.plot(range(len(data)), data, '-o'.format(colors[i]), ms=13, linewidth=5, color=colors[i])
 
-        legends.append("$R_{}$".format(i))
         i += 1
 
     x1.set_xticks([])
@@ -133,7 +160,8 @@ try:
         if 'items' in filename:
             percentages.append(m['loot'][0])
         else:
-            percentages.append(m['win_rate'][0])
+            percentages.append(round(m['win_rate'][0],1))
+
 
     if 'items' in filename:
         pal = sns.color_palette("summer_r", len(percentages))
@@ -146,7 +174,7 @@ try:
     labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'From\nScratch', 'Fine\nTuning']
     x2.set_xticklabels(labels)
     for p in x2.patches:
-        x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
+        x2.annotate(format(p.get_height(), '.1f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
                        va = 'center', xytext = (0, 10), textcoords = 'offset points')
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:
@@ -163,6 +191,6 @@ else:
 
 y = input('Do you want to save it? ')
 if y == 'y':
-    plt.savefig('imgs/results_fountain.eps', bbox_inches='tight', pad_inches=0, format='eps')
+    plt.savefig('imgs/results_def_buf.eps', bbox_inches='tight', pad_inches=0, format='eps')
 sns.despine()
 plt.show()

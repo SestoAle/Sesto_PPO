@@ -5,7 +5,7 @@ import seaborn as sns
 import os
 
 sns.set_theme(style="dark")
-sns.set(font="Times New Roman", font_scale=1.5)
+sns.set(font="Times New Roman", font_scale=2.0)
 
 
 import argparse
@@ -13,7 +13,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*dm*ret*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*dm*rew*')
 
 args = parser.parse_args()
 
@@ -105,7 +105,7 @@ for (i,plot) in enumerate(plots):
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
 
-        x1.plot(range(len(data)), data, '-o', ms=12, linewidth=4)
+        x1.plot(range(len(data)), data, '-o', ms=13, linewidth=5)
 
         legends.append("$R_{}$".format(i))
         i += 1
@@ -132,7 +132,7 @@ try:
     labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'From\nScratch', 'Fine\nTuning']
     x2.set_xticklabels(labels)
     for p in x2.patches:
-        x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
+        x2.annotate(format(p.get_height(), '.1f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
                        va = 'center', xytext = (0, 10), textcoords = 'offset points')
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:

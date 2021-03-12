@@ -5,7 +5,7 @@ import seaborn as sns
 import os
 
 sns.set_theme(style="dark")
-sns.set(font="Times New Roman", font_scale=1.5)
+sns.set(font="Times New Roman", font_scale=2)
 
 import argparse
 import glob
@@ -64,7 +64,7 @@ for (i,plot) in enumerate(plots):
 
     win_rates = np.asarray(win_rates)
 
-    x1.plot(range(len(win_rates)), win_rates, '-o', ms=12, linewidth=4)
+    x1.plot(range(len(win_rates)), win_rates, '-o', ms=13, linewidth=5)
 
     x1.set_xticks([])
     x1.legend(legends)
@@ -74,7 +74,7 @@ try:
     # Percentages
     win_rates = []
     for m in qual_metrics:
-        win_rates.append(m['win_rate'][0])
+        win_rates.append(round(m['win_rate'][0],1))
 
     win_rates = np.asarray(win_rates)
 
@@ -83,7 +83,7 @@ try:
 
     pal = sns.color_palette("Reds_d", len(win_rates))
     rank = win_rates.argsort().argsort()
-    labels = ["$\pi_0$", "$\pi_0 + \pi_1$", "$\pi_0 + \pi_1 + \pi_2$", "$\pi_0 + \pi_1 + \pi_2 + \pi_3$", "From\nScratch"]
+    labels = ["$\pi_0$", "$\pi_0 + \pi_1$", "$\pi_0 + \pi_1$\n$+ \pi_2$", "$\pi_0 + \pi_1$\n$+ \pi_2 + \pi_3$", "From\nScratch"]
     x = np.arange(len(win_rates))
     sns.barplot(x=x, y=(np.array(win_rates)), palette=np.array(pal[::-1])[rank], ax=x2)
     #x2.set_ylabel('Number of attacks')
@@ -93,7 +93,7 @@ try:
 
     x2.set_xticklabels(labels)
     for p in x2.patches:
-        x2.annotate(format(p.get_height(), '.2f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
+        x2.annotate(format(p.get_height(), '.1f'), (p.get_x() + p.get_width() / 2., p.get_height()), ha = 'center',
                        va = 'center', xytext = (0, 10), textcoords = 'offset points')
     plt.setp(x2.patches, linewidth=1.5, edgecolor='black')
 except Exception as e:

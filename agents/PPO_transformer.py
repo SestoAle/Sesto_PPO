@@ -225,7 +225,7 @@ class PPO:
             global_state = tf.concat([global_state, self.global_positions], axis=3)
             global_state = self.conv_layer_2d(global_state, 64, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
             entities = tf.reshape(global_state, [-1, 10*10, 64])
-            flat_11, _ = transformer(entities, n_head=2, hidden_size=64, mask_value=99, with_embeddings=False, name='transformer_global')
+            flat_11, self.att_weights = transformer(entities, n_head=2, hidden_size=64, mask_value=99, with_embeddings=False, name='transformer_global')
             flat_11 = tf.reshape(flat_11, [-1, 10 * 10 * 64])
 
             local_two_state = tf.concat([local_two_state, self.local_two_positions], axis=3)
@@ -410,7 +410,7 @@ class PPO:
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
-        action, logprob, probs = self.sess.run([self.action, self.log_prob, self.probs], feed_dict=feed_dict)
+        action, logprob, probs, att_weights = self.sess.run([self.action, self.log_prob, self.probs, self.att_weights], feed_dict=feed_dict)
 
         return action, logprob, probs
 
@@ -627,6 +627,6 @@ class PPO:
         # x -> (1, NE)
         width = int(sqrt(np.shape(x)[0]))
         x = np.reshape(x, [width, width])
-        x = (x - np.min(x)) / (np.max(x) - np.min(x))
+        #x = (x - np.min(x)) / (np.max(x) - np.min(x))
         plt.imshow(x)
         plt.waitforbuttonpress()
