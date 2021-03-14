@@ -64,12 +64,7 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
-            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
-            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
-            self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 17], name='agent_stats')
-            self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='target_stats')
-            self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 82], name='global_state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -79,8 +74,7 @@ class PPO:
                 self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
-                self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                                  self.agent_stats, self.target_stats)
+                self.conv_network = self.conv_net(self.global_state)
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
@@ -196,8 +190,7 @@ class PPO:
             with tf.compat.v1.variable_scope('critic'):
 
                 # V Network specification
-                self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
-                                               self.agent_stats, self.target_stats, baseline=True)
+                self.v_network = self.conv_net(self.global_state, baseline=True)
 
                 # Final p_layers
                 if not self.recurrent_baseline:
@@ -286,39 +279,8 @@ class PPO:
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
     # Convolutional network, the same for both the networks
-    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, baseline=False):
-        conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
-        conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
-        conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
-        flat_11 = tf.reshape(conv_12, [-1, 10 * 10 * 64])
-
-        conv_20 = self.conv_layer_2d(local_state, 32, [1, 1], name='conv_20', activation=tf.nn.tanh, bias=False)
-        conv_21 = self.conv_layer_2d(conv_20, 32, [3, 3], name='conv_21', activation=tf.nn.relu)
-        conv_22 = self.conv_layer_2d(conv_21, 64, [3, 3], name='conv_22', activation=tf.nn.relu)
-        flat_21 = tf.reshape(conv_22, [-1, 5 * 5 * 64])
-
-        conv_30 = self.conv_layer_2d(local_two_state, 32, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
-        conv_31 = self.conv_layer_2d(conv_30, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
-        conv_32 = self.conv_layer_2d(conv_31, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
-        flat_31 = tf.reshape(conv_32, [-1, 3 * 3 * 64])
-
-        embs_41 = tf.nn.tanh(self.embedding(agent_stats, 135, 256, name='embs_41'))
-        embs_41 = tf.reshape(embs_41, [-1, 17 * 256])
-        if not baseline:
-            flat_41 = self.linear(embs_41, 256, name='fc_41', activation=tf.nn.relu)
-        else:
-            flat_41 = self.linear(embs_41, 128, name='fc_41', activation=tf.nn.relu)
-
-        embs_51 = self.embedding(target_stats, 131, 256, name='embs_51')
-        embs_51 = tf.reshape(embs_51, [-1, 16 * 256])
-        if not baseline:
-            flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
-        else:
-            flat_51 = self.linear(embs_51, 128, name='fc_51', activation=tf.nn.relu)
-
-        all_flat = tf.concat([flat_11, flat_21, flat_31, flat_41, flat_51], axis=1)
-
-        return all_flat
+    def conv_net(self, global_state, baseline=False):
+        return global_state
 
     def sample_batch_for_recurrent(self, length, batch_size):
         all_idxs = np.arange(len(self.buffer['states']))
@@ -539,30 +501,18 @@ class PPO:
     # Transform an observation to a DeepCrawl state
     def obs_to_state(self, obs):
         global_batch = np.stack([np.asarray(state['global_in']) for state in obs])
-        local_batch = np.stack([np.asarray(state['local_in']) for state in obs])
-        local_two_batch = np.stack([np.asarray(state['local_in_two']) for state in obs])
-        agent_stats_batch = np.stack([np.asarray(state['agent_stats']) for state in obs])
-        target_stats_batch = np.stack([np.asarray(state['target_stats']) for state in obs])
-        prev_act_batch = np.stack([np.asarray(state['prev_action']) for state in obs])
 
-        return global_batch, local_batch, local_two_batch, agent_stats_batch, target_stats_batch, prev_act_batch
+
+        return global_batch, None
 
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
         all_global = states[0]
-        all_local = states[1]
-        all_local_two = states[2]
-        all_agent_stats = states[3]
-        all_target_stats = states[4]
-        all_prev_acts = states[5]
+
 
         feed_dict = {
             self.global_state: all_global,
-            self.local_state: all_local,
-            self.local_two_state: all_local_two,
-            self.agent_stats: all_agent_stats,
-            self.target_stats: all_target_stats,
-            self.previous_acts: all_prev_acts
+
         }
 
         return feed_dict
