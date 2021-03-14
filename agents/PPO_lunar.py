@@ -112,6 +112,7 @@ class PPO:
                 elif self.action_type == 'continuous':
                     self.mean = self.linear(self.p_network, self.action_size, activation=None, name='mean')
                     self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus, name='var')
+                    self.variance = tf.clip_by_value(self.variance, -20, 2)
                     # This is useless, just to return something in eval() method
                     self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
                     # Normal distribution to sample
