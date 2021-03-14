@@ -1,2 +1,2 @@
-model_checkpoint_path: "ranger_init"
-all_model_checkpoint_paths: "ranger_init"
+model_checkpoint_path: "lunar_mean_tanh_tanh_atanh"
+all_model_checkpoint_paths: "lunar_mean_tanh_tanh_atanh"
