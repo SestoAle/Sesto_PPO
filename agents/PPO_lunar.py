@@ -113,83 +113,84 @@ class PPO:
                     # Take only the last state of the sequence
                     self.p_network = self.rnn_state.h
 
-                    # If action_space is discrete, then it is a Categorical distribution
+                # If action_space is discrete, then it is a Categorical distribution
+                if self.action_type == 'discrete':
+                    # Probability distribution
+                    self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax,
+                                             name='probs') + eps
+                    # Categorical distribution to sample
+                    self.dist = tfp.distributions.Categorical(probs=self.probs, allow_nan_stats=False)
+                # If action_space is continuous, then it is a Gaussian distribution
+                elif self.action_type == 'continuous':
+                    # Beta distribution
+                    if self.distrbution_type == 'beta':
+                        self.alpha = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                 name='alpha') + 1
+                        self.beta = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                name='beta') + 1
+                        # This is useless, just to return something in eval() method
+                        self.probs = tf.concat([self.alpha, self.beta], axis=1, name='probs')
+                        self.dist = tfp.distributions.Beta(self.alpha, self.beta, allow_nan_stats=False,
+                                                           name='Beta')
+
+                    # Gaussian Distribution
+                    elif self.distrbution_type == 'gaussian':
+                        self.mean = self.linear(self.p_network, self.action_size, activation=None, name='mean')
+                        self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                    name='var')
+                        self.variance = tf.clip_by_value(self.variance, -20, 2)
+                        # This is useless, just to return something in eval() method
+                        self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
+                        # Normal distribution to sample
+                        self.dist = tfp.distributions.Normal(self.mean, self.variance, allow_nan_stats=False,
+                                                             name='Normal')
+
+                # Sample action
+                if self.action_type == 'discrete':
+                    self.action = self.dist.sample(name='action')
+                elif self.action_type == 'continuous':
+                    self.action = self.dist.sample(name='action')
+
+                self.log_prob = self.dist.log_prob(self.action)
+                # If there are more than 1 continuous actions, do the mean of log_probs
+                if self.action_size > 1 and self.action_type == 'continuous':
+                    self.log_prob = tf.reduce_sum(self.log_prob, axis=1)
+
+                # If continuous, bound the actions between min_action and max_action
+                if self.action_type == 'continuous':
+                    # Beta Distribution
+                    if self.distrbution_type == 'beta':
+                        self.action = self.action_min_value + (
+                                self.action_max_value - self.action_min_value) * self.action
+                    # Gaussian Distribution
+                    elif self.distrbution_type == 'gaussian':
+                        self.action = tf.tanh(self.action)
+
+                # Get probability of a given action - useful for training
+                with tf.compat.v1.variable_scope('eval_with_action'):
+
                     if self.action_type == 'discrete':
-                        # Probability distribution
-                        self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax,
-                                                 name='probs') + eps
-                        # Distribution to sample
-                        self.dist = tfp.distributions.Categorical(probs=self.probs, allow_nan_stats=False)
-                    # If action_space is continuous, then it is a Gaussian distribution
+                        self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
+                        self.real_action = self.eval_action
                     elif self.action_type == 'continuous':
-                        # Beta distribution
-                        if self.distrbution_type == 'beta':
-                            self.alpha = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
-                                                     name='alpha') + 1
-                            self.beta = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
-                                                    name='beta') + 1
-                            # This is useless, just to return something in eval() method
-                            self.probs = tf.concat([self.alpha, self.beta], axis=1, name='probs')
-                            self.dist = tfp.distributions.Beta(self.alpha, self.beta, allow_nan_stats=False,
-                                                               name='Beta')
+                        self.eval_action = tf.compat.v1.placeholder(tf.float32, [None, self.action_size],
+                                                                    name='eval_action')
 
-                        # Gaussian Distribution
-                        elif self.distrbution_type == 'gaussian':
-                            self.mean = self.linear(self.p_network, self.action_size, activation=None, name='mean')
-                            self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
-                                                        name='var')
-                            self.variance = tf.clip_by_value(self.variance, -20, 2)
-                            # This is useless, just to return something in eval() method
-                            self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
-                            # Normal distribution to sample
-                            self.dist = tfp.distributions.Normal(self.mean, self.variance, allow_nan_stats=False,
-                                                                 name='Normal')
-
-                    # Sample action
-                    if self.action_type == 'discrete':
-                        self.action = self.dist.sample(name='action')
-                    elif self.action_type == 'continuous':
-                        self.action = self.dist.sample(name='action')
-
-                    self.log_prob = self.dist.log_prob(self.action)
-                    # If there are more than 1 continuous actions, do the mean of log_probs
-                    if self.action_size > 1 and self.action_type == 'continuous':
-                        self.log_prob = tf.reduce_sum(self.log_prob, axis=1)
-
-                    # If continuous, bound the actions between min_action and max_action
-                    if self.action_type == 'continuous':
+                        # Inverse normalization actions between min_value and max_value
                         # Beta Distribution
                         if self.distrbution_type == 'beta':
-                            self.action = self.action_min_value + (
-                                    self.action_max_value - self.action_min_value) * self.action
+                            self.real_action = (self.eval_action - self.action_min_value) / (
+                                    self.action_max_value - self.action_min_value)
+
                         # Gaussian Distribution
                         elif self.distrbution_type == 'gaussian':
-                            self.action = tf.tanh(self.action)
+                            # Tanh inverse transformation
+                            self.real_action = tf.atanh(self.eval_action)
 
-                    # Get probability of a given action - useful for training
-                    with tf.compat.v1.variable_scope('eval_with_action'):
-                        if self.action_type == 'discrete':
-                            self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
-                            self.real_action = self.eval_action
-                        elif self.action_type == 'continuous':
-                            self.eval_action = tf.compat.v1.placeholder(tf.float32, [None, self.action_size],
-                                                                        name='eval_action')
-
-                            # Inverse normalization actions between min_value and max_value
-                            # Beta Distribution
-                            if self.distrbution_type == 'beta':
-                                self.real_action = (self.eval_action - self.action_min_value) / (
-                                        self.action_max_value - self.action_min_value)
-
-                            # Gaussian Distribution
-                            elif self.distrbution_type == 'gaussian':
-                                # Tanh inverse transformation
-                                self.real_action = tf.atanh(self.eval_action)
-
-                        self.log_prob_with_action = self.dist.log_prob(self.real_action)
-                        # If there are more than 1 continuous actions, do the mean of log_probs
-                        if self.action_size > 1 and self.action_type == 'continuous':
-                            self.log_prob_with_action = tf.reduce_sum(self.log_prob_with_action, axis=1)
+                    self.log_prob_with_action = self.dist.log_prob(self.real_action)
+                    # If there are more than 1 continuous actions, do the mean of log_probs
+                    if self.action_size > 1 and self.action_type == 'continuous':
+                        self.log_prob_with_action = tf.reduce_sum(self.log_prob_with_action, axis=1)
 
             # Critic network
             with tf.compat.v1.variable_scope('critic'):
