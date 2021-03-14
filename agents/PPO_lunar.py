@@ -10,11 +10,13 @@ import os
 
 eps = 1e-5
 
+
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
     def __init__(self, sess, p_lr=1e-5, v_lr=5e-3, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
-                 action_type='continuous', action_size=1, action_min_value=-1, action_max_value=1,
+                 distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
+                 action_max_value=1,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
@@ -44,9 +46,11 @@ class PPO:
         # Types permitted: 'discrete' or 'continuous'. Default: 'discrete'
         self.action_type = action_type if action_type == 'continuous' or action_type == 'discrete' else 'discrete'
         self.action_size = action_size
-        # min and max values for continuous action
+        # min and max values for continuous actions
         self.action_min_value = action_min_value
         self.action_max_value = action_max_value
+        # Distribution type for continuous actions
+        self.distrbution_type = distribution if distribution == 'gaussian' or distribution == 'beta' else 'gaussian'
 
         # Recurrent paramtere
         self.recurrent = recurrent
@@ -60,20 +64,27 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 8], name='global_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 10, 10, 52], name='global_state')
+            self.local_state = tf.compat.v1.placeholder(tf.float32, [None, 5, 5, 52], name='local_state')
+            self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
+            self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 17], name='agent_stats')
+            self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='target_stats')
+            self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
                 # Previous prob, for training
-                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None,], name='old_prob')
-                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None,], name='baseline_values')
+                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None, ], name='old_prob')
+                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None, ], name='baseline_values')
                 self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
-                self.conv_network = self.conv_net(self.global_state)
+                self.conv_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                                  self.agent_stats, self.target_stats)
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
+                self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
 
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
@@ -84,8 +95,8 @@ class PPO:
                     # Get batch size and number of feature of the previous layer
                     bs, feature = utils.shape_list(self.p_network)
                     self.recurrent_train_length = tf.compat.v1.placeholder(tf.int32)
-                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None,])
-                    self.p_network = tf.reshape(self.p_network, [bs/self.recurrent_train_length,
+                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None, ])
+                    self.p_network = tf.reshape(self.p_network, [bs / self.recurrent_train_length,
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
@@ -102,50 +113,90 @@ class PPO:
                     # Take only the last state of the sequence
                     self.p_network = self.rnn_state.h
 
-                # If action_space is discrete, then it is a Categorical distribution
-                if self.action_type == 'discrete':
-                    # Probability distribution
-                    self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax, name='probs') + eps
-                    # Distribution to sample
-                    self.dist = tfp.distributions.Categorical(probs=self.probs, allow_nan_stats=False)
-                # If action_space is continuous, then it is a Gaussian distribution
-                elif self.action_type == 'continuous':
-                    self.mean = self.linear(self.p_network, self.action_size, activation=None, name='mean')
-                    self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus, name='var')
-                    self.variance = tf.clip_by_value(self.variance, -20, 2)
-                    # This is useless, just to return something in eval() method
-                    self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
-                    # Normal distribution to sample
-                    self.dist = tfp.distributions.Normal(self.mean, self.variance, allow_nan_stats=False, name='Normal')
-
-                # Sample action
-                if self.action_type == 'discrete':
-                    self.action = self.dist.sample(name='action')
-                elif self.action_type == 'continuous':
-                    self.action = self.dist.sample(name='action')
-                    self.action = tf.tanh(self.action)
-                self.log_prob = self.dist.log_prob(self.action)
-                # If there are more than 1 continuous actions, do the mean of log_probs
-                if self.action_size > 1 and self.action_type == 'continuous':
-                    self.log_prob = tf.reduce_sum(self.log_prob, axis=1)
-
-                # Get probability of a given action - useful for training
-                with tf.compat.v1.variable_scope('eval_with_action'):
+                    # If action_space is discrete, then it is a Categorical distribution
                     if self.action_type == 'discrete':
-                        self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
+                        # Probability distribution
+                        self.probs = self.linear(self.p_network, action_size, activation=tf.nn.softmax,
+                                                 name='probs') + eps
+                        # Distribution to sample
+                        self.dist = tfp.distributions.Categorical(probs=self.probs, allow_nan_stats=False)
+                    # If action_space is continuous, then it is a Gaussian distribution
                     elif self.action_type == 'continuous':
-                        self.eval_action = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='eval_action')
-                        self.eval_action = tf.math.atanh(self.eval_action)
-                    self.log_prob_with_action = self.dist.log_prob(self.eval_action)
+                        # Beta distribution
+                        if self.distrbution_type == 'beta':
+                            self.alpha = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                     name='alpha') + 1
+                            self.beta = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                    name='beta') + 1
+                            # This is useless, just to return something in eval() method
+                            self.probs = tf.concat([self.alpha, self.beta], axis=1, name='probs')
+                            self.dist = tfp.distributions.Beta(self.alpha, self.beta, allow_nan_stats=False,
+                                                               name='Beta')
+
+                        # Gaussian Distribution
+                        elif self.distrbution_type == 'gaussian':
+                            self.mean = self.linear(self.p_network, self.action_size, activation=None, name='mean')
+                            self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus,
+                                                        name='var')
+                            self.variance = tf.clip_by_value(self.variance, -20, 2)
+                            # This is useless, just to return something in eval() method
+                            self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
+                            # Normal distribution to sample
+                            self.dist = tfp.distributions.Normal(self.mean, self.variance, allow_nan_stats=False,
+                                                                 name='Normal')
+
+                    # Sample action
+                    if self.action_type == 'discrete':
+                        self.action = self.dist.sample(name='action')
+                    elif self.action_type == 'continuous':
+                        self.action = self.dist.sample(name='action')
+
+                    self.log_prob = self.dist.log_prob(self.action)
                     # If there are more than 1 continuous actions, do the mean of log_probs
                     if self.action_size > 1 and self.action_type == 'continuous':
-                        self.log_prob_with_action = tf.reduce_sum(self.log_prob_with_action, axis=1)
+                        self.log_prob = tf.reduce_sum(self.log_prob, axis=1)
+
+                    # If continuous, bound the actions between min_action and max_action
+                    if self.action_type == 'continuous':
+                        # Beta Distribution
+                        if self.distrbution_type == 'beta':
+                            self.action = self.action_min_value + (
+                                    self.action_max_value - self.action_min_value) * self.action
+                        # Gaussian Distribution
+                        elif self.distrbution_type == 'gaussian':
+                            self.action = tf.tanh(self.action)
+
+                    # Get probability of a given action - useful for training
+                    with tf.compat.v1.variable_scope('eval_with_action'):
+                        if self.action_type == 'discrete':
+                            self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
+                            self.real_action = self.eval_action
+                        elif self.action_type == 'continuous':
+                            self.eval_action = tf.compat.v1.placeholder(tf.float32, [None, self.action_size],
+                                                                        name='eval_action')
+
+                            # Inverse normalization actions between min_value and max_value
+                            # Beta Distribution
+                            if self.distrbution_type == 'beta':
+                                self.real_action = (self.eval_action - self.action_min_value) / (
+                                        self.action_max_value - self.action_min_value)
+
+                            # Gaussian Distribution
+                            elif self.distrbution_type == 'gaussian':
+                                # Tanh inverse transformation
+                                self.real_action = tf.atanh(self.eval_action)
+
+                        self.log_prob_with_action = self.dist.log_prob(self.real_action)
+                        # If there are more than 1 continuous actions, do the mean of log_probs
+                        if self.action_size > 1 and self.action_type == 'continuous':
+                            self.log_prob_with_action = tf.reduce_sum(self.log_prob_with_action, axis=1)
 
             # Critic network
             with tf.compat.v1.variable_scope('critic'):
 
                 # V Network specification
-                self.v_network = self.conv_net(self.global_state, baseline=True)
+                self.v_network = self.conv_net(self.global_state, self.local_state, self.local_two_state,
+                                               self.agent_stats, self.target_stats, baseline=True)
 
                 # Final p_layers
                 if not self.recurrent_baseline:
@@ -160,7 +211,7 @@ class PPO:
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.v_rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
-                                                                           state_is_tuple=True, activation=tf.nn.tanh)
+                                                                             state_is_tuple=True, activation=tf.nn.tanh)
                     # Define state_in for the cell
                     self.v_state_in = self.rnn_cell.zero_state(bs, tf.float32)
 
@@ -198,8 +249,7 @@ class PPO:
                 self.entr_loss = tf.reduce_sum(self.entr_loss, axis=1)
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*(self.entr_loss + eps))
-
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2 * (self.entr_loss + eps))
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
@@ -235,9 +285,39 @@ class PPO:
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
     # Convolutional network, the same for both the networks
-    def conv_net(self, global_state, baseline=False):
+    def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, baseline=False):
+        conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
+        conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
+        conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu)
+        flat_11 = tf.reshape(conv_12, [-1, 10 * 10 * 64])
 
-        return global_state
+        conv_20 = self.conv_layer_2d(local_state, 32, [1, 1], name='conv_20', activation=tf.nn.tanh, bias=False)
+        conv_21 = self.conv_layer_2d(conv_20, 32, [3, 3], name='conv_21', activation=tf.nn.relu)
+        conv_22 = self.conv_layer_2d(conv_21, 64, [3, 3], name='conv_22', activation=tf.nn.relu)
+        flat_21 = tf.reshape(conv_22, [-1, 5 * 5 * 64])
+
+        conv_30 = self.conv_layer_2d(local_two_state, 32, [1, 1], name='conv_30', activation=tf.nn.tanh, bias=False)
+        conv_31 = self.conv_layer_2d(conv_30, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
+        conv_32 = self.conv_layer_2d(conv_31, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
+        flat_31 = tf.reshape(conv_32, [-1, 3 * 3 * 64])
+
+        embs_41 = tf.nn.tanh(self.embedding(agent_stats, 135, 256, name='embs_41'))
+        embs_41 = tf.reshape(embs_41, [-1, 17 * 256])
+        if not baseline:
+            flat_41 = self.linear(embs_41, 256, name='fc_41', activation=tf.nn.relu)
+        else:
+            flat_41 = self.linear(embs_41, 128, name='fc_41', activation=tf.nn.relu)
+
+        embs_51 = self.embedding(target_stats, 131, 256, name='embs_51')
+        embs_51 = tf.reshape(embs_51, [-1, 16 * 256])
+        if not baseline:
+            flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
+        else:
+            flat_51 = self.linear(embs_51, 128, name='fc_51', activation=tf.nn.relu)
+
+        all_flat = tf.concat([flat_11, flat_21, flat_31, flat_41, flat_51], axis=1)
+
+        return all_flat
 
     def sample_batch_for_recurrent(self, length, batch_size):
         all_idxs = np.arange(len(self.buffer['states']))
@@ -364,7 +444,7 @@ class PPO:
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
                 internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
                 internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                tmp_batch_size = len(states_mini_batch)//self.recurrent_length
+                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
                 internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
                 internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
                 internal_states = (internal_states_c, internal_states_h)
@@ -373,7 +453,7 @@ class PPO:
             actions_mini_batch = [self.buffer['actions'][id] for id in mini_batch_idxs]
             old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
             rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
-            
+
             # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
@@ -416,7 +496,7 @@ class PPO:
         return action, logprob, probs
 
     # Eval sampling the action, but with recurrent: it needs the internal hidden state
-    def eval_recurrent(self, state, internal, v_internal = None):
+    def eval_recurrent(self, state, internal, v_internal=None):
         state = self.obs_to_state(state)
         feed_dict = self.create_state_feed_dict(state)
 
@@ -424,7 +504,8 @@ class PPO:
         feed_dict[self.state_in] = internal
         feed_dict[self.recurrent_train_length] = 1
         feed_dict[self.sequence_lengths] = [1]
-        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state], feed_dict=feed_dict)
+        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state],
+                                                         feed_dict=feed_dict)
         if self.recurrent_baseline:
             feed_dict[self.v_state_in] = v_internal
             v_internal = self.sess.run([self.v_state_in], feed_dict=feed_dict)
@@ -457,15 +538,30 @@ class PPO:
     # Transform an observation to a DeepCrawl state
     def obs_to_state(self, obs):
         global_batch = np.stack([np.asarray(state['global_in']) for state in obs])
+        local_batch = np.stack([np.asarray(state['local_in']) for state in obs])
+        local_two_batch = np.stack([np.asarray(state['local_in_two']) for state in obs])
+        agent_stats_batch = np.stack([np.asarray(state['agent_stats']) for state in obs])
+        target_stats_batch = np.stack([np.asarray(state['target_stats']) for state in obs])
+        prev_act_batch = np.stack([np.asarray(state['prev_action']) for state in obs])
 
-        return global_batch, None
+        return global_batch, local_batch, local_two_batch, agent_stats_batch, target_stats_batch, prev_act_batch
 
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
         all_global = states[0]
+        all_local = states[1]
+        all_local_two = states[2]
+        all_agent_stats = states[3]
+        all_target_stats = states[4]
+        all_prev_acts = states[5]
 
         feed_dict = {
             self.global_state: all_global,
+            self.local_state: all_local,
+            self.local_two_state: all_local_two,
+            self.agent_stats: all_agent_stats,
+            self.target_stats: all_target_stats,
+            self.previous_acts: all_prev_acts
         }
 
         return feed_dict
@@ -488,8 +584,8 @@ class PPO:
 
     # Add a transition to the buffer
     def add_to_buffer(self, state, state_n, action, reward, old_prob, terminals,
-                      internal_states_c = None, internal_states_h = None,
-                      v_internal_states_c = None, v_internal_states_h = None):
+                      internal_states_c=None, internal_states_h=None,
+                      v_internal_states_c=None, v_internal_states_h=None):
 
         # If we store more than memory episodes, remove the last episode
         if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
@@ -522,8 +618,8 @@ class PPO:
             self.buffer['v_internal_states_h'].append(v_internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
-            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
-
+            self.buffer['episode_lengths'].append(
+                int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
 
     # Change rewards in buffer to discounted rewards
     def compute_discounted_reward(self):
@@ -535,7 +631,7 @@ class PPO:
             if terminal:
                 discounted_reward = 0
 
-            discounted_reward = reward + (self.discount*discounted_reward)
+            discounted_reward = reward + (self.discount * discounted_reward)
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
@@ -601,7 +697,7 @@ class PPO:
 
     # Load entire model
     def load_model(self, name=None, folder='saved'):
-        #self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        # self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
         self.saver.restore(self.sess, '{}/{}'.format(folder, name))
 
         print('Model loaded correctly!')
