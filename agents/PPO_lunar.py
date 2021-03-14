@@ -111,11 +111,10 @@ class PPO:
                 # If action_space is continuous, then it is a Gaussian distribution
                 elif self.action_type == 'continuous':
                     self.mean = self.linear(self.p_network, self.action_size, activation=tf.nn.tanh, name='mean')
-                    #self.log_variance = self.linear(self.p_network, self.action_size, activation=None, name='variance')
-                    #self.log_variance = tf.clip_by_value(self.log_variance, -20, 2)
-                    self.log_variance = tf.broadcast_to(tf.zeros(self.action_size), tf.shape(self.mean))
-                    self.variance = tf.exp(self.log_variance)
+                    self.variance = self.linear(self.p_network, self.action_size, activation=tf.nn.softplus, name='var')
+                    # This is useless, just to return something in eval() method
                     self.probs = tf.concat([self.mean, self.variance], axis=1, name='probs')
+                    # Normal distribution to sample
                     self.dist = tfp.distributions.Normal(self.mean, self.variance, allow_nan_stats=False, name='Normal')
 
                 # Sample action
@@ -125,6 +124,7 @@ class PPO:
                     self.action = self.dist.sample(name='action')
                     self.action = tf.tanh(self.action)
                 self.log_prob = self.dist.log_prob(self.action)
+                # If there are more than 1 continuous actions, do the mean of log_probs
                 if self.action_size > 1 and self.action_type == 'continuous':
                     self.log_prob = tf.reduce_mean(self.log_prob, axis=1)
 
@@ -134,8 +134,9 @@ class PPO:
                         self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
                     elif self.action_type == 'continuous':
                         self.eval_action = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='eval_action')
-                        #self.eval_action = tf.math.atanh(self.eval_action)
+                        self.eval_action = tf.math.atanh(self.eval_action)
                     self.log_prob_with_action = self.dist.log_prob(self.eval_action)
+                    # If there are more than 1 continuous actions, do the mean of log_probs
                     if self.action_size > 1 and self.action_type == 'continuous':
                         self.log_prob_with_action = tf.reduce_mean(self.log_prob_with_action, axis=1)
 
@@ -191,6 +192,7 @@ class PPO:
 
             # Entropy bonus
             self.entr_loss = self.dist.entropy()
+            # If there are more than 1 continuous actions, do the mean of entropies
             if self.action_size > 1 and self.action_type == 'continuous':
                 self.entr_loss = tf.reduce_mean(self.entr_loss, axis=1)
 

@@ -19,7 +19,7 @@ eps = 1e-12
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='lunar_mean_tanh_tanh_atanh')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='lunar_mean_var_learnt_with_softplus')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)

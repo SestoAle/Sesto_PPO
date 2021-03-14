@@ -1,2 +1,2 @@
-model_checkpoint_path: "lunar_mean_tanh_tanh_atanh"
-all_model_checkpoint_paths: "lunar_mean_tanh_tanh_atanh"
+model_checkpoint_path: "lunar_mean_var_learnt_with_softplus"
+all_model_checkpoint_paths: "lunar_mean_var_learnt_with_softplus"
