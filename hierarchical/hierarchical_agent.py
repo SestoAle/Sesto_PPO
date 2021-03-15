@@ -12,8 +12,8 @@ class HierarchicalAgent:
         self.model_name = 'hierarchical'
 
         # Manager and Workers parameters
-        self.memory_manager = 10
-        self.memory_workers = 10
+        self.memory_manager = 5
+        self.memory_workers = 5
 
         self.manager = None
         self.workers = []
