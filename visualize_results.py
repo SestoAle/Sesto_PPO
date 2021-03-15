@@ -13,7 +13,7 @@ parser.add_argument('-mr', '--num-mean-reward-loss', help="Same as nm, for rewar
 parser.add_argument('-sp', '--save-plot', help="If true save the plot in folder saved_plot", default=None)
 parser.add_argument('-ep', '--episodes', help="Number of the episodes to observe", default=None)
 
-parser.add_argument('-xa', '--x-axis', help="Number of the episodes to observe", default='episodes')
+parser.add_argument('-xa', '--x-axis', help="Number of the episodes to observe", default='timesteps')
 args = parser.parse_args()
 
 

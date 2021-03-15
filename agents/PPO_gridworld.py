@@ -10,17 +10,15 @@ import os
 
 eps = 1e-5
 
-
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=1e-4, v_lr=1e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=20, action_size=3,
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10, action_size=5,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
                  # LSTM
-                 recurrent=True, recurrent_length=32,
-
+                 recurrent=False, recurrent_length=8,
                  **kwargs):
 
         # Model parameters
@@ -53,13 +51,13 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 49], name='global_state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 60, 80, 3], name='state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
                 # Previous prob, for training
-                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None, ], name='old_prob')
-                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None, ], name='baseline_values')
+                self.old_logprob = tf.compat.v1.placeholder(tf.float32, [None,], name='old_prob')
+                self.baseline_values = tf.compat.v1.placeholder(tf.float32, [None,], name='baseline_values')
                 self.reward = tf.compat.v1.placeholder(tf.float32, [None, ], name='rewards')
 
                 # Network specification
@@ -67,7 +65,6 @@ class PPO:
 
                 # Final p_layers
                 self.p_network = self.linear(self.conv_network, 256, name='p_fc1', activation=tf.nn.relu)
-                #self.p_network = tf.concat([self.p_network, self.previous_acts], axis=1)
 
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
@@ -78,8 +75,8 @@ class PPO:
                     # Get batch size and number of feature of the previous layer
                     bs, feature = utils.shape_list(self.p_network)
                     self.recurrent_train_length = tf.compat.v1.placeholder(tf.int32)
-                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None, ])
-                    self.p_network = tf.reshape(self.p_network, [bs / self.recurrent_train_length,
+                    self.sequence_lengths = tf.compat.v1.placeholder(tf.int32, [None,])
+                    self.p_network = tf.reshape(self.p_network, [bs/self.recurrent_train_length,
                                                                  self.recurrent_train_length, feature])
                     # Define the RNN cell
                     self.rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
@@ -107,14 +104,14 @@ class PPO:
 
                 # Get probability of a given action - useful for training
                 with tf.compat.v1.variable_scope('eval_with_action'):
-                    self.eval_action = tf.compat.v1.placeholder(tf.int32, [None, ], name='eval_action')
+                    self.eval_action = tf.compat.v1.placeholder(tf.int32, [None,], name='eval_action')
                     self.log_prob_with_action = self.dist.log_prob(self.eval_action)
 
             # Critic network
             with tf.compat.v1.variable_scope('critic'):
 
                 # V Network specification
-                self.v_network = self.conv_net(self.global_state)
+                self.v_network = self.conv_net(self.global_state, baseline=True)
 
                 # Final p_layers
                 self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
@@ -140,7 +137,8 @@ class PPO:
             self.entr_loss = self.dist.entropy()
 
             # Total loss
-            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2 * (self.entr_loss + eps))
+            self.total_loss = - tf.reduce_mean(self.clip_loss + self.c2*(self.entr_loss + eps))
+
 
             # Policy Optimizer
             self.p_step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.p_lr).minimize(self.total_loss)
@@ -156,7 +154,7 @@ class PPO:
                                             kernel_initializer=init)
             return lin
 
-    def conv_layer_2d(self, input, filters, kernel_size, strides=(1, 1), padding="SAME", name='conv',
+    def conv_layer_2d(self, input, filters, kernel_size, strides=(2, 2), padding="SAME", name='conv',
                       activation=None, bias=True):
 
         with tf.compat.v1.variable_scope(name):
@@ -175,28 +173,19 @@ class PPO:
             )
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
-    # Convolutional network, the same for both the networks
-    def conv_net(self, global_state):
+    # Convolutional network, the same for both policy and value networks
+    def conv_net(self, global_state, baseline=False):
+        conv_10 = self.conv_layer_2d(global_state, 32, [5, 5], name='conv_10', activation=tf.nn.relu, padding='VALID')
+        conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu, padding='VALID')
+        conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu, padding='VALID')
+        flat_11 = tf.reshape(conv_12, [-1, 6 * 8 * 64])
 
-        return global_state
 
-    # # Sample a batch of consequent states for recurrent
-    # def sample_batch_for_recurrent(self, length, batch_size):
-    #      max_seq_steps = np.cumsum(self.buffer['episode_lengths']) - self.recurrent_length + 1
-    #      min_seq_steps = np.concatenate([[0], np.cumsum(self.buffer['episode_lengths'])])
-    #      val_idxs = np.concatenate([np.arange(min, max) for min, max in zip(min_seq_steps, max_seq_steps)])
-    #
-    #      batch_size = np.minimum(len(val_idxs), batch_size)
-    #
-    #      minibatch_idxs_first_step = np.random.choice(val_idxs, batch_size, replace=False)
-    #      minibatch_idxs_last_step = minibatch_idxs_first_step + self.recurrent_length
-    #      minibatch_idxs = np.concatenate(
-    #          [np.arange(min, max) for min, max in zip(minibatch_idxs_first_step, minibatch_idxs_last_step)])
-    #      minibatch_idxs_last_step -= 1
-    #      sequence_lengths = np.ones(len(minibatch_idxs_first_step)) * 8
-    #
-    #      return minibatch_idxs, minibatch_idxs_last_step, minibatch_idxs_first_step, sequence_lengths
+        all_flat = tf.concat([flat_11], axis=1)
 
+        return all_flat
+
+    # Function used to sample proper batch for recurrent network
     def sample_batch_for_recurrent(self, length, batch_size):
         all_idxs = np.arange(len(self.buffer['states']))
         new_ep_lengths = deepcopy(self.buffer['episode_lengths'])
@@ -286,9 +275,10 @@ class PPO:
                 mini_batch_idxs, mini_batch_idxs_last_step, mini_batch_idxs_first_step, sequence_lengths = \
                     self.sample_batch_for_recurrent(self.recurrent_length, batch_size)
                 states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
+                # The internal states will be saved in the policy experience buffer
                 internal_states_c = [self.buffer['internal_states_c'][id] for id in mini_batch_idxs_first_step]
                 internal_states_h = [self.buffer['internal_states_h'][id] for id in mini_batch_idxs_first_step]
-                tmp_batch_size = len(states_mini_batch) // self.recurrent_length
+                tmp_batch_size = len(states_mini_batch)//self.recurrent_length
                 internal_states_c = np.reshape(internal_states_c, [tmp_batch_size, -1])
                 internal_states_h = np.reshape(internal_states_h, [tmp_batch_size, -1])
                 internal_states = (internal_states_c, internal_states_h)
@@ -298,7 +288,6 @@ class PPO:
             old_probs_mini_batch = [self.buffer['old_probs'][id] for id in mini_batch_idxs]
             rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
 
-            # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
             feed_dict = self.create_state_feed_dict(states)
@@ -321,8 +310,6 @@ class PPO:
                 loss, step = self.sess.run([self.total_loss, self.p_step], feed_dict=feed_dict)
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
-                # tmp_batch_size = len(states_mini_batch)//self.recurrent_length
-                # state_train = (np.zeros([tmp_batch_size, self.recurrent_size]), np.zeros([tmp_batch_size, self.recurrent_size]))
                 feed_dict[self.state_in] = internal_states
                 feed_dict[self.sequence_lengths] = sequence_lengths
                 feed_dict[self.recurrent_train_length] = self.recurrent_length
@@ -350,8 +337,7 @@ class PPO:
         feed_dict[self.state_in] = internal
         feed_dict[self.recurrent_train_length] = 1
         feed_dict[self.sequence_lengths] = [1]
-        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state],
-                                                         feed_dict=feed_dict)
+        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state], feed_dict=feed_dict)
 
         # Return is equal to eval(), but with the new internal state
         return action, logprob, probs, internal
@@ -389,7 +375,7 @@ class PPO:
         all_global = states
 
         feed_dict = {
-            self.global_state: all_global,
+            self.global_state: all_global
         }
 
         return feed_dict
@@ -437,8 +423,8 @@ class PPO:
             self.buffer['internal_states_h'].append(internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
         if terminals:
-            self.buffer['episode_lengths'].append(
-                int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+            self.buffer['episode_lengths'].append(int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+
 
     # Change rewards in buffer to discounted rewards
     def compute_discounted_reward(self):
@@ -450,7 +436,7 @@ class PPO:
             if terminal:
                 discounted_reward = 0
 
-            discounted_reward = reward + (self.discount * discounted_reward)
+            discounted_reward = reward + (self.discount*discounted_reward)
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
@@ -516,7 +502,7 @@ class PPO:
 
     # Load entire model
     def load_model(self, name=None, folder='saved'):
-        # self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        #self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
         self.saver.restore(self.sess, '{}/{}'.format(folder, name))
 
         print('Model loaded correctly!')
