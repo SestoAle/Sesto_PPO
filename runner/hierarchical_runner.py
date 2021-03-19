@@ -130,6 +130,7 @@ class HRunner:
                         man_state = np.concatenate([man_state, w_latent[0]])
 
                     print(man_state)
+                    print(state)
                     print(np.shape(man_state))
                     print(np.shape(state))
                     input('...')
