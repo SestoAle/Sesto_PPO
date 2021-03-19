@@ -5,6 +5,7 @@ import numpy as np
 from math import sqrt
 import utils
 from copy import deepcopy
+from layers.layers import transformer
 
 import os
 
@@ -291,7 +292,12 @@ class PPO:
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
 
-        global_state = self.linear(global_state, 1024, activation=tf.nn.tanh, name='first_linear')
+        global_state = tf.reshape(global_state, [-1,2,256])
+        global_state = transformer(global_state, n_head=2, hidden_size=1024, mask_value=99, with_embeddings=False,
+                                   pooling='max', name='transformer_global')
+
+        input(global_state.shape)
+        input('...')
 
         return global_state
 
