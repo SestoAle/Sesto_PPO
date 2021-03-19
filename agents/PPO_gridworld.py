@@ -328,6 +328,16 @@ class PPO:
 
         return action, logprob, probs
 
+    # Same as eval(), but with latent space
+    def eval_with_latent(self, state):
+
+        state = self.obs_to_state(state)
+        feed_dict = self.create_state_feed_dict(state)
+
+        action, logprob, probs, latent = self.sess.run([self.action, self.log_prob, self.probs, self.p_network], feed_dict=feed_dict)
+
+        return action, logprob, probs, latent
+
     # Eval sampling the action, but with recurrent: it needs the internal hidden state
     def eval_recurrent(self, state, internal):
         state = self.obs_to_state(state)

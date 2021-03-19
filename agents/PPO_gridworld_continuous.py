@@ -64,7 +64,7 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 60, 80, 3], name='state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 512], name='state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -290,14 +290,10 @@ class PPO:
 
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
-        conv_10 = self.conv_layer_2d(global_state, 32, [5, 5], name='conv_10', activation=tf.nn.relu, padding='VALID')
-        conv_11 = self.conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu, padding='VALID')
-        conv_12 = self.conv_layer_2d(conv_11, 64, [3, 3], name='conv_12', activation=tf.nn.relu, padding='VALID')
-        flat_11 = tf.reshape(conv_12, [-1, 6 * 8 * 64])
 
-        all_flat = tf.concat([flat_11], axis=1)
+        global_state = self.linear(global_state, 1024, activation=tf.nn.tanh);
 
-        return all_flat
+        return global_state
 
     def sample_batch_for_recurrent(self, length, batch_size):
         all_idxs = np.arange(len(self.buffer['states']))

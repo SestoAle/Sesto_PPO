@@ -75,6 +75,7 @@ class HierarchicalAgent:
     # Execute a manager action
     def eval_manager(self, state):
         man_action, man_logprob, man_probs = self.manager.eval(state)
+
         return man_action, man_logprob, man_probs
 
     # Execute a woker action specified by worker_id
