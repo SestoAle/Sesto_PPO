@@ -291,7 +291,7 @@ class PPO:
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
 
-        global_state = self.linear(global_state, 1024, activation=tf.nn.tanh);
+        global_state = self.linear(global_state, 1024, activation=tf.nn.tanh, name='first_linear')
 
         return global_state
 
