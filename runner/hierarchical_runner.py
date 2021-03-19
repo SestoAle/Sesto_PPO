@@ -129,14 +129,9 @@ class HRunner:
                         _, _, _, w_latent = w.eval_with_latent([state])
                         man_state = np.concatenate([man_state, w_latent[0]])
 
-                    print(man_state)
-                    print(state)
-                    print(np.shape(man_state))
-                    print(np.shape(state))
-                    input('...')
                     man_state = dict(global_in=man_state)
                     man_action, man_logprob, man_probs = self.agent.eval_manager([man_state])
-                    input('...')
+                    #
 
                     man_action = man_action[0]
 
