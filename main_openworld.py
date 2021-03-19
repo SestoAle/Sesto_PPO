@@ -24,7 +24,7 @@ parser.add_argument('-mn', '--model-name', help="The name of the model", default
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=400)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=600)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 
@@ -49,7 +49,7 @@ class OpenWorldEnv:
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
         self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=0, worker_id=worker_id)
-        self._max_episode_timesteps = 1000
+        self._max_episode_timesteps = 600
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
 
