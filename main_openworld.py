@@ -62,7 +62,6 @@ class OpenWorldEnv:
         return state, done, reward
 
     def reset(self):
-        print('Reset')
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
         return state
