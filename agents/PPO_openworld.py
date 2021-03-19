@@ -372,7 +372,7 @@ class PPO:
             # Update feed dict for training
             feed_dict[self.reward] = rewards_mini_batch
 
-            if not self.recurrent:
+            if not self.recurrent_baseline:
                 v_loss, step = self.sess.run([self.mse_loss, self.v_step], feed_dict=feed_dict)
             else:
                 # If recurrent, we need to pass the internal state and the recurrent_length
