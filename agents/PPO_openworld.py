@@ -14,7 +14,7 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-3, v_lr=5e-3, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
+    def __init__(self, sess, p_lr=5e-5, v_lr=5e-5, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
                  action_max_value=1,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
