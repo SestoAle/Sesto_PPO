@@ -127,7 +127,7 @@ class HRunner:
                     man_state = np.asarray([])
                     for w in self.agent.workers:
                         _, _, _, w_latent = w.eval_with_latent([state])
-                        man_state = np.concatenate([man_state[0], w_latent])
+                        man_state = np.concatenate([man_state, w_latent[0]])
 
                     print(man_state)
                     print(np.shape(man_state))
