@@ -126,8 +126,8 @@ class HRunner:
                     # Eval with latent, so first eval the workers
                     man_state = np.asarray([])
                     for w in self.agent.workers:
-                        _, _, _, w_latent = w.eval(state)
-                        man_state = np.concatenate([man_state, eval])
+                        _, _, _, w_latent = w.eval([state])
+                        man_state = np.concatenate([man_state, w_latent])
 
                     print(man_state)
                     print(np.shape(man_state))
