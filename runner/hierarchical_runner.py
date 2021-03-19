@@ -134,7 +134,9 @@ class HRunner:
                     print(np.shape(man_state))
                     print(np.shape(state))
                     input('...')
+                    man_state = dict(global_in=man_state)
                     man_action, man_logprob, man_probs = self.agent.eval_manager([man_state])
+                    input('...')
 
                     man_action = man_action[0]
 
