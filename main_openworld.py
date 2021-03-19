@@ -48,7 +48,7 @@ class OpenWorldEnv:
 
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
-        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=0, worker_id=worker_id)
+        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
         self._max_episode_timesteps = 600
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
@@ -59,10 +59,10 @@ class OpenWorldEnv:
         done = env_info.local_done[0]
 
         state = dict(global_in=env_info.vector_observations[0])
-
         return state, done, reward
 
     def reset(self):
+        print('Reset')
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
         return state
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWorldLittle", no_graphics=True, worker_id=1)
+    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
 
     # No IRL
     reward_model = None
