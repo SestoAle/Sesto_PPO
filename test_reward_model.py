@@ -141,7 +141,7 @@ if __name__ == "__main__":
     # Load the agents
     agents = []
     models = args.model_name.split(",")
-    for i,m in enumerate(models):
+    for i, m in enumerate(models):
         # Create agent
         graph = tf.compat.v1.Graph()
         with graph.as_default():

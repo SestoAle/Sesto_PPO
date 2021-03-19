@@ -3,8 +3,11 @@ import numpy as np
 import json
 from utils import NumpyEncoder
 import time
+from tensorforce.execution import Runner
 
-class Runner:
+
+class HRunner:
+
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
                  frequency_mode='episodes', random_actions=None,
                  # IRL
@@ -15,7 +18,7 @@ class Runner:
         self.agent = agent
         self.curriculum = curriculum
         self.total_episode = total_episode
-        self.frequency = frequency
+        self.frequency = 1
         self.frequency_mode = frequency_mode
         self.random_actions = random_actions
         self.logging = logging
@@ -115,20 +118,26 @@ class Runner:
             # Episode loop
             while True:
 
-                # Evaluation - Execute step
-                work_action, man_action, man_logprob, work_logprob, man_probs, work_probs = self.agent.eval([state])
+                # Get the action from the manager if it is manager turn
+                if step % self.agent.manager_timescale == 0:
+                    man_state = state
+                    man_reward = 0
+                    man_action, man_logprob, man_probs= self.agent.eval_manager([man_state])
+                    man_action = man_action[0]
 
-                probs = man_probs
+                # Evaluation - Execute step of the worker
+                action, logprob, probs = self.agent.eval_worker([state], man_action)
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
                     action = [np.random.randint(self.agent.action_size)]
 
-                action = work_action[0]
+                action = action[0]
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
                 # Execute in the environment
                 state_n, done, reward, info = self.env.execute(action, man_action)
+                man_reward += reward
 
                 # If exists a reward model, use it instead of the env reward
                 if self.reward_model is not None:
@@ -145,27 +154,21 @@ class Runner:
                 if step >= self.env._max_episode_timesteps - 1:
                     done = True
 
-                # Update agent memory
-                self.agent.add_to_buffer(state, state_n, man_action[0], work_action[0],
-                                         reward, man_logprob, work_logprob, done)
+                # Update worker memory if it is not a continuous manager
+                if not self.agent.continuous_manager:
+                    self.agent.workers[man_action].add_to_buffer(state, state_n, action, reward, logprob, False)
 
                 # Get the cumulative reward
                 episode_reward += info['reward_all']
 
                 state = state_n
-
                 step += 1
+
+                # If in the next evaluation step it is the turn of the manager, update its buffer
+                if step % self.agent.manager_timescale == 0 or done:
+                    self.agent.manager.add_to_buffer(man_state, state, man_action, man_reward, man_logprob, False)
+
                 self.total_step += 1
-
-                # If frequency timesteos are passed, update the policy
-                if self.frequency_mode == 'timesteps' and \
-                        self.total_step > 0 and self.total_step % self.frequency == 0:
-                    if self.random_actions is not None:
-                        if self.total_step > self.random_actions:
-                            self.agent.train()
-                    else:
-                        self.agent.train()
-
                 # If done, end the episode and save statistics
                 if done:
                     self.history['episode_rewards'].append(episode_reward)
@@ -173,7 +176,19 @@ class Runner:
                     self.history['mean_entropies'].append(np.mean(local_entropies))
                     self.history['std_entropies'].append(np.std(local_entropies))
                     self.history['env_rewards'].append(env_episode_reward)
+
+                    # Add the termination to all workers and manager
+                    self.agent.add_terminations()
                     break
+
+                # If frequency timesteps are passed, update the policy
+                if self.frequency_mode == 'timesteps' and \
+                        self.total_step > 0 and self.total_step % self.frequency == 0:
+                    if self.random_actions is not None:
+                        if self.total_step > self.random_actions:
+                            self.agent.train()
+                    else:
+                        self.agent.train()
 
             # Logging information
             if self.ep > 0 and self.ep % self.logging == 0:
@@ -190,7 +205,8 @@ class Runner:
 
             # If frequency episodes are passed, update the policy
             if self.frequency_mode == 'episodes' and self.ep > 0 and self.ep % self.frequency == 0:
-                self.agent.train()
+                # If an episode is pass, check if a worker OR the manager can update
+                self.agent.train(self.ep)
 
             # If IRL, update the reward model after reward_frequency episode
             if self.reward_model is not None:

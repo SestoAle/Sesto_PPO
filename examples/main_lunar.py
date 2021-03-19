@@ -1,11 +1,11 @@
-from hierarchical.hierarchical_agent import HierarchicalAgent
-from runner.hierarchical_runner import HRunner
+from agents.PPO_lunar import PPO
+from runner.runner import Runner
 import os
 import tensorflow as tf
 import argparse
 import numpy as np
 import math
-from miniworld_env import DMLab
+import gym
 
 
 from reward_model.reward_model import RewardModel
@@ -42,6 +42,30 @@ args = parser.parse_args()
 
 eps = 1e-12
 
+class Lunar:
+
+    def __init__(self, with_graphics):
+        self.with_graphics = with_graphics
+        self.env = gym.make('LunarLanderContinuous-v2')
+        self._max_episode_timesteps = 400
+
+    def execute(self, actions):
+        state, reward, done, _ = self.env.step(actions)
+        state = dict(global_in=state)
+
+        return state, done, reward
+
+    def reset(self):
+        info = self.env.reset()
+
+        return dict(global_in=info)
+
+    def entropy(self, probs):
+        return 0
+
+    def set_config(self, config):
+        return None
+
 if __name__ == "__main__":
 
     # DeepCrawl arguments
@@ -75,19 +99,19 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = HierarchicalAgent(sess, 5e-6, 5e-6, 2, workers_name=['mini_box', 'mini_ball'])
+        agent = PPO(sess)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = DMLab(with_graphics=False)
+    env = Lunar(with_graphics=False)
 
     # No IRL
     reward_model = None
 
     # Create runner
-    runner = HRunner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                      logging=logging, total_episode=total_episode, curriculum=curriculum,
                      frequency_mode=frequency_mode,
                      reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,

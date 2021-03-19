@@ -2,6 +2,7 @@ import gym
 import gym_miniworld
 import numpy as np
 import math
+import time
 
 eps = 1e-12
 # Simple wrapper for using MiniWorld with my PPO implementation
@@ -27,6 +28,7 @@ class DMLab:
     def execute(self, actions, worker):
         if self.with_graphics:
             self.env.render('human')
+            time.sleep(1)
         state, _, done, info = self.env.step(actions)
 
         reward = self.compute_reward(info, worker)
@@ -50,7 +52,10 @@ class DMLab:
     # Get the desired reward based on the reward_type argument
     def compute_reward(self, info, worker):
 
-        if worker[0] == 0:
+        if len(worker) > 1:
+            return info['reward_all']
+
+        if worker == 0:
             return info['reward_box']
         else:
             return info['reward_ball']

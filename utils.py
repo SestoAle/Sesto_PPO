@@ -175,3 +175,12 @@ def entity_max_pooling_masked(x, mask):
     offset = (mask - 1) * 1e9
     masked = (x + offset) * has_unmasked_entities
     return tf.reduce_max(masked, -2)
+
+# Boltzmann transformation to probability distribution
+def boltzmann(probs, temperature = 1.):
+    sum = np.sum(np.power(probs, 1/temperature))
+    new_probs = []
+    for p in probs:
+        new_probs.append(np.power(p, 1/temperature) / sum)
+
+    return np.asarray(new_probs)

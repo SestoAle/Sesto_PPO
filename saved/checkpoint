@@ -1,2 +1,2 @@
-model_checkpoint_path: "lunar_mean_var_learnt_with_softplus"
-all_model_checkpoint_paths: "lunar_mean_var_learnt_with_softplus"
+model_checkpoint_path: "hierarchical"
+all_model_checkpoint_paths: "hierarchical"
