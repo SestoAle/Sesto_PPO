@@ -293,8 +293,9 @@ class PPO:
     def conv_net(self, global_state, baseline=False):
 
         global_state = tf.reshape(global_state, [-1,2,256])
-        global_state, att_weights = transformer(global_state, n_head=2, hidden_size=256, mask_value=99, with_embeddings=False,
-                                   pooling='max', name='transformer_global')
+        global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+        global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
+                                   pooling='avg', name='transformer_global')
 
         print(global_state.shape)
         input('...')
