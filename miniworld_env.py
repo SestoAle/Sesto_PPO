@@ -52,8 +52,8 @@ class DMLab:
     # Get the desired reward based on the reward_type argument
     def compute_reward(self, info, worker):
 
-        if len(worker) > 1:
-            return info['reward_all']
+        #if len(worker) > 1:
+        return info['reward_all']
 
         if worker == 0:
             return info['reward_box']
