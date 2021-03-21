@@ -64,7 +64,6 @@ class OpenWorldEnv:
     def reset(self):
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
-        print(state)
         return state
 
     def entropy(self, probs):
@@ -113,13 +112,13 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworld')
+        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete')
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWorldLittle", no_graphics=True, worker_id=1)
+    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
 
     # No IRL
     reward_model = None
