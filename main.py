@@ -28,7 +28,7 @@ parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 # Parse argument for adversarial-play
 parser.add_argument('-ad', '--adversarial-play', help="Whether to use adversarial play",
                     dest='adversarial_play', action='store_true')
-parser.set_defaults(adversarial_play=True)
+parser.set_defaults(adversarial_play=False)
 
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
