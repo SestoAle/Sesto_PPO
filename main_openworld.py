@@ -112,7 +112,7 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete', p_lr=5e-5, v_lr=5e-5)
+        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete', p_lr=5e-6, v_lr=5e-6)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
