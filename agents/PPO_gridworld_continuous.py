@@ -295,8 +295,10 @@ class PPO:
         global_state = tf.reshape(global_state, [-1,2,256])
         global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
         global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
-                                   pooling='avg', name='transformer_global')
+                                    name='transformer_global')
 
+        print(global_state.shape)
+        global_state = tf.math.reduce_max(global_state, axis=2)
         print(global_state.shape)
         input('...')
 

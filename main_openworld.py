@@ -64,6 +64,7 @@ class OpenWorldEnv:
     def reset(self):
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
+        print(state)
         return state
 
     def entropy(self, probs):
