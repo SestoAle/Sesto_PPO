@@ -9,6 +9,8 @@ class Runner:
                  frequency_mode='episodes', random_actions=None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
+                 # Adversarial Play
+                 adversarial_play=False, double_agent=None,
                  **kwargs):
 
         # Runner objects and parameters
@@ -30,6 +32,14 @@ class Runner:
         self.fixed_reward_model = fixed_reward_model
         self.dems_name = dems_name
         self.reward_frequency = reward_frequency
+
+        # Adversarial play
+        self.adversarial_play = adversarial_play
+        self.double_agent = double_agent
+        # If adversarial play, save the first version of the main agent and load it to the double agent
+        if self.adversarial_play:
+            self.agent.save_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
+            self.double_agent.load_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
 
         # Initialize reward model
         if self.reward_model is not None:
@@ -266,6 +276,14 @@ class Runner:
 
         for (par, value) in parameters.items():
             config[par] = value[curriculum_step]
+
+        # If Adversarial play
+        if self.adversarial_play:
+            if curriculum_step > self.current_curriculum_step:
+                # Save the current version of the main agent
+                self.agent.save_model(name=self.agent.model_name + '_' + str(curriculum_step), folder='saved/adversarial')
+                # Load the weights of the current version of the main agent to the double agent
+                self.double_agent.load_model(name=self.agent.model_name + '_' + str(curriculum_step), folder='saved/adversarial')
 
         self.current_curriculum_step = curriculum_step
 

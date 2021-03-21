@@ -16,14 +16,19 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='lstm')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default='envs/DeepCrawl-Procedural-4')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
+parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
+
+# Parse argument for adversarial-play
+parser.add_argument('-ad', '--adversarial-play', help="Whether to use adversarial play",
+                    dest='adversarial_play', action='store_true')
+parser.set_defaults(adversarial_play=True)
 
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
@@ -49,6 +54,8 @@ if __name__ == "__main__":
     logging = int(args.logging)
     max_episode_timestep = int(args.max_timesteps)
     sampled_env = int(args.sampled_env)
+    # Adversarial play
+    adversarial_play = args.adversarial_play
     # IRL
     use_reward_model = args.use_reward_model
     reward_model_name = args.reward_model
@@ -56,28 +63,29 @@ if __name__ == "__main__":
     dems_name = args.dems_name
     reward_frequency = int(args.reward_frequency)
 
+
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        'thresholds': [2e6, 2e6, 1e6, 1e6],
+        'thresholds': [1e6, 1e6, 1e6, 1e6, 3e6, 3e6],
         'parameters':
             {
-                'minTargetHp': [1, 10, 10, 10, 10],
-                'maxTargetHp': [1, 10, 20, 20, 20],
-                'minAgentHp': [15, 10, 5, 5, 10],
-                'maxAgentHp': [20, 20, 20, 20, 20],
-                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04],
-                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3],
-                'minAgentMp': [0, 0, 0, 0, 0],
-                'maxAgentMp': [0, 0, 0, 0, 0],
-                'numActions': [17, 17, 17, 17, 17],
+                'minTargetHp': [1, 10, 10, 10, 10, 10, 10],
+                'maxTargetHp': [1, 10, 20, 20, 20, 20, 20],
+                'minAgentHp': [15, 10, 5, 5, 10, 10, 10],
+                'maxAgentHp': [20, 20, 20, 20, 20, 20, 20],
+                'minNumLoot': [0.2, 0.2, 0.2, 0.08, 0.04, 0.04, 0.04],
+                'maxNumLoot': [0.2, 0.2, 0.2, 0.3, 0.3, 0.3, 0.3],
+                'minAgentMp': [0, 0, 0, 0, 0, 0, 0],
+                'maxAgentMp': [0, 0, 0, 0, 0, 0, 0],
+                'numActions': [17, 17, 17, 17, 17, 17, 17],
                 # Agent statistics
-                'agentAtk': [3, 3, 3, 3, 3],
-                'agentDef': [3, 3, 3, 3, 3],
-                'agentDes': [3, 3, 3, 3, 3],
+                'agentAtk': [3, 3, 3, 3, 3, 3, 3],
+                'agentDef': [3, 3, 3, 3, 3, 3, 3],
+                'agentDes': [3, 3, 3, 3, 3, 3, 3],
 
-                'minStartingInitiative': [5, 3, 1, 1, 1],
-                'maxStartingInitiative': [5, 5, 5, 5, 5],
+                'minStartingInitiative': [1, 1, 1, 1, 1, 1, 1],
+                'maxStartingInitiative': [1, 1, 1, 1, 1, 1, 1],
 
                 #'sampledEnv': [sampled_env]
             }
@@ -102,14 +110,27 @@ if __name__ == "__main__":
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
+    double_agent = None
+    # Create double agent
+    if adversarial_play:
+        graph = tf.compat.v1.Graph()
+        with graph.as_default():
+            double_sess = tf.compat.v1.Session(graph=graph)
+            double_agent = PPO(sess=double_sess, memory=memory, model_name=model_name, recurrent=args.recurrent)
+            # Initialize variables of models
+            init = tf.compat.v1.global_variables_initializer()
+            double_sess.run(init)
+
     # Open the environment with all the desired flags
     env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
-                                  worker_id=work_id, with_stats=True, size_stats=33,
+                                  worker_id=work_id, with_stats=True, size_stats=31,
                                   size_global=10, agent_separate=False, with_class=False, with_hp=False,
                                   with_previous=True, verbose=False, manual_input=False,
-                                  _max_episode_timesteps=max_episode_timestep)
+                                  _max_episode_timesteps=max_episode_timestep,
 
-
+                                  # Adversarial play
+                                  use_double_agent=adversarial_play, double_agent=double_agent, action_size=19,
+                          )
 
     # If we want to use IRL, create a reward model
     reward_model = None
@@ -131,7 +152,11 @@ if __name__ == "__main__":
                     logging=logging, total_episode=total_episode, curriculum=curriculum,
                     frequency_mode=frequency_mode,
                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
-                    fixed_reward_model=fixed_reward_model)
+                    fixed_reward_model=fixed_reward_model,
+
+                    # Adversarial play
+                    double_agent=double_agent, adversarial_play=adversarial_play
+                    )
     try:
         runner.run()
     finally:

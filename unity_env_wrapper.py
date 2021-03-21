@@ -14,9 +14,13 @@ class UnityEnvWrapper(Environment):
     def __init__(self, game_name = None, no_graphics = True, seed = None, worker_id=0, size_global = 8, size_two = 5,
                  with_local = True, size_three = 3, with_stats=True, size_stats = 1,
                  with_previous=True, manual_input = False, config = None, curriculum = None, verbose = False,
-                 agent_separate = False, agent_stats = 6,
+                 agent_separate = False, agent_stats = 6, action_size = 19,
                  _max_episode_timesteps = 100,
-                 with_class=False, with_hp = False, size_class = 3, use_double_agent = False, double_agent = None, reward_model = None):
+                 with_class=False, with_hp = False, size_class = 3,
+                 # Double agent
+                 use_double_agent=False, double_agent = None, play_with_random=0.33,
+                 # Reward model
+                 reward_model = None):
 
         self.probabilities = []
 
@@ -26,6 +30,7 @@ class UnityEnvWrapper(Environment):
         self.size_three = size_three
         self.with_stats = with_stats
         self.size_stats = size_stats
+        self.action_size = action_size
 
         self.manual_input = manual_input
         self.with_previous = with_previous
@@ -53,11 +58,15 @@ class UnityEnvWrapper(Environment):
         self.one_hot = True
         self.reward_model = reward_model
         self._max_episode_timesteps = _max_episode_timesteps
+
+        # Adversarial play
         if(self.use_double_agent):
             self.double_brain = self.unity_env.brain_names[1]
             self.double_agent = double_agent
+            self.play_with_random = play_with_random
+
         self.global_timesteps = 0
-        self.double_agent_prob = 0.33
+
 
         self.with_transformer = False
 
@@ -66,7 +75,7 @@ class UnityEnvWrapper(Environment):
     def to_one_hot(self, a, channels):
         return (np.arange(channels) == a[..., None]).astype(float)
 
-    def get_input_observation(self, env_info, action=None, transformer=True):
+    def get_input_observation(self, env_info, action=None, transformer=False):
         size = self.size_global * self.size_global * self.input_channels
 
         global_in = env_info.vector_observations[0][:size]
@@ -462,10 +471,10 @@ class UnityEnvWrapper(Environment):
             while len(env_info.vector_observations) <= 0:
                 double_info = info[self.double_brain]
                 obs = self.get_input_observation(double_info)
-                if np.random.rand() > 0.33:
-                    act = self.double_agent.act(states=obs, deterministic=True, independent=True)
+                if np.random.rand() > self.play_with_random:
+                    act = self.double_agent.eval([obs])[0]
                 else:
-                    act = np.random.randint(0, 17)
+                    act = np.random.randint(0, self.action_size)
                 info = self.unity_env.step({self.default_brain: [], self.double_brain: [act]})
                 env_info = info[self.default_brain]
 
