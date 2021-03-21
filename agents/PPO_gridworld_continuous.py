@@ -299,6 +299,7 @@ class PPO:
 
         print(global_state.shape)
         global_state = tf.math.reduce_max(global_state, axis=2)
+        global_state = tf.reshape(global_state, [-1, 1024])
         print(global_state.shape)
         input('...')
 
