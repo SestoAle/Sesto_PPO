@@ -82,6 +82,8 @@ class PPO:
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
                 else:
+                    print('yehyaheay')
+                    input('...')
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables
 
