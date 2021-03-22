@@ -146,7 +146,7 @@ class HRunner:
                 local_entropies.append(self.env.entropy(probs[0]))
 
                 # Execute in the environment
-                state_n, done, reward = self.env.execute(action, man_action)
+                state_n, done, reward = self.env.execute(action)
                 man_reward += reward
 
                 # If exists a reward model, use it instead of the env reward

@@ -1,5 +1,5 @@
 from agents.PPO import PPO
-from agents.PPO_manager import PPO as PPOC
+from agents.PPO_manager import PPO as PPOM
 import tensorflow as tf
 import numpy as np
 import utils
@@ -32,7 +32,7 @@ class HierarchicalAgent:
         self.workers = []
 
         # Instantiate the manager
-        self.manager = PPOC(
+        self.manager = PPOM(
             self.manager_sess, memory=self.manager_memory, p_lr=self.manager_lr,  name='manager', action_size=num_workers,
             action_type='discrete', action_min_value=0, action_max_value=1, num_workers=num_workers
         )
