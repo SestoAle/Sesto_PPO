@@ -131,7 +131,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="OpenWorldLittle", no_graphics=True, worker_id=1)
+    env = OpenWorldEnv(game_name="envs/OpenWorldLittle", no_graphics=True, worker_id=1)
 
     # No IRL
     reward_model = None
