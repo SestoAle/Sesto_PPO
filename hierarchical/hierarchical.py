@@ -117,7 +117,7 @@ class HierarchicalAgent:
             action = action[0]
             probs = probs[0]
         except Exception as e:
-            print(probs)
+            #print(probs)
             print(e)
             print(man_actions)
             input('...')
