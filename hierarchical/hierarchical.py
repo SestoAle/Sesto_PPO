@@ -1,5 +1,5 @@
-from agents.PPO_gridworld import PPO
-from agents.PPO_gridworld_continuous import PPO as PPOC
+from agents.PPO import PPO
+from agents.PPO_manager import PPO as PPOC
 import tensorflow as tf
 import numpy as np
 import utils
@@ -34,7 +34,7 @@ class HierarchicalAgent:
         # Instantiate the manager
         self.manager = PPOC(
             self.manager_sess, memory=self.manager_memory, p_lr=self.manager_lr,  name='manager', action_size=num_workers,
-            action_type='continuous', action_min_value=0, action_max_value=1
+            action_type='continuous', action_min_value=0, action_max_value=1, num_workers=num_workers
         )
 
         # Instantiate the workers

@@ -15,7 +15,7 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
+    def __init__(self, sess, num_workers, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1.0,
                  action_max_value=1.0,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
@@ -36,6 +36,7 @@ class PPO:
         self.name = name
         self.norm_reward = norm_reward
         self.model_name = model_name
+        self.num_workers = num_workers
 
         # PPO hyper-parameters
         self.epsilon = epsilon
@@ -65,7 +66,7 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 512], name='state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 256 * self.num_workers], name='state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -292,7 +293,7 @@ class PPO:
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
 
-        global_state = tf.reshape(global_state, [-1,2,256])
+        global_state = tf.reshape(global_state, [-1,self.num_workers,256])
         global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
         global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
                                     name='transformer_global')
