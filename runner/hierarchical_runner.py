@@ -146,7 +146,7 @@ class HRunner:
                 local_entropies.append(self.env.entropy(probs[0]))
 
                 # Execute in the environment
-                state_n, done, reward, info = self.env.execute(action, man_action)
+                state_n, done, reward = self.env.execute(action, man_action)
                 man_reward += reward
 
                 # If exists a reward model, use it instead of the env reward
@@ -169,7 +169,7 @@ class HRunner:
                     self.agent.workers[man_action].add_to_buffer(state, state_n, action, reward, logprob, False)
 
                 # Get the cumulative reward
-                episode_reward += info['reward_all']
+                episode_reward += reward
 
                 state = state_n
                 step += 1
