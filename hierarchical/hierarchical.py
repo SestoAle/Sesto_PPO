@@ -100,22 +100,22 @@ class HierarchicalAgent:
 
     def eval_continuous_worker(self, state, man_actions):
         # Get the probability of each worker
-        man_actions += eps
+        #man_actions += eps
         # Softmax
         #man_actions = np.exp(man_actions) / np.sum(np.exp(man_actions), -1)
-        probs = np.zeros(self.workers_action_size)
-        for wg, wk in zip(man_actions, self.workers):
-            work_action, work_logprob, work_probs = wk.eval(state)
-            probs += (work_probs[0] * wg)
+        # probs = np.zeros(self.workers_action_size)
+        # for wg, wk in zip(man_actions, self.workers):
+        #     work_action, work_logprob, work_probs = wk.eval(state)
+        #     probs += (work_probs[0] * wg)
         
-        probs /= np.sum(man_actions)
-        probs = utils.boltzmann(probs, 1)
+        #probs /= np.sum(man_actions)
+        #probs = utils.boltzmann(probs, 1)
         # Sample action
         try:
-            action = np.argmax(np.random.multinomial(1, probs))
-            #action, log_probs, probs = self.workers[man_actions].eval(state)
-            #action = action[0]
-            #probs = probs[0]
+            #action = np.argmax(np.random.multinomial(1, probs))
+            action, log_probs, probs = self.workers[man_actions].eval(state)
+            action = action[0]
+            probs = probs[0]
         except Exception as e:
             print(probs)
             print(e)

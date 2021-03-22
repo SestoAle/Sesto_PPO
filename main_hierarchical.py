@@ -1,4 +1,4 @@
-from hierarchical.hierarchical_gridworld import HierarchicalAgent
+from hierarchical.hierarchical import HierarchicalAgent
 from runner.hierarchical_runner import HRunner
 import os
 import tensorflow as tf
