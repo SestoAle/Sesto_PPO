@@ -124,12 +124,12 @@ class HRunner:
                     man_reward = 0
                     #man_action, man_logprob, man_probs= self.agent.eval_manager([man_state])
                     # Eval with latent, so first eval the workers
-                    man_state = np.asarray([])
-                    for w in self.agent.workers:
-                        _, _, _, w_latent = w.eval_with_latent([state])
-                        man_state = np.concatenate([man_state, w_latent[0]])
+                    # man_state = np.asarray([])
+                    # for w in self.agent.workers:
+                    #     _, _, _, w_latent = w.eval_with_latent([state])
+                    #     man_state = np.concatenate([man_state, w_latent[0]])
 
-                    man_state = dict(global_in=man_state)
+                    # man_state = dict(global_in=man_state)
                     man_action, man_logprob, man_probs = self.agent.eval_manager([man_state])
                     #
 

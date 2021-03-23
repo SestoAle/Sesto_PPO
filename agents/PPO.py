@@ -67,7 +67,7 @@ class PPO:
             self.local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
             self.agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
             self.target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
-            self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, self.action_size], name='previous_acts')
+            self.previous_acts = tf.compat.v1.placeholder(tf.float32, [None, 19], name='previous_acts')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):

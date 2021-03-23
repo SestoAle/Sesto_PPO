@@ -52,10 +52,11 @@ class OpenWorldEnv:
         self._max_episode_timesteps = 600
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
-        self.previous_action = None
         self.actions_eps = 0.1
+        self.previous_action = [0, 0]
 
     def execute(self, actions):
+
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -69,14 +70,18 @@ class OpenWorldEnv:
 
         self.previous_action = actions
 
-        reward += reward_action
-
         state = dict(global_in=env_info.vector_observations[0])
+        # Concatenate last previous action
+        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
+
         return state, done, reward
 
     def reset(self):
+        self.previous_action = [0, 0]
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
+        # Concatenate last previous action
+        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
         return state
 
     def entropy(self, probs):
@@ -125,7 +130,7 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworl_rec', p_lr=5e-6, v_lr=5e-6,
+        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworl_prev', p_lr=5e-6, v_lr=5e-6,
                     recurrent=args.recurrent)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()

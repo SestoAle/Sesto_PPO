@@ -32,9 +32,9 @@ class HierarchicalAgent:
         self.workers = []
 
         # Instantiate the manager
-        self.manager = PPOM(
+        self.manager = PPO(
             self.manager_sess, memory=self.manager_memory, p_lr=self.manager_lr,  name='manager', action_size=num_workers,
-            action_type='discrete', action_min_value=0, action_max_value=1, num_workers=num_workers
+            action_type='discrete', action_min_value=0, action_max_value=1
         )
 
         # Instantiate the workers

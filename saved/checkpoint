@@ -1,2 +1,2 @@
-model_checkpoint_path: "adversarial"
-all_model_checkpoint_paths: "adversarial"
+model_checkpoint_path: "hierarchical"
+all_model_checkpoint_paths: "hierarchical"
