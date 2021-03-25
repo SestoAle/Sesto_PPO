@@ -72,12 +72,12 @@ if __name__ == "__main__":
         'thresholds': [100000e6, 1e6, 1e6, 1e6, 3e6, 3e6],
         'parameters':
             {
-                'minTargetHp': [10],
+                'minTargetHp': [20],
                 'maxTargetHp': [20],
-                'minAgentHp': [10],
+                'minAgentHp': [20],
                 'maxAgentHp': [20],
-                'minNumLoot': [0.04],
-                'maxNumLoot': [0.3],
+                'minNumLoot': [0.2],
+                'maxNumLoot': [0.2],
                 'minAgentMp': [0],
                 'maxAgentMp': [0],
                 'numActions': [17],
