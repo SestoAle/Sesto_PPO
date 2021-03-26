@@ -18,12 +18,12 @@ class HierarchicalAgent:
         self.frequency = 5
 
         # Manager and Workers parameters
-        self.manager_memory = 5
+        self.manager_memory = 10
         self.manager_frequency = 5
         self.workers_memory = 5
         self.manager_timescale = 1
         self.workers_frequency = 5
-        self.workers_action_size = 5
+        self.workers_action_size = 19
         # Whether workers are trainable or not
         self.trainable_workers = False
         self.continuous_manager = True
