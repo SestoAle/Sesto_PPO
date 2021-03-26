@@ -137,7 +137,7 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = MultiAgent(sess=sess, num_agent=2, model_name='multi_agent', centralized_value_function=args.central_value)
+        agent = MultiAgent(sess=sess, num_agent=2, model_name=model_name, centralized_value_function=args.central_value)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
