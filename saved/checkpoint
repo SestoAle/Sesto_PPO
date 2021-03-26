@@ -1,2 +1,2 @@
-model_checkpoint_path: "adversarial"
-all_model_checkpoint_paths: "adversarial"
+model_checkpoint_path: "multi_agent_no_central"
+all_model_checkpoint_paths: "multi_agent_no_central"
