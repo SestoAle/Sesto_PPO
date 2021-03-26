@@ -36,9 +36,13 @@ parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations f
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 
+# Multi agent
+parser.add_argument('-cv', '--central-value', dest='central_value', action='store_true')
+
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
+parser.set_defaults(central_value=False)
 
 args = parser.parse_args()
 
@@ -133,13 +137,13 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = MultiAgent(sess=sess, num_agent=2, model_name='multi_agent')
+        agent = MultiAgent(sess=sess, num_agent=2, model_name='multi_agent', centralized_value_function=args.central_value)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name='envs/OpenWorldMA_complex', no_graphics=True, worker_id=1)
+    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=work_id)
 
     # No IRL
     reward_model = None
