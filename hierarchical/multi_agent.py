@@ -18,6 +18,7 @@ class MultiAgent:
                 self.agents.append(PPO(sess, action_type='continuous', action_size=2, model_name='ma_{}'.format(i),
                                    p_lr=5e-6, v_lr=5e-6, recurrent=recurrent, name='ma_{}'.format(i)))
             else:
+                print('OHOHOHOHO')
                 self.agents.append(PPO_value(sess, action_type='continuous', action_size=2, model_name='ma_{}'.format(i),
                                        p_lr=5e-6, v_lr=5e-6, recurrent=recurrent, name='ma_{}'.format(i)))
 
