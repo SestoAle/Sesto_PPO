@@ -143,7 +143,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=work_id)
+    env = OpenWorldEnv(game_name="envs/OpenWorldMA_complex", no_graphics=True, worker_id=work_id)
 
     # No IRL
     reward_model = None
