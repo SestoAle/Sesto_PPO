@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='multi_agent')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWorldMA_complex", no_graphics=True, worker_id=work_id)
+    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=work_id)
 
     # No IRL
     reward_model = None

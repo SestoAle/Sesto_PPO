@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=5)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=1)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=1000)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
@@ -43,7 +43,7 @@ parser.add_argument('-cv', '--central-value', dest='central_value', action='stor
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
-parser.set_defaults(central_value=False)
+parser.set_defaults(central_value=True)
 
 args = parser.parse_args()
 
@@ -71,11 +71,6 @@ class OpenWorldEnv:
         self.env.step()
         decision_steps, terminal_steps = self.env.get_steps(self.behavior_name)
 
-        first_state = dict(global_in=decision_steps.obs[0][0, :])
-        second_state = dict(global_in=decision_steps.obs[0][1, :])
-        third_state = dict(global_in=decision_steps.obs[0][2, :])
-        state = [first_state, second_state, third_state]
-
         if(len(terminal_steps.interrupted) > 0):
             done = terminal_steps.interrupted
             first_state = dict(global_in=terminal_steps.obs[0][0, :])
@@ -83,6 +78,10 @@ class OpenWorldEnv:
             third_state = dict(global_in=terminal_steps.obs[0][2, :])
             state = [first_state, second_state, third_state]
         else:
+            first_state = dict(global_in=decision_steps.obs[0][0, :])
+            second_state = dict(global_in=decision_steps.obs[0][1, :])
+            third_state = dict(global_in=decision_steps.obs[0][2, :])
+            state = [first_state, second_state, third_state]
             done = [False, False, False]
 
         reward = decision_steps.reward
