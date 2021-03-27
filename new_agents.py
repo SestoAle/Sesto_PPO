@@ -160,7 +160,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
+    env = OpenWorldEnv(game_name="envs/multigrid", no_graphics=True, worker_id=1)
 
     # No IRL
     reward_model = None
