@@ -1,6 +1,5 @@
-from agents.PPO_no_value_open import PPO
-from agents.PPO_openworld import PPO as PPO_value
-from value_function.central_value_open import CentralValue
+from agents.PPO_no_value_open_grid import PPO
+from value_function.central_value_grid import CentralValue
 import tensorflow as tf
 import numpy as np
 
@@ -15,7 +14,7 @@ class MultiAgent:
         # Initialize all agents
         for i in range(self.num_agent):
             if self.centralized_value_function:
-                self.agents.append(PPO(sess, action_type='continuous', action_size=2, model_name='ma_{}'.format(i),
+                self.agents.append(PPO(sess, action_type='discrete', action_size=7, model_name='ma_{}'.format(i),
                                    p_lr=5e-6, v_lr=5e-6, recurrent=recurrent, name='ma_{}'.format(i)))
             else:
                 print('OHOHOHOHO')
@@ -70,9 +69,11 @@ class MultiAgent:
 
         if self.centralized_value_function:
             # Get the central value function state and pass it to the central value function buffer
-            central_value_state = []
-            for s in state:
-                central_value_state = np.concatenate([central_value_state, s['global_in']])
+            for i, s in enumerate(state):
+                if i == 0:
+                    central_value_state = [s['global_in']]
+                else:
+                    central_value_state = np.concatenate([central_value_state, [s['global_in']]])
 
             central_value_state = dict(global_in=central_value_state)
             # Add to buffer
