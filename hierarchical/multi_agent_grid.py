@@ -5,17 +5,20 @@ import numpy as np
 
 class MultiAgent:
 
-    def __init__(self, num_agent, sess, recurrent=False, model_name='multi_agent', centralized_value_function=True):
+    def __init__(self, num_agent, sess, recurrent=False, model_name='multi_agent', centralized_value_function=True,
+                 memory = 10):
         self.num_agent = num_agent
         self.agents = []
         self.sess = sess
         self.model_name = model_name
         self.centralized_value_function = centralized_value_function
+        self.memory = memory
         # Initialize all agents
         for i in range(self.num_agent):
             if self.centralized_value_function:
                 self.agents.append(PPO(sess, action_type='discrete', action_size=7, model_name='ma_{}'.format(i),
-                                   p_lr=3e-4, v_lr=3e-4, recurrent=recurrent, name='ma_{}'.format(i)))
+                                   p_lr=3e-4, v_lr=3e-4, recurrent=recurrent, name='ma_{}'.format(i),
+                                   memory=self.memory, p_num_itr=30, batch_fraction=0.1))
             else:
                 print('OHOHOHOHO')
                 self.agents.append(PPO_value(sess, action_type='continuous', action_size=2, model_name='ma_{}'.format(i),
@@ -23,7 +26,7 @@ class MultiAgent:
 
         # Initialize value function
         if self.centralized_value_function:
-            self.central_value = CentralValue(sess, v_lr=3e-4)
+            self.central_value = CentralValue(sess, v_lr=3e-4, memory=self.memory, v_num_itr=30, batch_fraction=0.1)
 
         self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
 

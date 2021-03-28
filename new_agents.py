@@ -148,16 +148,17 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 1
+    frequency = 10
     # Memory of the agent (in episode)
-    memory = 5
+    memory = 10
 
     # Create agent
     graph = tf.compat.v1.Graph()
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = MultiAgent(sess=sess, num_agent=3, model_name=model_name, centralized_value_function=args.central_value)
+        agent = MultiAgent(sess=sess, num_agent=3, model_name=model_name, centralized_value_function=args.central_value,
+                           memory=memory)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
