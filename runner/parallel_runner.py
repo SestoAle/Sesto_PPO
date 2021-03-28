@@ -32,7 +32,7 @@ class EpisodeThreaded(Thread):
             local_entropies = []
             while not done:
                 actions, logprobs, probs = self.agent.eval(state)
-                actions = actions[0]
+                #actions = actions[0]
                 state_n, done, reward = self.env.execute(actions)
 
                 reward = reward[0]
