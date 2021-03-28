@@ -41,6 +41,8 @@ class MultiAgent:
             # Train agents
             for ag in self.agents:
                 ag.train(v_values)
+
+            print("YAHAYAHA")
         else:
             for ag in self.agents:
                 ag.train()
