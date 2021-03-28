@@ -1,5 +1,6 @@
-from agents.PPO_openworld import PPO
-from runner.runner import Runner
+from hierarchical.multi_agent_grid import MultiAgent
+from runner.ma_runner import Runner
+from runner.parallel_runner import Runner
 import os
 import tensorflow as tf
 import argparse
@@ -7,7 +8,8 @@ import numpy as np
 import math
 import gym
 # Load UnityEnvironment and my wrapper
-from mlagents.envs import UnityEnvironment
+from mlagents_envs.environment import UnityEnvironment
+from mlagents_envs.base_env import ActionTuple
 
 
 from reward_model.reward_model import RewardModel
@@ -23,8 +25,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=5)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=1000)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 
@@ -36,9 +38,13 @@ parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations f
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 
+# Multi agent
+parser.add_argument('-cv', '--central-value', dest='central_value', action='store_true')
+
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
+parser.set_defaults(central_value=True)
 
 args = parser.parse_args()
 
@@ -48,40 +54,54 @@ class OpenWorldEnv:
 
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
-        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
-        self._max_episode_timesteps = 100
-        self.default_brain = self.unity_env.brain_names[0]
+        self.env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
+        self._max_episode_timesteps = 1000
+        self.behavior_name = 'PushBlockCollab?team=0'
         self.config = None
         self.actions_eps = 0.1
         self.previous_action = [0, 0]
 
     def execute(self, actions):
 
-        env_info = self.unity_env.step([actions])[self.default_brain]
-        reward = env_info.rewards[0]
-        done = env_info.local_done[0]
+        actions = np.asanyarray(actions)
+        actions = np.reshape(actions, [3,1])
 
-        reward_action = 0
-        if self.previous_action is not None:
-            if np.abs(actions[0] - self.previous_action[0]) > self.actions_eps:
-                reward_action -= 0.2
-            if np.abs(actions[1] - self.previous_action[1]) > self.actions_eps:
-                reward_action -= 0.2
+        actionsAT = ActionTuple()
+        actionsAT.add_discrete(actions)
+        self.env.set_actions(self.behavior_name, actionsAT)
+        self.env.step()
+        decision_steps, terminal_steps = self.env.get_steps(self.behavior_name)
 
-        self.previous_action = actions
+        reward = None
 
-        state = dict(global_in=env_info.vector_observations[0])
-        # Concatenate last previous action
-        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
+        if(len(terminal_steps.interrupted) > 0):
+            done = terminal_steps.interrupted
+            first_state = dict(global_in=terminal_steps.obs[0][0, :])
+            second_state = dict(global_in=terminal_steps.obs[0][1, :])
+            third_state = dict(global_in=terminal_steps.obs[0][2, :])
+            state = [first_state, second_state, third_state]
+            reward = terminal_steps.reward
+        else:
+            first_state = dict(global_in=decision_steps.obs[0][0, :])
+            second_state = dict(global_in=decision_steps.obs[0][1, :])
+            third_state = dict(global_in=decision_steps.obs[0][2, :])
+            state = [first_state, second_state, third_state]
+            done = [False, False, False]
+            reward = decision_steps.reward
+
+
 
         return state, done, reward
 
     def reset(self):
         self.previous_action = [0, 0]
-        env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
-        state = dict(global_in=env_info.vector_observations[0])
-        # Concatenate last previous action
-        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
+        self.env.reset()
+        decision_steps, terminal_steps = self.env.get_steps(self.behavior_name)
+
+        first_state = dict(global_in=decision_steps.obs[0][0,:])
+        second_state = dict(global_in=decision_steps.obs[0][1,:])
+        third_state = dict(global_in=decision_steps.obs[0][2,:])
+        state = [first_state, second_state, third_state]
         return state
 
     def entropy(self, probs):
@@ -93,8 +113,16 @@ class OpenWorldEnv:
     def set_config(self, config):
         return None
 
+    def print_observation(self, state):
+        sum = state[:,:,0] * 0
+        for i in range(1,7):
+            sum += state[:,:,i]*(i)
+
+        print(sum)
+
+
     def close(self):
-        self.unity_env.close()
+        self.env.close()
 
 
 if __name__ == "__main__":
@@ -130,27 +158,30 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworl_prev', p_lr=5e-6, v_lr=5e-6,
-                    recurrent=args.recurrent)
+        agent = MultiAgent(sess=sess, num_agent=3, model_name=model_name, centralized_value_function=args.central_value,
+                           memory=memory)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWordlLittle", no_graphics=True, worker_id=1)
+    envs = []
+    for i in range(5):
+        envs.append(OpenWorldEnv(game_name="envs/multigrid", no_graphics=True, worker_id=1 + i))
 
     # No IRL
     reward_model = None
 
     # Create runner
-    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
-                     logging=logging, total_episode=total_episode, curriculum=curriculum,
-                     frequency_mode=frequency_mode,
-                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
-                     fixed_reward_model=fixed_reward_model)
+    runner = Runner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
+                    logging=logging, total_episode=total_episode, curriculum=curriculum,
+                    frequency_mode=frequency_mode,
+                    reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                    fixed_reward_model=fixed_reward_model)
 
     try:
         runner.run()
     finally:
         #save_model(history, model_name, curriculum, agent)
-        env.close()
+        for env in envs:
+            env.close()

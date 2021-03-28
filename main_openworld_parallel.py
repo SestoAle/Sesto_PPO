@@ -1,5 +1,5 @@
 from agents.PPO_openworld import PPO
-from runner.runner import Runner
+from runner.parallel_runner import Runner
 import os
 import tensorflow as tf
 import argparse
@@ -137,13 +137,15 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWordlLittle", no_graphics=True, worker_id=1)
+    envs = []
+    for i in range(5):
+        envs.append(OpenWorldEnv(game_name="envs/OpenWordlLittle", no_graphics=True, worker_id=i + 1))
 
     # No IRL
     reward_model = None
 
     # Create runner
-    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+    runner = Runner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
                      logging=logging, total_episode=total_episode, curriculum=curriculum,
                      frequency_mode=frequency_mode,
                      reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
@@ -153,4 +155,5 @@ if __name__ == "__main__":
         runner.run()
     finally:
         #save_model(history, model_name, curriculum, agent)
-        env.close()
+        for e in envs:
+            e.close()

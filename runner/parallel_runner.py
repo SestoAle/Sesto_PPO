@@ -7,24 +7,63 @@ from threading import Thread
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
-    def __init__(self, env, buffer, agent, index, recurrent = False):
+    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False):
         self.env = env
-        self.buffer = buffer
+        self.parallel_buffer = parallel_buffer
         self.agent = agent
         self.index = index
+        self.num_episode = num_episode
+        self.env.set_config(config)
         super().__init__()
 
     def run(self) -> None:
-        done = False
-        state = self.env.reset()
-        while not done:
-            actions = self.agent.eval([state])[0]
-            state, done, reward = self.env.execute(actions)
-            self.buffer[self.index].append(state)
+        # Run each thread for num_episode episodes
+        for i in range(self.num_episode):
+            done = False
+            step = 0
+
+            # Reset the environment
+            state = self.env.reset()
+
+            # Total episode reward
+            episode_reward = 0
+
+            # Local entropies of the episode
+            local_entropies = []
+            while not done:
+                actions, logprobs, probs = self.agent.eval(state)
+                #actions = actions[0]
+                state_n, done, reward = self.env.execute(actions)
+                if isinstance(reward, list):
+                    reward = reward[0]
+                    done = done[0]
+                episode_reward += reward
+                local_entropies.append(self.env.entropy(probs[0]))
+                # If step is equal than max timesteps, terminate the episode
+                if step >= self.env._max_episode_timesteps - 1:
+                    done = True
+                self.parallel_buffer['states'][self.index].append(state)
+                self.parallel_buffer['states_n'][self.index].append(state)
+                self.parallel_buffer['done'][self.index].append(done)
+                self.parallel_buffer['reward'][self.index].append(reward)
+                self.parallel_buffer['action'][self.index].append(actions)
+                self.parallel_buffer['logprob'][self.index].append(logprobs)
+
+                state = state_n
+                step += 1
+
+            # History statistics
+            self.parallel_buffer['episode_rewards'][self.index].append(episode_reward)
+            self.parallel_buffer['episode_timesteps'][self.index].append(step)
+            self.parallel_buffer['mean_entropies'][self.index].append(np.mean(local_entropies))
+            self.parallel_buffer['std_entropies'][self.index].append(np.std(local_entropies))
+
+
+
 
 class Runner:
-    def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
-                 frequency_mode='episodes', random_actions=None, num_thread=5,
+    def __init__(self, agent, frequency, envs, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
+                 frequency_mode='episodes', random_actions=None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  # Adversarial Play
@@ -40,10 +79,10 @@ class Runner:
         self.random_actions = random_actions
         self.logging = logging
         self.save_frequency = save_frequency
-        self.env = env
+        self.envs = envs
 
         # Recurrent
-        self.recurrent = self.agent.recurrent
+        self.recurrent = False
 
         # Objects and parameters for IRL
         self.reward_model = reward_model
@@ -67,9 +106,9 @@ class Runner:
                 while answer != 'y' and answer != 'n':
                     answer = input('Do you want to create new demonstrations? [y/n] ')
                 if answer == 'y':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.env)
+                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0])
                 elif answer == 'p':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.env, with_policy=True)
+                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0], with_policy=True)
                 else:
                     print('Loading demonstrations...')
                     dems, vals = self.reward_model.load_demonstrations(self.dems_name)
@@ -78,7 +117,7 @@ class Runner:
                 print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
 
                 # Getting initial experience from the environment to do the first training epoch of the reward model
-                self.get_experience(env, self.reward_frequency, random=True)
+                self.get_experience(self.envs[0], self.reward_frequency, random=True)
                 self.reward_model.train()
 
         # Global runner statistics
@@ -97,6 +136,10 @@ class Runner:
             "env_rewards": []
         }
 
+        # Initialize parallel buffer for savig experience of each thread without race conditions
+        self.parallel_buffer = None
+        self.parallel_buffer = self.clear_parallel_buffer()
+
         # For curriculum training
         self.start_training = 0
         self.current_curriculum_step = 0
@@ -113,6 +156,53 @@ class Runner:
                 self.ep = len(self.history['episode_timesteps'])
                 self.total_step = np.sum(self.history['episode_timesteps'])
 
+    # Return a list of thread, that will save the experience in the shared buffer
+    # The thread will run for 1 episode
+    def create_threads(self, parallel_buffer, agent, config):
+        # The number of thread will be equal to the number of environments
+        threads = []
+        for i, e in enumerate(self.envs):
+            # Create a thread
+            threads.append(EpisodeThreaded(env=e, index=i, agent=agent, parallel_buffer=parallel_buffer, config=config))
+
+        # Return threads
+        return threads
+
+    # Clear parallel buffer to avoid memory leak
+    def clear_parallel_buffer(self):
+        # Manually delete parallel buffer
+        if self.parallel_buffer is not None:
+            del self.parallel_buffer
+        # Initialize parallel buffer for savig experience of each thread without race conditions
+        parallel_buffer = {
+            'states': [],
+            'states_n': [],
+            'done': [],
+            'reward': [],
+            'action': [],
+            'logprob': [],
+            # History
+            'episode_rewards': [],
+            'episode_timesteps': [],
+            'mean_entropies': [],
+            'std_entropies': [],
+        }
+
+        for i in range(len(self.envs)):
+            parallel_buffer['states'].append([])
+            parallel_buffer['states_n'].append([])
+            parallel_buffer['done'].append([])
+            parallel_buffer['reward'].append([])
+            parallel_buffer['action'].append([])
+            parallel_buffer['logprob'].append([])
+            # History
+            parallel_buffer['episode_rewards'].append([])
+            parallel_buffer['episode_timesteps'].append([])
+            parallel_buffer['mean_entropies'].append([])
+            parallel_buffer['std_entropies'].append([])
+
+        return parallel_buffer
+
     def run(self):
 
         # Trainin loop
@@ -120,103 +210,55 @@ class Runner:
         start_time = time.time()
         while self.ep <= self.total_episode:
             # Reset the episode
-            self.ep += 1
-            step = 0
-
             # Set actual curriculum
             config = self.set_curriculum(self.curriculum, np.sum(self.history['episode_timesteps']))
             if self.start_training == 0:
                 print(config)
             self.start_training = 1
-            self.env.set_config(config)
-
-            state = self.env.reset()
-            done = False
-            # Total reward of the episode
-            episode_reward = 0
-            # Total reward of the environment, in case of IRL it can be different from the actual reward of the agent
-            env_episode_reward = 0
-
-            # Save local entropies
-            local_entropies = []
-
-            # If recurrent, initialize hidden state
-            if self.recurrent:
-                internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
-                v_internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
 
             # Episode loop
-            while True:
+            # Run parallel episodes
+            # Create threads
+            threads = self.create_threads(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config)
 
-                # Evaluation - Execute step
-                if not self.recurrent:
-                    action, logprob, probs = self.agent.eval([state])
-                else:
-                    action, logprob, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal, v_internal)
+            # Run the threads
+            for t in threads:
+                t.start()
 
-                if self.random_actions is not None and self.total_step < self.random_actions:
-                    action = [np.random.randint(self.agent.action_size)]
+            # Wait for the threads to finish
+            for t in threads:
+                t.join()
 
-                action = action[0]
-                # Save probabilities for entropy
-                local_entropies.append(self.env.entropy(probs[0]))
+            self.ep += len(threads)
 
-                # Execute in the environment
-                state_n, done, reward = self.env.execute(action)
+            # Add the overall experience to the buffer
+            # Update the history
+            for i in range(len(self.envs)):
 
-                # If exists a reward model, use it instead of the env reward
-                if self.reward_model is not None:
-                    env_episode_reward += reward
-                    # If we use a trained reward model, use a simple eval without updating it
-                    if self.fixed_reward_model:
-                        reward = self.reward_model.eval([state], [state_n], [action])  # , probs=[probs[actions]])
-                    # If not, eval with discriminator and update its buffer for training it
-                    else:
-                        reward = self.reward_model.eval_discriminator([state], [state_n], [probs[0][action]], [action])
-                        self.reward_model.add_to_buffer(state, state_n, action)
-
-                # If step is equal than max timesteps, terminate the episode
-                if step >= self.env._max_episode_timesteps - 1:
-                    done = True
-
-                # Get the cumulative reward
-                episode_reward += reward
-
-                # Update PPO memory
-                if not self.recurrent:
+                # Add to the agent experience in order of execution
+                for state, state_n, action, reward, logprob, done in zip(
+                        self.parallel_buffer['states'][i],
+                        self.parallel_buffer['states_n'][i],
+                        self.parallel_buffer['action'][i],
+                        self.parallel_buffer['reward'][i],
+                        self.parallel_buffer['logprob'][i],
+                        self.parallel_buffer['done'][i]
+                ):
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
-                else:
-                    try:
-                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
-                                                 internal.c[0], internal.h[0], v_internal.c[0], v_internal.h[0])
-                    except Exception as e:
-                        zero_state = np.reshape(internal[0], [-1,])
-                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
-                                                 zero_state, zero_state, zero_state, zero_state)
-                    internal = internal_n
-                    v_internal = v_internal_n
-                state = state_n
 
-                step += 1
-                self.total_step += 1
+                # Upadte the hisotry in order of execution
+                for episode_reward, step, mean_entropies, local_entropies in zip(
+                        self.parallel_buffer['episode_rewards'][i],
+                        self.parallel_buffer['episode_timesteps'][i],
+                        self.parallel_buffer['mean_entropies'][i],
+                        self.parallel_buffer['std_entropies'][i],
 
-                # If frequency timesteos are passed, update the policy
-                if self.frequency_mode == 'timesteps' and \
-                        self.total_step > 0 and self.total_step % self.frequency == 0:
-                    if self.random_actions is not None:
-                        if self.total_step > self.random_actions:
-                            self.agent.train()
-                    else:
-                        self.agent.train()
-
-                # If done, end the episode and save statistics
-                if done:
+                ):
                     self.history['episode_rewards'].append(episode_reward)
                     self.history['episode_timesteps'].append(step)
                     self.history['mean_entropies'].append(np.mean(local_entropies))
                     self.history['std_entropies'].append(np.std(local_entropies))
-                    self.history['env_rewards'].append(env_episode_reward)
-                    break
+
 
             # Logging information
             if self.ep > 0 and self.ep % self.logging == 0:
