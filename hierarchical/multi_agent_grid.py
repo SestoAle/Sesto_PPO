@@ -15,7 +15,7 @@ class MultiAgent:
         for i in range(self.num_agent):
             if self.centralized_value_function:
                 self.agents.append(PPO(sess, action_type='discrete', action_size=7, model_name='ma_{}'.format(i),
-                                   p_lr=5e-6, v_lr=5e-6, recurrent=recurrent, name='ma_{}'.format(i)))
+                                   p_lr=3e-4, v_lr=3e-4, recurrent=recurrent, name='ma_{}'.format(i)))
             else:
                 print('OHOHOHOHO')
                 self.agents.append(PPO_value(sess, action_type='continuous', action_size=2, model_name='ma_{}'.format(i),
@@ -23,7 +23,7 @@ class MultiAgent:
 
         # Initialize value function
         if self.centralized_value_function:
-            self.central_value = CentralValue(sess)
+            self.central_value = CentralValue(sess, v_lr=3e-4)
 
         self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
 
