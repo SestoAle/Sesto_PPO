@@ -7,7 +7,7 @@ from threading import Thread
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
-    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=2, recurrent=False):
+    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.agent = agent
