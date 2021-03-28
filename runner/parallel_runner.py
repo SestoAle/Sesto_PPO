@@ -7,7 +7,7 @@ from threading import Thread
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
-    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False):
+    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=2, recurrent=False):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.agent = agent
@@ -32,7 +32,7 @@ class EpisodeThreaded(Thread):
             local_entropies = []
             while not done:
                 actions, logprobs, probs = self.agent.eval(state)
-                #actions = actions[0]
+                actions = actions[0]
                 state_n, done, reward = self.env.execute(actions)
 
                 reward = reward[0]
@@ -58,8 +58,6 @@ class EpisodeThreaded(Thread):
             self.parallel_buffer['episode_timesteps'][self.index].append(step)
             self.parallel_buffer['mean_entropies'][self.index].append(np.mean(local_entropies))
             self.parallel_buffer['std_entropies'][self.index].append(np.std(local_entropies))
-
-
 
 
 class Runner:
@@ -259,6 +257,9 @@ class Runner:
                     self.history['episode_timesteps'].append(step)
                     self.history['mean_entropies'].append(np.mean(local_entropies))
                     self.history['std_entropies'].append(np.std(local_entropies))
+
+            # Clear parallel buffer
+            self.parallel_buffer = self.clear_parallel_buffer()
 
 
             # Logging information

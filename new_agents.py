@@ -24,8 +24,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=1)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=1000)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=5)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 
@@ -54,7 +54,7 @@ class OpenWorldEnv:
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
         self.env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
-        self._max_episode_timesteps = 1000
+        self._max_episode_timesteps = 100
         self.behavior_name = 'PushBlockCollab?team=0'
         self.config = None
         self.actions_eps = 0.1
