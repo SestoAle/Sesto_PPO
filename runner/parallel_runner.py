@@ -34,9 +34,10 @@ class EpisodeThreaded(Thread):
                 actions, logprobs, probs = self.agent.eval(state)
                 #actions = actions[0]
                 state_n, done, reward = self.env.execute(actions)
-                if isinstance(reward, list):
-                    reward = reward[0]
-                    done = done[0]
+
+                reward = reward[0]
+                done = done[0]
+
                 episode_reward += reward
                 local_entropies.append(self.env.entropy(probs[0]))
                 # If step is equal than max timesteps, terminate the episode
