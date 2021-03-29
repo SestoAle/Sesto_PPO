@@ -314,7 +314,7 @@ class Runner:
                     self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
 
                 # Upadte the hisotry in order of execution
-                for episode_reward, step, mean_entropies, local_entropies in zip(
+                for episode_reward, step, mean_entropies, std_entropies in zip(
                         self.parallel_buffer['episode_rewards'][i],
                         self.parallel_buffer['episode_timesteps'][i],
                         self.parallel_buffer['mean_entropies'][i],
@@ -323,8 +323,8 @@ class Runner:
                 ):
                     self.history['episode_rewards'].append(episode_reward)
                     self.history['episode_timesteps'].append(step)
-                    self.history['mean_entropies'].append(np.mean(local_entropies))
-                    self.history['std_entropies'].append(np.std(local_entropies))
+                    self.history['mean_entropies'].append(mean_entropies)
+                    self.history['std_entropies'].append(std_entropies)
 
             # Clear parallel buffer
             self.parallel_buffer = self.clear_parallel_buffer()
