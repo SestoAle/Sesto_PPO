@@ -1,5 +1,6 @@
 from agents.PPO import PPO
 from runner.runner import Runner
+from runner.parallel_runner import ParallelRunner
 import os
 import time
 import tensorflow as tf
@@ -24,6 +25,7 @@ parser.add_argument('-lg', '--logging', help="How many episodes after logging st
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
+parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 
 # Parse argument for adversarial-play
 parser.add_argument('-ad', '--adversarial-play', help="Whether to use adversarial play",
@@ -41,6 +43,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
+parser.set_defaults(parallel=False)
 
 args = parser.parse_args()
 
@@ -54,6 +57,8 @@ if __name__ == "__main__":
     logging = int(args.logging)
     max_episode_timestep = int(args.max_timesteps)
     sampled_env = int(args.sampled_env)
+    # Whether to use parallel executions
+    parallel = args.parallel
     # Adversarial play
     adversarial_play = args.adversarial_play
     # IRL
@@ -94,11 +99,11 @@ if __name__ == "__main__":
     # Total episode of training
     total_episode = 1e10
     # Units of training (episodes or timesteps)
-    frequency_mode = 'timesteps'
+    frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 64
+    frequency = 5
     # Memory of the agent (in episode)
-    memory = 64
+    memory = 10
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -122,7 +127,8 @@ if __name__ == "__main__":
             double_sess.run(init)
 
     # Open the environment with all the desired flags
-    env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
+    if not parallel:
+        env = UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
                                   worker_id=work_id, with_stats=True, size_stats=31,
                                   size_global=10, agent_separate=False, with_class=False, with_hp=False,
                                   with_previous=True, verbose=False, manual_input=False,
@@ -131,6 +137,19 @@ if __name__ == "__main__":
                                   # Adversarial play
                                   use_double_agent=adversarial_play, double_agent=double_agent, action_size=19,
                           )
+    else:
+        # If parallel, create more environemnts
+        envs = []
+        for i in range(5):
+            envs.append(UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
+                                  worker_id=work_id + 1, with_stats=True, size_stats=31,
+                                  size_global=10, agent_separate=False, with_class=False, with_hp=False,
+                                  with_previous=True, verbose=False, manual_input=False,
+                                  _max_episode_timesteps=max_episode_timestep,
+
+                                  # Adversarial play
+                                  use_double_agent=adversarial_play, double_agent=double_agent, action_size=19,
+                          ))
 
     # If we want to use IRL, create a reward model
     reward_model = None
@@ -148,7 +167,8 @@ if __name__ == "__main__":
                 print("Model loaded!")
 
     # Create runner
-    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+    if not parallel:
+        runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                     logging=logging, total_episode=total_episode, curriculum=curriculum,
                     frequency_mode=frequency_mode,
                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
@@ -157,6 +177,16 @@ if __name__ == "__main__":
                     # Adversarial play
                     double_agent=double_agent, adversarial_play=adversarial_play
                     )
+    else:
+        runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
+                        logging=logging, total_episode=total_episode, curriculum=curriculum,
+                        frequency_mode=frequency_mode,
+                        reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                        fixed_reward_model=fixed_reward_model,
+
+                        # Adversarial play
+                        double_agent=double_agent, adversarial_play=adversarial_play
+                        )
     try:
         runner.run()
     finally:
