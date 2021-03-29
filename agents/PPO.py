@@ -643,8 +643,7 @@ class PPO:
             elif terminal == 2:
                 state = self.obs_to_state([self.buffer['states_n'][i]])
                 feed_dict = self.create_state_feed_dict(state)
-                discounted_reward = self.sess.run([self.value], feed_dict)
-                print(discounted_reward)
+                discounted_reward = self.sess.run([self.value], feed_dict)[0]
                 print('yeahyeah')
                 input('...')
 
