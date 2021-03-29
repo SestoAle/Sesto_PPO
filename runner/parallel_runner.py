@@ -52,12 +52,12 @@ class EpisodeThreaded(Thread):
             # Local entropies of the episode
             local_entropies = []
             while not done:
-                actions, logprobs, probs = self.agent.eval(state)
-                #actions = actions[0]
+                actions, logprobs, probs = self.agent.eval([state])
+                actions = actions[0]
                 state_n, done, reward = self.env.execute(actions)
 
-                reward = reward[0]
-                done = done[0]
+                #reward = reward[0]
+                #done = done[0]
 
                 episode_reward += reward
                 local_entropies.append(self.env.entropy(probs[0]))
