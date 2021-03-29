@@ -667,12 +667,6 @@ class PPO:
 
             discounted_reward = reward + (self.discount*discounted_reward)
 
-            if self.frequency == 'timestep' and i==0 and not terminal:
-                state = self.buffer['states'][-1]
-                state = self.obs_to_state(state)
-                feed_dict = self.create_state_feed_dict(state)
-                discounted_reward = self.sess.run([self.value], feed_dict)
-
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
