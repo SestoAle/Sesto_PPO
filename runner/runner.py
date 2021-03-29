@@ -160,6 +160,9 @@ class Runner:
                 # If step is equal than max timesteps, terminate the episode
                 if step >= self.env._max_episode_timesteps - 1:
                     done = True
+                # Time horizon
+                elif self.frequency_mode == 'timesteps' and step % self.frequency:
+                    done = 2
 
                 # Get the cumulative reward
                 episode_reward += reward
