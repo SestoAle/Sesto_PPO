@@ -658,6 +658,7 @@ class PPO:
                                       range(len(self.buffer['rewards']))):
             if terminal == 1:
                 discounted_reward = 0
+                print('yeahyeah111111')
             elif terminal == 2:
                 state = self.obs_to_state([self.buffer['states_n'][i]])
                 feed_dict = self.create_state_feed_dict(state)
