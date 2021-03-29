@@ -365,25 +365,8 @@ class PPO:
         if self.recurrent_baseline:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
-        # Compute GAE for rewards. If lambda == 1, they are discounted rewards
-        # Compute values for each state
-        states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n'][-1]]]))
-        feed_dict = self.create_state_feed_dict(states)
-        if self.recurrent_baseline:
-            v_internal_states_c = self.buffer['v_internal_states_c']
-            v_internal_states_h = self.buffer['v_internal_states_h']
-            v_internal_states_c = np.reshape(v_internal_states_c, [len(self.buffer['states']), -1])
-            v_internal_states_h = np.reshape(v_internal_states_h, [len(self.buffer['states']), -1])
-            v_internal_states = (v_internal_states_c, v_internal_states_h)
-            feed_dict[self.v_state_in] = v_internal_states
-            feed_dict[self.sequence_lengths] = np.ones(len(self.buffer['states']))
-            feed_dict[self.recurrent_train_length] = 1
-
-        v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        # v_values = np.append(v_values, 0)
-        discounted_rewards = self.compute_gae(v_values)
-        if self.recurrent:
-            batch_size = int(len(self.buffer['states']) * self.batch_fraction)
+        # Before training, compute discounted reward
+        discounted_rewards = self.compute_discounted_reward()
 
         # Train the value function
         for it in range(self.v_num_itr):
@@ -408,7 +391,7 @@ class PPO:
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
 
-            # Get state
+            # Get DeepCrawl state
             # Convert the observation to states
             states = self.obs_to_state(states_mini_batch)
             feed_dict = self.create_state_feed_dict(states)
@@ -429,7 +412,8 @@ class PPO:
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
-        states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n'][-1]]]))
+
+        states = self.obs_to_state(self.buffer['states'])
         feed_dict = self.create_state_feed_dict(states)
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
@@ -442,7 +426,7 @@ class PPO:
             feed_dict[self.recurrent_train_length] = 1
 
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        #v_values = np.append(v_values, 0)
+        v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
         if self.recurrent:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
