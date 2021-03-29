@@ -190,5 +190,8 @@ if __name__ == "__main__":
     try:
         runner.run()
     finally:
-        #save_model(history, model_name, curriculum, agent)
-        env.close()
+        if not parallel:
+            env.close()
+        else:
+            for env in envs:
+                env.close()
