@@ -105,7 +105,7 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent)
+        agent = PPO(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent, frequency_mode=frequency_mode)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
