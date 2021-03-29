@@ -366,7 +366,7 @@ class PPO:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Before training, compute discounted reward
-        value_states = self.obs_to_state(np.concatenate([self.buffer['states'], self.buffer['states_n'][-1]]))
+        value_states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n'][-1]]]))
         value_feed_dict = self.create_state_feed_dict(value_states)
         #discounted_rewards = self.compute_discounted_reward()
         v_values = self.sess.run(self.value, feed_dict=value_feed_dict)
