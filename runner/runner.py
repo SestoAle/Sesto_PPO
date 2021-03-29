@@ -161,7 +161,7 @@ class Runner:
                 if step >= self.env._max_episode_timesteps - 1:
                     done = True
                 # Time horizon
-                elif self.frequency_mode == 'timesteps' and step % self.frequency == 0:
+                elif self.frequency_mode == 'timesteps' and step + 1 % self.frequency == 0:
                     done = 2
 
                 # Get the cumulative reward
