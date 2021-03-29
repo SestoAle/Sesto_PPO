@@ -450,10 +450,10 @@ class UnityEnvWrapper(Environment):
 
 
         env_info = None
-        signal.alarm(0)
+        #signal.alarm(0)
         while env_info == None:
-            signal.signal(signal.SIGALRM, self.handler)
-            signal.alarm(300000)
+            #signal.signal(signal.SIGALRM, self.handler)
+            #signal.alarm(300000)
             try:
                 if self.use_double_agent:
                     info = self.unity_env.step({self.default_brain : [actions], self.double_brain : []})
@@ -537,8 +537,8 @@ class UnityEnvWrapper(Environment):
         env_info = None
 
         while env_info == None:
-            signal.signal(signal.SIGALRM, self.handler)
-            signal.alarm(60)
+            #signal.signal(signal.SIGALRM, self.handler)
+            #signal.alarm(60)
             try:
                 logging.getLogger("mlagents.envs").setLevel(logging.WARNING)
                 env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
