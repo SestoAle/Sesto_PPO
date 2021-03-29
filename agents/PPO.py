@@ -622,7 +622,7 @@ class PPO:
                 del self.buffer['states_n'][0]
                 del self.buffer['rewards'][0]
                 del self.buffer['terminals'][0]
-                del self.buffer['episode_lengths'][0]
+                self.buffer['episode_lengths'] = []
                 if self.recurrent:
                     del self.buffer['internal_states_c'][0]
                     del self.buffer['internal_states_h'][0]
