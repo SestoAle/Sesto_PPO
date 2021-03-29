@@ -659,13 +659,11 @@ class PPO:
             if terminal == 1:
                 discounted_reward = 0
             elif terminal == 2:
-                print("AKJSHDAKJSHD")
                 state = self.obs_to_state([self.buffer['states_n'][i]])
                 feed_dict = self.create_state_feed_dict(state)
                 discounted_reward = self.sess.run([self.value], feed_dict)[0]
 
             discounted_reward = reward + (self.discount*discounted_reward)
-
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
@@ -681,14 +679,13 @@ class PPO:
         gae = 0
 
         # The gae rewards can be computed in reverse
-        # The discounted reward can be computed in reverse
-        for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
-                                         range(len(self.buffer['rewards']))):
+        for i in reversed(range(len(self.buffer['rewards']))):
+            terminal = self.buffer['terminals'][i]
             m = 1
-            if terminal == 1:
+            if terminal:
                 m = 0
 
-            delta = reward + self.discount * v_values[i + 1] * m - v_values[i]
+            delta = self.buffer['rewards'][i] + self.discount * v_values[i + 1] * m - v_values[i]
             gae = delta + self.discount * self.lmbda * m * gae
             reward = gae + v_values[i]
 
