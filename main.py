@@ -43,7 +43,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
-parser.set_defaults(parallel=True)
+parser.set_defaults(parallel=False)
 
 args = parser.parse_args()
 

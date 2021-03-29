@@ -285,26 +285,6 @@ class PPO:
             )
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
-    def print_observation(self, observation, actions = None, reward = None):
-        try:
-            # print(observation)
-            # print(observation['global_in'])
-            print('action = ' + str(actions))
-            print('reward = ' + str(reward))
-            sum = observation['global_in'][:,:,0]*0
-            for i in range(1, 7):
-                sum += observation['global_in'][:,:,i]*i
-            sum = np.flip(np.transpose(sum), 0)
-            print(sum)
-            print(" ")
-            print(observation['agent_stats'])
-            print(observation['target_stats'])
-            # print(observation['local_in'])
-            # print(observation['local_in_two'])
-
-        except Exception as e:
-            pass
-
     # Convolutional network, the same for both the networks
     def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, baseline=False):
         conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
@@ -432,7 +412,7 @@ class PPO:
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
-        states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n'][-1]]]))
+        states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n']][-1]]))
         feed_dict = self.create_state_feed_dict(states)
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
@@ -447,6 +427,7 @@ class PPO:
         v_values = self.sess.run(self.value, feed_dict=feed_dict)
         #v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
+
         if self.recurrent:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
@@ -675,7 +656,7 @@ class PPO:
         discounted_reward = 0
         # The discounted reward can be computed in reverse
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
-                                      range(len(self.buffer['rewards']))):
+                                      reversed(range(len(self.buffer['rewards'])))):
             if terminal == 1:
                 discounted_reward = 0
             elif terminal == 2:
@@ -701,16 +682,17 @@ class PPO:
         # The gae rewards can be computed in reverse
         # The discounted reward can be computed in reverse
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
-                                         range(len(self.buffer['rewards']))):
+                                         reversed(range(len(self.buffer['rewards'])))):
             m = 1
             if terminal == 1:
                 m = 0
+                gae = 0
 
             delta = reward + self.discount * v_values[i + 1] * m - v_values[i]
             gae = delta + self.discount * self.lmbda * m * gae
-            reward = gae + v_values[i]
+            discounted_reward = gae + v_values[i]
 
-            rewards.insert(0, reward)
+            rewards.insert(0, discounted_reward)
 
         # Normalizing
         if self.norm_reward:
