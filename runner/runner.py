@@ -161,7 +161,7 @@ class Runner:
                 if step >= self.env._max_episode_timesteps - 1:
                     done = True
                 # Time horizon
-                elif self.frequency_mode == 'timesteps' and step % self.frequency:
+                elif self.frequency_mode == 'timesteps' and step % self.frequency == 0:
                     done = 2
 
                 # Get the cumulative reward
@@ -195,7 +195,7 @@ class Runner:
                         self.agent.train()
 
                 # If done, end the episode and save statistics
-                if done:
+                if done == 1:
                     self.history['episode_rewards'].append(episode_reward)
                     self.history['episode_timesteps'].append(step)
                     self.history['mean_entropies'].append(np.mean(local_entropies))
