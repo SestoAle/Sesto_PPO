@@ -163,4 +163,4 @@ if __name__ == "__main__":
         runner.run()
     finally:
         #save_model(history, model_name, curriculum, agent)
-        env.close()
+        envs.close()
