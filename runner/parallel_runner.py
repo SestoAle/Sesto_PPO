@@ -310,7 +310,7 @@ class Runner:
                     print('Mean of {} environment episode reward after {} episodes: {}'.
                             format(self.logging, self.ep, np.mean(self.history['env_rewards'][-self.logging:])))
 
-                print('The agent made a total of {} steps'.format(self.total_step))
+                print('The agent made a total of {} steps'.format(np.sum(self.history['episode_timesteps'])))
 
                 self.timer(start_time, time.time())
 
