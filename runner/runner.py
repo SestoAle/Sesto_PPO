@@ -157,7 +157,7 @@ class Runner:
                         reward = self.reward_model.eval_discriminator([state], [state_n], [probs[0][action]], [action])
                         self.reward_model.add_to_buffer(state, state_n, action)
                 print('AH')
-                print(self.total_step + 1 % self.frequency == 0)
+                print(self.total_step + 1)
                 print('AH')
                 # If step is equal than max timesteps, terminate the episode
                 if step >= self.env._max_episode_timesteps - 1:
