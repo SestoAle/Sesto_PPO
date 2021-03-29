@@ -5,6 +5,28 @@ from utils import NumpyEncoder
 import time
 from threading import Thread
 
+# Act thread
+class ActThreaded(Thread):
+    def __init__(self, env, parallel_buffer, actions, index, config):
+        self.env = env
+        self.parallel_buffer = parallel_buffer
+        self.actions = actions
+        self.index = index
+        self.env.set_config(config)
+        super().__init__()
+
+    def run(self) -> None:
+        # Execute the environment with the action
+        state, done, reward = self.env.execute(self.actions)
+        self.parallel_buffer[self.index].append(state)
+        self.parallel_buffer['states'][self.index].append(state)
+        self.parallel_buffer['states_n'][self.index].append(state)
+        self.parallel_buffer['done'][self.index].append(done)
+        self.parallel_buffer['reward'][self.index].append(reward)
+        self.parallel_buffer['action'][self.index].append(self.actions)
+        if done:
+            self.env.reset()
+
 # Epsiode thread
 class EpisodeThreaded(Thread):
     def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False):
@@ -21,7 +43,6 @@ class EpisodeThreaded(Thread):
         for i in range(self.num_episode):
             done = False
             step = 0
-
             # Reset the environment
             state = self.env.reset()
 
@@ -157,12 +178,24 @@ class Runner:
 
     # Return a list of thread, that will save the experience in the shared buffer
     # The thread will run for 1 episode
-    def create_threads(self, parallel_buffer, agent, config):
+    def create_episode_threads(self, parallel_buffer, agent, config):
         # The number of thread will be equal to the number of environments
         threads = []
         for i, e in enumerate(self.envs):
             # Create a thread
             threads.append(EpisodeThreaded(env=e, index=i, agent=agent, parallel_buffer=parallel_buffer, config=config))
+
+        # Return threads
+        return threads
+
+    # Return a list of thread, that will save the experience in the shared buffer
+    # The thread will run for 1 step of the environment
+    def create_act_threds(self, parallel_buffer, config, actions):
+        # The number of thread will be equal to the number of environments
+        threads = []
+        for i, e in enumerate(self.envs):
+            # Create a thread
+            threads.append(ActThreaded(env=e, index=i, parallel_buffer=parallel_buffer, config=config, actions=actions))
 
         # Return threads
         return threads
@@ -216,19 +249,24 @@ class Runner:
             self.start_training = 1
 
             # Episode loop
-            # Run parallel episodes
-            # Create threads
-            threads = self.create_threads(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config)
+            if self.frequency_mode=='episodes':
+            # If frequency is episode, run the episodes in parallel
+                # Create threads
+                threads = self.create_episode_threads(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config)
 
-            # Run the threads
-            for t in threads:
-                t.start()
+                # Run the threads
+                for t in threads:
+                    t.start()
 
-            # Wait for the threads to finish
-            for t in threads:
-                t.join()
+                # Wait for the threads to finish
+                for t in threads:
+                    t.join()
 
-            self.ep += len(threads)
+                self.ep += len(threads)
+            else:
+            # If frequency is timesteps, run only the 'execute' in parallel
+                # Reset the environment
+
 
             # Add the overall experience to the buffer
             # Update the history

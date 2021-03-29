@@ -182,7 +182,7 @@ class Runner:
                 step += 1
                 self.total_step += 1
 
-                # If frequency timesteos are passed, update the policy
+                # If frequency timesteps are passed, update the policy
                 if self.frequency_mode == 'timesteps' and \
                         self.total_step > 0 and self.total_step % self.frequency == 0:
                     if self.random_actions is not None:
