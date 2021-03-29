@@ -162,6 +162,7 @@ class Runner:
                     done = True
                 # Time horizon
                 elif self.frequency_mode == 'timesteps' and self.total_step + 1 % self.frequency == 0:
+                    print("AHAHAHAHAH")
                     done = 2
 
                 # Get the cumulative reward
