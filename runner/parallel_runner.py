@@ -7,25 +7,34 @@ from threading import Thread
 
 # Act thread
 class ActThreaded(Thread):
-    def __init__(self, env, parallel_buffer, actions, index, config):
+    def __init__(self, env, parallel_buffer, actions, index, config, num_steps):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.actions = actions
         self.index = index
         self.env.set_config(config)
+        self.num_steps = num_steps
         super().__init__()
 
     def run(self) -> None:
-        # Execute the environment with the action
-        state, done, reward = self.env.execute(self.actions)
-        self.parallel_buffer[self.index].append(state)
-        self.parallel_buffer['states'][self.index].append(state)
-        self.parallel_buffer['states_n'][self.index].append(state)
-        self.parallel_buffer['done'][self.index].append(done)
-        self.parallel_buffer['reward'][self.index].append(reward)
-        self.parallel_buffer['action'][self.index].append(self.actions)
-        if done:
-            self.env.reset()
+        for i in range(self.num_steps):
+            # Execute the environment with the action
+            state, done, reward = self.env.execute(self.actions)
+
+            if done:
+                self.env.reset()
+
+            if i == self.num_steps - 1:
+                done = 2
+
+            self.parallel_buffer[self.index].append(state)
+            self.parallel_buffer['states'][self.index].append(state)
+            self.parallel_buffer['states_n'][self.index].append(state)
+            self.parallel_buffer['done'][self.index].append(done)
+            self.parallel_buffer['reward'][self.index].append(reward)
+            self.parallel_buffer['action'][self.index].append(self.actions)
+
+
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
@@ -190,12 +199,13 @@ class Runner:
 
     # Return a list of thread, that will save the experience in the shared buffer
     # The thread will run for 1 step of the environment
-    def create_act_threds(self, parallel_buffer, config, actions):
+    def create_act_threds(self, parallel_buffer, config, actions, num_steps):
         # The number of thread will be equal to the number of environments
         threads = []
         for i, e in enumerate(self.envs):
             # Create a thread
-            threads.append(ActThreaded(env=e, index=i, parallel_buffer=parallel_buffer, config=config, actions=actions))
+            threads.append(ActThreaded(env=e, index=i, parallel_buffer=parallel_buffer, config=config, actions=actions,
+                                       num_steps=self.frequency))
 
         # Return threads
         return threads
@@ -264,7 +274,7 @@ class Runner:
 
                 self.ep += len(threads)
             else:
-            # If frequency is timesteps, run only the 'execute' in parallel
+            # If frequency is timesteps, run only the 'execute' in parallel for horizon steps
                 # Reset the environment
                 continue
 
