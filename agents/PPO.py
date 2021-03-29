@@ -366,7 +366,12 @@ class PPO:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
         # Before training, compute discounted reward
-        discounted_rewards = self.compute_discounted_reward()
+        value_states = self.obs_to_state(np.concatenate([self.buffer['states'], self.buffer['states_n'][-1]]))
+        value_feed_dict = self.create_state_feed_dict(value_states)
+        #discounted_rewards = self.compute_discounted_reward()
+        v_values = self.sess.run(self.value, feed_dict=value_feed_dict)
+        # v_values = np.append(v_values, 0)
+        discounted_rewards = self.compute_gae(v_values)
 
         # Train the value function
         for it in range(self.v_num_itr):
@@ -412,22 +417,20 @@ class PPO:
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
-
-        states = self.obs_to_state(self.buffer['states'])
-        feed_dict = self.create_state_feed_dict(states)
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
             v_internal_states_h = self.buffer['v_internal_states_h']
             v_internal_states_c = np.reshape(v_internal_states_c, [len(self.buffer['states']), -1])
             v_internal_states_h = np.reshape(v_internal_states_h, [len(self.buffer['states']), -1])
             v_internal_states = (v_internal_states_c, v_internal_states_h)
-            feed_dict[self.v_state_in] = v_internal_states
-            feed_dict[self.sequence_lengths] = np.ones(len(self.buffer['states']))
-            feed_dict[self.recurrent_train_length] = 1
+            value_feed_dict[self.v_state_in] = v_internal_states
+            value_feed_dict[self.sequence_lengths] = np.ones(len(self.buffer['states']))
+            value_feed_dict[self.recurrent_train_length] = 1
 
-        v_values = self.sess.run(self.value, feed_dict=feed_dict)
-        v_values = np.append(v_values, 0)
+        v_values = self.sess.run(self.value, feed_dict=value_feed_dict)
+        #v_values = np.append(v_values, 0)
         discounted_rewards = self.compute_gae(v_values)
+
         if self.recurrent:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
@@ -666,13 +669,13 @@ class PPO:
         gae = 0
 
         # The gae rewards can be computed in reverse
-        for i in reversed(range(len(self.buffer['rewards']))):
-            terminal = self.buffer['terminals'][i]
+        for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
+                                         range(len(self.buffer['rewards']))):
             m = 1
             if terminal:
                 m = 0
 
-            delta = self.buffer['rewards'][i] + self.discount * v_values[i + 1] * m - v_values[i]
+            delta = reward + self.discount * v_values[i + 1] * m - v_values[i]
             gae = delta + self.discount * self.lmbda * m * gae
             reward = gae + v_values[i]
 
