@@ -266,6 +266,7 @@ class Runner:
             else:
             # If frequency is timesteps, run only the 'execute' in parallel
                 # Reset the environment
+                continue
 
 
             # Add the overall experience to the buffer
