@@ -142,7 +142,7 @@ if __name__ == "__main__":
         envs = []
         for i in range(5):
             envs.append(UnityEnvWrapper(game_name, no_graphics=True, seed=int(time.time()),
-                                  worker_id=work_id + 1, with_stats=True, size_stats=31,
+                                  worker_id=work_id + i, with_stats=True, size_stats=31,
                                   size_global=10, agent_separate=False, with_class=False, with_hp=False,
                                   with_previous=True, verbose=False, manual_input=False,
                                   _max_episode_timesteps=max_episode_timestep,
