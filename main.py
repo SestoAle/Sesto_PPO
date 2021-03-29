@@ -1,6 +1,6 @@
 from agents.PPO import PPO
 from runner.runner import Runner
-from runner.parallel_runner import ParallelRunner
+from runner.parallel_runner import Runner as ParallelRunner
 import os
 import time
 import tensorflow as tf
