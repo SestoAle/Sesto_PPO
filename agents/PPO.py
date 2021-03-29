@@ -380,14 +380,6 @@ class PPO:
         losses = []
         v_losses = []
 
-        for i in range(len(self.buffer['states'])):
-            print(self.print_observation(self.buffer['states'][i]))
-            print(self.print_observation(self.buffer['states_n'][i]))
-            print(self.buffer['actions'][i])
-            print(self.buffer['rewards'][i])
-            print(self.buffer['terminals'][i])
-            input('...')
-
         # Get batch size based on batch_fraction
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
         if self.recurrent_baseline:
