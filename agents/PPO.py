@@ -285,6 +285,26 @@ class PPO:
             )
             return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
 
+    def print_observation(self, observation, actions = None, reward = None):
+        try:
+            # print(observation)
+            # print(observation['global_in'])
+            print('action = ' + str(actions))
+            print('reward = ' + str(reward))
+            sum = observation['global_in'][:,:,0]*0
+            for i in range(1, 7):
+                sum += observation['global_in'][:,:,i]*i
+            sum = np.flip(np.transpose(sum), 0)
+            print(sum)
+            print(" ")
+            print(observation['agent_stats'])
+            print(observation['target_stats'])
+            # print(observation['local_in'])
+            # print(observation['local_in_two'])
+
+        except Exception as e:
+            pass
+
     # Convolutional network, the same for both the networks
     def conv_net(self, global_state, local_state, local_two_state, agent_stats, target_stats, baseline=False):
         conv_10 = self.conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
@@ -359,6 +379,14 @@ class PPO:
     def train(self):
         losses = []
         v_losses = []
+
+        for i in range(len(self.buffer['states'])):
+            print(self.print_observation(self.buffer['states'][i]))
+            print(self.print_observation(self.buffer['states_n'][i]))
+            print(self.buffer['actions'][i])
+            print(self.buffer['rewards'][i])
+            print(self.buffer['terminals'][i])
+            input('...')
 
         # Get batch size based on batch_fraction
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)

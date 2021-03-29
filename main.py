@@ -18,7 +18,7 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -43,7 +43,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
-parser.set_defaults(parallel=False)
+parser.set_defaults(parallel=True)
 
 args = parser.parse_args()
 
