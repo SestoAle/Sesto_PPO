@@ -665,11 +665,13 @@ class PPO:
                 feed_dict = self.create_state_feed_dict(state)
                 discounted_reward = self.sess.run([self.value], feed_dict)[0]
                 print('yeahyeah')
-                input('...')
+
 
             discounted_reward = reward + (self.discount*discounted_reward)
 
             discounted_rewards.insert(0, discounted_reward)
+
+        input('...')
 
         # Normalizing reward
         if self.norm_reward:
