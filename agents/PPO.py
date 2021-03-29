@@ -656,6 +656,7 @@ class PPO:
         # The discounted reward can be computed in reverse
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
                                       range(len(self.buffer['rewards']))):
+            print(terminal)
             if terminal == 1:
                 discounted_reward = 0
                 print('yeahyeah111111')
