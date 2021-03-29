@@ -412,7 +412,7 @@ class PPO:
 
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
-        states = self.obs_to_state(np.concatenate([self.buffer['states'], self.buffer['states_n']]))
+        states = self.obs_to_state(np.concatenate([self.buffer['states'], [self.buffer['states_n'][-1]]]))
         feed_dict = self.create_state_feed_dict(states)
         if self.recurrent_baseline:
             v_internal_states_c = self.buffer['v_internal_states_c']
