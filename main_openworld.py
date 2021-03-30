@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # Total episode of training
     total_episode = 1e10
     # Units of training (episodes or timesteps)
-    frequency_mode = 'episodes'
+    frequency_mode = 'timesteps'
     # Frequency of training (in episode)
     frequency = 10
     # Memory of the agent (in episode)
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworld', p_lr=5e-6, v_lr=5e-6,
-                    recurrent=args.recurrent)
+                    recurrent=args.recurrent, frequency_mode=frequency_mode)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

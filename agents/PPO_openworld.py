@@ -16,7 +16,7 @@ class PPO:
     # PPO agent
     def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
-                 action_max_value=1,
+                 action_max_value=1, frequency_mode='episodes',
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
@@ -35,6 +35,7 @@ class PPO:
         self.name = name
         self.norm_reward = norm_reward
         self.model_name = model_name
+        self.frequency_mode = frequency_mode
 
         # PPO hyper-parameters
         self.epsilon = epsilon
@@ -153,7 +154,6 @@ class PPO:
                 if self.action_type == 'continuous':
                     # Beta Distribution
                     if self.distrbution_type == 'beta':
-                        input('hshshshsh')
                         self.action = self.action_min_value + (
                                 self.action_max_value - self.action_min_value) * self.action
                     # Gaussian Distribution
@@ -548,21 +548,38 @@ class PPO:
                       v_internal_states_c=None, v_internal_states_h=None):
 
         # If we store more than memory episodes, remove the last episode
-        if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
-            idxs_to_remove = self.buffer['episode_lengths'][0]
-            del self.buffer['states'][:idxs_to_remove]
-            del self.buffer['actions'][:idxs_to_remove]
-            del self.buffer['old_probs'][:idxs_to_remove]
-            del self.buffer['states_n'][:idxs_to_remove]
-            del self.buffer['rewards'][:idxs_to_remove]
-            del self.buffer['terminals'][:idxs_to_remove]
-            del self.buffer['episode_lengths'][0]
-            if self.recurrent:
-                del self.buffer['internal_states_c'][:idxs_to_remove]
-                del self.buffer['internal_states_h'][:idxs_to_remove]
-            if self.recurrent_baseline:
-                del self.buffer['v_internal_states_c'][:idxs_to_remove]
-                del self.buffer['v_internal_states_h'][:idxs_to_remove]
+        if self.frequency_mode == 'episodes':
+            if len(self.buffer['episode_lengths']) + 1 >= self.memory + 1:
+                idxs_to_remove = self.buffer['episode_lengths'][0]
+                del self.buffer['states'][:idxs_to_remove]
+                del self.buffer['actions'][:idxs_to_remove]
+                del self.buffer['old_probs'][:idxs_to_remove]
+                del self.buffer['states_n'][:idxs_to_remove]
+                del self.buffer['rewards'][:idxs_to_remove]
+                del self.buffer['terminals'][:idxs_to_remove]
+                del self.buffer['episode_lengths'][0]
+                if self.recurrent:
+                    del self.buffer['internal_states_c'][:idxs_to_remove]
+                    del self.buffer['internal_states_h'][:idxs_to_remove]
+                if self.recurrent_baseline:
+                    del self.buffer['v_internal_states_c'][:idxs_to_remove]
+                    del self.buffer['v_internal_states_h'][:idxs_to_remove]
+        # If we store more than memory timesteps, remove the last timestep
+        elif self.frequency_mode == 'timesteps':
+            if (len(self.buffer['states']) + 1 > self.memory):
+                del self.buffer['states'][0]
+                del self.buffer['actions'][0]
+                del self.buffer['old_probs'][0]
+                del self.buffer['states_n'][0]
+                del self.buffer['rewards'][0]
+                del self.buffer['terminals'][0]
+                self.buffer['episode_lengths'] = []
+                if self.recurrent:
+                    del self.buffer['internal_states_c'][0]
+                    del self.buffer['internal_states_h'][0]
+                if self.recurrent_baseline:
+                    del self.buffer['v_internal_states_c'][0]
+                    del self.buffer['v_internal_states_h'][0]
 
         self.buffer['states'].append(state)
         self.buffer['actions'].append(action)
@@ -577,7 +594,7 @@ class PPO:
             self.buffer['v_internal_states_c'].append(v_internal_states_c)
             self.buffer['v_internal_states_h'].append(v_internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
-        if terminals:
+        if terminals == 1:
             self.buffer['episode_lengths'].append(
                 int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
 
@@ -587,16 +604,22 @@ class PPO:
         discounted_rewards = []
         discounted_reward = 0
         # The discounted reward can be computed in reverse
-        for (terminal, reward) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards'])):
-            if terminal:
+        for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
+                                         reversed(range(len(self.buffer['rewards'])))):
+            if terminal == 1:
                 discounted_reward = 0
+            elif terminal == 2:
+                state = self.obs_to_state([self.buffer['states_n'][i]])
+                feed_dict = self.create_state_feed_dict(state)
+                discounted_reward = self.sess.run([self.value], feed_dict)[0]
 
             discounted_reward = reward + (self.discount * discounted_reward)
             discounted_rewards.insert(0, discounted_reward)
 
         # Normalizing reward
         if self.norm_reward:
-            discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (np.std(discounted_rewards) + eps)
+            discounted_rewards = (discounted_rewards - np.mean(discounted_rewards)) / (
+                        np.std(discounted_rewards) + eps)
 
         return discounted_rewards
 
@@ -607,17 +630,19 @@ class PPO:
         gae = 0
 
         # The gae rewards can be computed in reverse
-        for i in reversed(range(len(self.buffer['rewards']))):
-            terminal = self.buffer['terminals'][i]
+        # The discounted reward can be computed in reverse
+        for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
+                                         reversed(range(len(self.buffer['rewards'])))):
             m = 1
-            if terminal:
+            if terminal == 1:
                 m = 0
+                gae = 0
 
-            delta = self.buffer['rewards'][i] + self.discount * v_values[i + 1] * m - v_values[i]
+            delta = reward + self.discount * v_values[i + 1] * m - v_values[i]
             gae = delta + self.discount * self.lmbda * m * gae
-            reward = gae + v_values[i]
+            discounted_reward = gae + v_values[i]
 
-            rewards.insert(0, reward)
+            rewards.insert(0, discounted_reward)
 
         # Normalizing
         if self.norm_reward:
