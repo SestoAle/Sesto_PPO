@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
+parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=300000000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=300)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)

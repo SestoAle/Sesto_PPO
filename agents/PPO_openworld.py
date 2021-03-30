@@ -14,7 +14,7 @@ eps = 1e-5
 # Actor-Critic PPO. The Actor is independent by the Critic.
 class PPO:
     # PPO agent
-    def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
+    def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=0.33, p_num_itr=20, v_num_itr=1, v_batch_fraction=1,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
                  action_max_value=1, frequency_mode='episodes',
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
@@ -30,6 +30,7 @@ class PPO:
         self.p_lr = p_lr
         self.v_lr = v_lr
         self.batch_fraction = batch_fraction
+        self.v_batch_fraction = v_batch_fraction
         self.p_num_itr = p_num_itr
         self.v_num_itr = v_num_itr
         self.name = name
@@ -335,9 +336,9 @@ class PPO:
         v_losses = []
 
         # Get batch size based on batch_fraction
-        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
+        batch_size = int(len(self.buffer['states']) * self.v_batch_fraction)
         if self.recurrent_baseline:
-            batch_size = int(len(self.buffer['states']) * self.batch_fraction)
+            batch_size = int(len(self.buffer['states']) * self.v_batch_fraction)
 
         # Before training, compute discounted reward
         discounted_rewards = self.compute_discounted_reward()
@@ -403,6 +404,9 @@ class PPO:
         v_values = np.append(v_values, 0)
 
         discounted_rewards = self.compute_gae(v_values)
+
+        # Get batch size based on batch_fraction
+        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
         if self.recurrent:
             batch_size = int(len(self.buffer['states']) * self.batch_fraction)
 
