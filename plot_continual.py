@@ -12,7 +12,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*def_buf*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain*')
 
 args = parser.parse_args()
 
@@ -171,6 +171,7 @@ try:
     x = np.array(range(len(percentages)))
     x2.legend('win rate')
     sns.barplot(x=x, y=(np.array(percentages)), palette=np.array(pal[::-1])[rank], ax=x2)
+    x2.set_ylim(45,np.max(percentages))
     labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'From\nScratch', 'Fine\nTuning']
     x2.set_xticklabels(labels)
     for p in x2.patches:
@@ -191,6 +192,6 @@ else:
 
 y = input('Do you want to save it? ')
 if y == 'y':
-    plt.savefig('imgs/results_def_buf.eps', bbox_inches='tight', pad_inches=0, format='eps')
+    plt.savefig('imgs/results_fountain.eps', bbox_inches='tight', pad_inches=0, format='eps')
 sns.despine()
 plt.show()
