@@ -1,5 +1,6 @@
 from agents.PPO_openworld import PPO
 from runner.runner import Runner
+from runner.parallel_runner import Runner as ParallelRunner
 import os
 import tensorflow as tf
 import argparse
@@ -23,10 +24,11 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=300)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
+parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
@@ -39,6 +41,7 @@ parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a traine
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
+parser.set_defaults(parallel=False)
 
 args = parser.parse_args()
 
@@ -49,7 +52,7 @@ class OpenWorldEnv:
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
         self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
-        self._max_episode_timesteps = 100
+        self._max_episode_timesteps = 300
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
         self.actions_eps = 0.1
@@ -71,17 +74,12 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
-        # Concatenate last previous action
-        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
-
         return state, done, reward
 
     def reset(self):
         self.previous_action = [0, 0]
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
-        # Concatenate last previous action
-        state['global_in'] = np.concatenate([state['global_in'], self.previous_action])
         return state
 
     def entropy(self, probs):
@@ -106,6 +104,7 @@ if __name__ == "__main__":
     logging = int(args.logging)
     max_episode_timestep = int(args.max_timesteps)
     sampled_env = int(args.sampled_env)
+    parallel = args.parallel
     # IRL
     use_reward_model = args.use_reward_model
     reward_model_name = args.reward_model
@@ -130,27 +129,44 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworl_prev', p_lr=5e-6, v_lr=5e-6,
+        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworld', p_lr=5e-6, v_lr=5e-6,
                     recurrent=args.recurrent)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/OpenWordlLittle", no_graphics=True, worker_id=1)
+    if not parallel:
+        # Open the environment with all the desired flags
+        env = OpenWorldEnv(game_name="envs/OpenWorld", no_graphics=True, worker_id=work_id)
+    else:
+        # If parallel, create more environemnts
+        envs = []
+        for i in range(5):
+            envs.append(OpenWorldEnv(game_name="envs/OpenWorld", no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None
 
     # Create runner
-    runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
-                     logging=logging, total_episode=total_episode, curriculum=curriculum,
-                     frequency_mode=frequency_mode,
-                     reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
-                     fixed_reward_model=fixed_reward_model)
+    if not parallel:
+        runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+                        logging=logging, total_episode=total_episode, curriculum=curriculum,
+                        frequency_mode=frequency_mode,
+                        reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                        fixed_reward_model=fixed_reward_model)
+    else:
+        runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
+                        logging=logging, total_episode=total_episode, curriculum=curriculum,
+                        frequency_mode=frequency_mode,
+                        reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                        fixed_reward_model=fixed_reward_model)
 
     try:
         runner.run()
     finally:
-        #save_model(history, model_name, curriculum, agent)
-        env.close()
+        if not parallel:
+            env.close()
+        else:
+            for env in envs:
+                env.close()

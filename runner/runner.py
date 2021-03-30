@@ -6,7 +6,7 @@ import time
 
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
-                 frequency_mode='episodes', random_actions=None,
+                 frequency_mode='episodes', random_actions=None, curriculum_mode='steps',
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  # Adversarial Play
@@ -23,6 +23,7 @@ class Runner:
         self.logging = logging
         self.save_frequency = save_frequency
         self.env = env
+        self.curriculum_mode = curriculum_mode
 
         # Recurrent
         self.recurrent = self.agent.recurrent
@@ -106,7 +107,7 @@ class Runner:
             step = 0
 
             # Set actual curriculum
-            config = self.set_curriculum(self.curriculum, np.sum(self.history['episode_timesteps']))
+            config = self.set_curriculum(self.curriculum, self.history, self.curriculum_mode)
             if self.start_training == 0:
                 print(config)
             self.start_training = 1
@@ -258,10 +259,22 @@ class Runner:
         return history
 
     # Update curriculum for DeepCrawl
-    def set_curriculum(self, curriculum, total_timesteps, mode='steps'):
-        
+    def set_curriculum(self, curriculum, history, mode='steps'):
+
+        total_timesteps = np.sum(history['episode_timesteps'])
+        total_episodes = len(history['episode_timesteps'])
+
         if curriculum == None:
             return None
+
+        if mode == 'episodes':
+            lessons = np.cumsum(curriculum['thresholds'])
+            curriculum_step = 0
+
+            for (index, l) in enumerate(lessons):
+
+                if total_episodes > l:
+                    curriculum_step = index + 1
 
         if mode == 'steps':
             lessons = np.cumsum(curriculum['thresholds'])

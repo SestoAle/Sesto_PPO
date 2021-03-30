@@ -7,38 +7,41 @@ from threading import Thread
 
 # Act thread
 class ActThreaded(Thread):
-    def __init__(self, agent, env, parallel_buffer, index, config, num_steps, state):
+    def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.index = index
         self.env.set_config(config)
         self.num_steps = num_steps
         self.agent = agent
-        self.state = state
+        self.states = states
         self.start()
         super().__init__()
 
     def run(self) -> None:
+        state = self.states[self.index]
         for i in range(self.num_steps):
             # Execute the environment with the action
-            actions, logprobs, probs = self.agent.eval([self.state])
-            state, done, reward = self.env.execute(actions)
+            actions, logprobs, probs = self.agent.eval([state])
+            state_n, done, reward = self.env.execute(actions)
 
             if i == self.num_steps - 1:
                 done = 2
 
             self.parallel_buffer[self.index].append(state)
-            self.parallel_buffer['states'][self.index].append(self.state)
-            self.parallel_buffer['states_n'][self.index].append(state)
+            self.parallel_buffer['states'][self.index].append(state)
+            self.parallel_buffer['states_n'][self.index].append(state_n)
             self.parallel_buffer['done'][self.index].append(done)
             self.parallel_buffer['reward'][self.index].append(reward)
             self.parallel_buffer['action'][self.index].append(actions)
             self.parallel_buffer['logprob'][self.index].append(logprobs)
+            state = state_n
             if done:
                 state = self.env.reset()
-            self.state = state
 
-
+        if not done:
+            self.parallel_buffer['done'][self.index].append(2)
+        self.states[self.index] = state
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
@@ -209,7 +212,7 @@ class Runner:
         for i, e in enumerate(self.envs):
             # Create a thread
             threads.append(ActThreaded(agent=agent, env=e, index=i, parallel_buffer=parallel_buffer, config=config,
-                                       state=states[i], num_steps=num_steps))
+                                       states=states, num_steps=num_steps))
 
         # Return threads
         return threads
@@ -296,7 +299,14 @@ class Runner:
                 for t in threads:
                     t.join()
 
-                states = self.parallel_buffer['states_n']
+                print(states[0])
+                input('...')
+
+                # Get how many episode are passed within threads
+                print(self.parallel_buffer['dones'][:])
+                input('...')
+
+
 
             # Add the overall experience to the buffer
             # Update the history
