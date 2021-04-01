@@ -9,6 +9,7 @@ import math
 import gym
 # Load UnityEnvironment and my wrapper
 from mlagents.envs import UnityEnvironment
+import logging as logs
 
 
 from reward_model.reward_model import RewardModel
@@ -23,9 +24,9 @@ if len(physical_devices) > 0:
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=300000000)
+parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=300)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -51,25 +52,17 @@ class OpenWorldEnv:
 
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
-        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
-        self._max_episode_timesteps = 300
+        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=worker_id, worker_id=worker_id)
+        self._max_episode_timesteps = 100
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
         self.actions_eps = 0.1
         self.previous_action = [0, 0]
 
     def execute(self, actions):
-
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
-
-        reward_action = 0
-        if self.previous_action is not None:
-            if np.abs(actions[0] - self.previous_action[0]) > self.actions_eps:
-                reward_action -= 0.2
-            if np.abs(actions[1] - self.previous_action[1]) > self.actions_eps:
-                reward_action -= 0.2
 
         self.previous_action = actions
 
@@ -78,6 +71,7 @@ class OpenWorldEnv:
 
     def reset(self):
         self.previous_action = [0, 0]
+        logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
         return state
@@ -89,7 +83,7 @@ class OpenWorldEnv:
         return -entr
 
     def set_config(self, config):
-        return None
+        self.config = config
 
     def close(self):
         self.unity_env.close()
@@ -113,12 +107,20 @@ if __name__ == "__main__":
     reward_frequency = int(args.reward_frequency)
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
-    curriculum = None
+    curriculum = {
+        'current_step': 0,
+        "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+        "parameters": {
+            "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
+            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+        }
+    }
 
     # Total episode of training
     total_episode = 1e10
     # Units of training (episodes or timesteps)
-    frequency_mode = 'timesteps'
+    frequency_mode = 'episodes'
     # Frequency of training (in episode)
     frequency = 10
     # Memory of the agent (in episode)
@@ -129,8 +131,9 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='continuous', action_size=2, model_name='openworld', p_lr=5e-6, v_lr=5e-6,
-                    recurrent=args.recurrent, frequency_mode=frequency_mode)
+        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs', p_lr=1e-4,
+                    v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
+                    p_num_itr=10, input_length=92)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
@@ -138,12 +141,12 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = OpenWorldEnv(game_name="envs/OpenWorld", no_graphics=True, worker_id=work_id)
+        env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
     else:
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name="envs/OpenWorld", no_graphics=True, worker_id=work_id + i))
+            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_obstacle", no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None
@@ -152,13 +155,13 @@ if __name__ == "__main__":
     if not parallel:
         runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                         logging=logging, total_episode=total_episode, curriculum=curriculum,
-                        frequency_mode=frequency_mode,
+                        frequency_mode=frequency_mode, curriculum_mode='episodes',
                         reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                         fixed_reward_model=fixed_reward_model)
     else:
         runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
                         logging=logging, total_episode=total_episode, curriculum=curriculum,
-                        frequency_mode=frequency_mode,
+                        frequency_mode=frequency_mode, curriculum_mode='episodes',
                         reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                         fixed_reward_model=fixed_reward_model)
 

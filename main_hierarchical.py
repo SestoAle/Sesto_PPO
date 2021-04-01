@@ -89,6 +89,10 @@ if __name__ == "__main__":
                 'minStartingInitiative': [1],
                 'maxStartingInitiative': [1],
 
+                'taskRatio': [1.],
+                'buffRatio': [3.],
+                'defenceRatio': [3.],
+
                 # 'sampledEnv': [sampled_env]
             }
     }

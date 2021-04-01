@@ -530,7 +530,7 @@ class PPO:
         feed_dict = self.create_state_feed_dict(state)
 
         probs = self.sess.run([self.probs], feed_dict=feed_dict)
-        return np.argmax(probs)
+        return np.argmax(probs), 0, probs[0]
 
     # Eval with a given action
     def eval_action(self, states, actions):

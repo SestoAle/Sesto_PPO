@@ -16,7 +16,7 @@ class PPO:
     # PPO agent
     def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=0.33, p_num_itr=20, v_num_itr=1, v_batch_fraction=1,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
-                 action_max_value=1, frequency_mode='episodes',
+                 action_max_value=1, frequency_mode='episodes', input_length=44,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
@@ -37,6 +37,7 @@ class PPO:
         self.norm_reward = norm_reward
         self.model_name = model_name
         self.frequency_mode = frequency_mode
+        self.input_length = input_length
 
         # PPO hyper-parameters
         self.epsilon = epsilon
@@ -66,7 +67,7 @@ class PPO:
         # Create the network
         with tf.compat.v1.variable_scope(name) as vs:
             # Input spefication (for DeepCrawl)
-            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, 15], name='state')
+            self.global_state = tf.compat.v1.placeholder(tf.float32, [None, self.input_length], name='state')
 
             # Actor network
             with tf.compat.v1.variable_scope('actor'):
@@ -656,6 +657,7 @@ class PPO:
 
     # Save the entire model
     def save_model(self, name=None, folder='saved'):
+        tf.compat.v1.disable_eager_execution()
         self.saver.save(self.sess, '{}/{}'.format(folder, name))
 
         if False:
@@ -687,6 +689,7 @@ class PPO:
     # Load entire model
     def load_model(self, name=None, folder='saved'):
         # self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        tf.compat.v1.disable_eager_execution()
         self.saver.restore(self.sess, '{}/{}'.format(folder, name))
 
         print('Model loaded correctly!')

@@ -18,7 +18,7 @@ class PPO:
     def __init__(self, sess, num_workers, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33, p_num_itr=20, v_num_itr=10,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1.0,
                  action_max_value=1.0,
-                 epsilon=0.2, c1=0.5, c2=0.1, discount=0.85, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
                  # LSTM
