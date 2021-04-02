@@ -220,12 +220,12 @@ if __name__ == "__main__":
                         #action = np.argmax(agents[0].eval([env.get_input_observation(state)])[2])
                 elif args.ensemble_mode == 'entr_add':
                     # Standardize min_entropy
-                    #min_entropy = (min_entropy - 0.14)/0.05
+
                     #min_entropy = 1
-                    #min_entropy = min_entropy/1.35
+                    all_entropies.append(min_entropy)
+                    min_entropy = (min_entropy - 1.2) / (0.9)
                     print(min_entropy)
                     min_entropy = np.clip(min_entropy, 0, 1)
-                    min_entropy = 1
                     # Transform the main state
                     main_state = env.transform_state(state, False)
                     # Transform the sub state
@@ -265,6 +265,10 @@ if __name__ == "__main__":
 
         print("Mean of {} episode for total reward: {}".format(total_episode, np.mean(total_reward)))
         print(len(all_entropies))
+        print(np.min(all_entropies))
+        print(np.max(all_entropies))
+        print(np.mean(all_entropies))
+        print(np.std(all_entropies))
         # print("Saving the experiment..")
         # json_str = json.dumps(all_step_rewards, cls=NumpyEncoder)
         # f = open('reward_experiments/{}.json'.format(args.save_name), "w")
