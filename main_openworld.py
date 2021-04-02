@@ -148,7 +148,7 @@ if __name__ == "__main__":
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_obstacles", no_graphics=True, worker_id=work_id + i))
+            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_obstacle", no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None
