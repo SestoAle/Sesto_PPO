@@ -86,7 +86,7 @@ try:
     labels = ["$\pi_0$", "$\pi_0 + \pi_1$", "$\pi_0 + \pi_1$\n$+ \pi_2$", "$\pi_0 + \pi_1$\n$+ \pi_2 + \pi_3$", "From\nScratch"]
     x = np.arange(len(win_rates))
     sns.barplot(x=x, y=(np.array(win_rates)), palette=np.array(pal[::-1])[rank], ax=x2)
-    x2.set_ylim(45, np.max(win_rates))
+    x2.set_ylim(48, 77.5)
     #x2.set_ylabel('Number of attacks')
     x2.set_xticks(x)
     x2.set_xticklabels(labels)

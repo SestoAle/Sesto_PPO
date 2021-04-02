@@ -12,7 +12,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*fountain**')
 
 args = parser.parse_args()
 
@@ -76,11 +76,15 @@ for (i,plot) in enumerate(plots):
         legends.append('$R_1$')
         colors.append('b')
         colors.append('chocolate')
+        ylim_max = 72
+        ylim_min = 50
     elif any('buff_entr' in f for f in filenames):
         legends.append('$R_0$')
         legends.append('$R_2$')
         colors.append('b')
         colors.append('g')
+        ylim_max = 72
+        ylim_min = 50
     elif any('def_buff' in f for f in filenames):
         legends.append('$R_0$')
         legends.append('$R_1$')
@@ -88,6 +92,8 @@ for (i,plot) in enumerate(plots):
         colors.append('b')
         colors.append('chocolate')
         colors.append('g')
+        ylim_max = 72
+        ylim_min = 50
     else:
         legends.append('$R_0$')
         legends.append('$R_1$')
@@ -95,6 +101,9 @@ for (i,plot) in enumerate(plots):
         colors.append('b')
         colors.append('chocolate')
         colors.append('g')
+        ylim_max = 77.5
+        ylim_min = 48
+
 
     keys = rewards[0].keys()
 
@@ -171,7 +180,7 @@ try:
     x = np.array(range(len(percentages)))
     x2.legend('win rate')
     sns.barplot(x=x, y=(np.array(percentages)), palette=np.array(pal[::-1])[rank], ax=x2)
-    x2.set_ylim(45,np.max(percentages))
+    x2.set_ylim(ylim_min, ylim_max)
     labels = ['Main\nPolicy', 'MP', 'PP', 'ET', 'EW', 'From\nScratch', 'Fine\nTuning']
     x2.set_xticklabels(labels)
     for p in x2.patches:
