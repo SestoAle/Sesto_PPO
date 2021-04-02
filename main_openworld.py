@@ -112,10 +112,10 @@ if __name__ == "__main__":
         "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
             "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
-            "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+            #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
         }
     }
 
@@ -133,9 +133,9 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete', p_lr=1e-4,
+        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs', p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=23)
+                    p_num_itr=10, input_length=92)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete", no_graphics=True, worker_id=work_id + i))
+            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_obstacles", no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None
