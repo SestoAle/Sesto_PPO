@@ -133,7 +133,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs', p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=92)
+                    p_num_itr=10, input_length=23)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_obstacle", no_graphics=True, worker_id=work_id + i))
+            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete", no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None

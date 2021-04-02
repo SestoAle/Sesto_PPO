@@ -294,16 +294,35 @@ class PPO:
 
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
-        global_state, obstacles = tf.split(global_state, [71, 21], axis=1)
-        global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
-        obstacles = tf.reshape(obstacles, [-1, 7, 3])
-        obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
-        obstacles, att_weights = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
-                                                    name='transformer_global')
 
-        obstacles = tf.math.reduce_max(obstacles, axis=2)
-        obstacles = tf.reshape(obstacles, [-1, 1024])
-        global_state = tf.concat([global_state, obstacles], axis=1)
+
+        if self.input_length > 23:
+            global_state, obstacles = tf.split(global_state, [71, 21], axis=1)
+            global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+            obstacles = tf.reshape(obstacles, [-1, 7, 3])
+            obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
+            obstacles, att_weights = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
+                                                        name='transformer_global')
+
+            obstacles = tf.math.reduce_max(obstacles, axis=2)
+            obstacles = tf.reshape(obstacles, [-1, 1024])
+            global_state = tf.concat([global_state, obstacles], axis=1)
+
+        else:
+            agent, goal, lidar = tf.split(global_state, [2, 5, 16], axis=1)
+            agent = self.linear(agent, 1024, name='embs_agent', activation=tf.nn.relu)
+            agent = tf.expand_dims(agent, axis=1)
+            goal = self.linear(goal, 1024, name='embs_goal', activation=tf.nn.relu)
+            goal = tf.expand_dims(goal, axis=1)
+            lidar = tf.reshape(lidar, [-1, 16, 1])
+            lidar = self.linear(lidar, 1024, name='embs_lidar', activation=tf.nn.relu)
+            global_state = tf.concat([agent, goal, lidar], axis=1)
+            global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99,
+                                                 with_embeddings=False,
+                                                 name='transformer_global')
+            global_state = tf.math.reduce_max(global_state, axis=2)
+            global_state = tf.reshape(global_state, [-1, 1024])
+
         return global_state
 
     def sample_batch_for_recurrent(self, length, batch_size):

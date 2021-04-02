@@ -26,7 +26,7 @@ parser.add_argument('-mn', '--model-name', help="The name of the model", default
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=500)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=150)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 
 # Test reward models
@@ -65,7 +65,7 @@ class OpenWorldEnv:
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
         self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=worker_id, worker_id=worker_id)
-        self._max_episode_timesteps = 300
+        self._max_episode_timesteps = 150
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
         self.actions_eps = 0.1
@@ -94,9 +94,9 @@ class OpenWorldEnv:
             return state
         else:
             state = state['global_in']
-            new_state = state[:23]
-            # for p in range(7, 71, 4):
-            #     new_state = np.append(new_state, state[p])
+            new_state = state[:7]
+            for p in range(7, 71, 4):
+                new_state = np.append(new_state, state[p])
 
             return dict(global_in=new_state)
 
@@ -147,7 +147,7 @@ if __name__ == "__main__":
             else:
                 agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs',
                             p_lr=1e-4, v_lr=1e-4, recurrent=False, frequency_mode='episodes',
-                            distribution='gaussian', p_num_itr=10, input_length=44)
+                            distribution='gaussian', p_num_itr=10, input_length=92)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -225,6 +225,7 @@ if __name__ == "__main__":
                     #min_entropy = min_entropy/1.35
                     print(min_entropy)
                     min_entropy = np.clip(min_entropy, 0, 1)
+                    min_entropy = 1
                     # Transform the main state
                     main_state = env.transform_state(state, False)
                     # Transform the sub state
