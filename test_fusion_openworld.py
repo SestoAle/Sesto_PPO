@@ -223,8 +223,8 @@ if __name__ == "__main__":
 
                     #min_entropy = 1
                     all_entropies.append(min_entropy)
-                    min_entropy = (min_entropy - 1.2) / (0.9)
                     print(min_entropy)
+                    min_entropy = (min_entropy - 1.2) / (0.9)
                     min_entropy = np.clip(min_entropy, 0, 1)
                     # Transform the main state
                     main_state = env.transform_state(state, False)

@@ -297,7 +297,7 @@ class PPO:
 
 
         if self.input_length > 23:
-            global_state, obstacles = tf.split(global_state, [71, 21], axis=1)
+            global_state, obstacles = tf.split(global_state, [87, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
