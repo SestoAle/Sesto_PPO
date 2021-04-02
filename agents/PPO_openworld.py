@@ -309,19 +309,20 @@ class PPO:
             global_state = tf.concat([global_state, obstacles], axis=1)
 
         else:
-            agent, goal, lidar = tf.split(global_state, [2, 5, 16], axis=1)
-            agent = self.linear(agent, 1024, name='embs_agent', activation=tf.nn.relu)
-            agent = tf.expand_dims(agent, axis=1)
-            goal = self.linear(goal, 1024, name='embs_goal', activation=tf.nn.relu)
-            goal = tf.expand_dims(goal, axis=1)
-            lidar = self.linear(lidar, 1024, name='embs_lidar', activation=tf.nn.relu)
-            lidar = tf.expand_dims(lidar, axis=1)
-            global_state = tf.concat([agent, goal, lidar], axis=1)
-            global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99,
-                                                 with_embeddings=False,
-                                                 name='transformer_global')
-            global_state = tf.math.reduce_max(global_state, axis=2)
-            global_state = tf.reshape(global_state, [-1, 1024])
+            # agent, goal, lidar = tf.split(global_state, [2, 5, 16], axis=1)
+            # agent = self.linear(agent, 1024, name='embs_agent', activation=tf.nn.relu)
+            # agent = tf.expand_dims(agent, axis=1)
+            # goal = self.linear(goal, 1024, name='embs_goal', activation=tf.nn.relu)
+            # goal = tf.expand_dims(goal, axis=1)
+            # lidar = self.linear(lidar, 1024, name='embs_lidar', activation=tf.nn.relu)
+            # lidar = tf.expand_dims(lidar, axis=1)
+            # global_state = tf.concat([agent, goal, lidar], axis=1)
+            # global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99,
+            #                                      with_embeddings=False,
+            #                                      name='transformer_global')
+            # global_state = tf.math.reduce_max(global_state, axis=2)
+            # global_state = tf.reshape(global_state, [-1, 1024])
+            global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
         return global_state
 
