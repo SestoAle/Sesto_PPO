@@ -315,7 +315,7 @@ class PPO:
             goal = self.linear(goal, 1024, name='embs_goal', activation=tf.nn.relu)
             goal = tf.expand_dims(goal, axis=1)
             lidar = self.linear(lidar, 1024, name='embs_lidar', activation=tf.nn.relu)
-            goal = tf.expand_dims(goal, axis=1)
+            lidar = tf.expand_dims(lidar, axis=1)
             global_state = tf.concat([agent, goal, lidar], axis=1)
             global_state, att_weights = transformer(global_state, n_head=4, hidden_size=1024, mask_value=99,
                                                  with_embeddings=False,
