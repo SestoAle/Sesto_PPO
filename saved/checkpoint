@@ -1,2 +1,2 @@
-model_checkpoint_path: "openworld_discrete_obs"
-all_model_checkpoint_paths: "openworld_discrete_obs"
+model_checkpoint_path: "hierarchical"
+all_model_checkpoint_paths: "hierarchical"

@@ -5,6 +5,7 @@ import numpy as np
 from math import sqrt
 import utils
 from copy import deepcopy
+from layers.layers import transformer
 
 import os
 
@@ -293,7 +294,16 @@ class PPO:
 
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
+        global_state, obstacles = tf.split(global_state, [71, 21], axis=1)
         global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+        obstacles = tf.reshape(obstacles, [-1, 7, 3])
+        obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
+        obstacles, att_weights = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
+                                                    name='transformer_global')
+
+        obstacles = tf.math.reduce_max(obstacles, axis=2)
+        obstacles = tf.reshape(obstacles, [-1, 1024])
+        global_state = tf.concat([global_state, obstacles], axis=1)
         return global_state
 
     def sample_batch_for_recurrent(self, length, batch_size):
