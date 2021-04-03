@@ -22,8 +22,8 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
-parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
@@ -80,6 +80,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
+        print(-entr)
         return -entr
 
     def set_config(self, config):
@@ -93,6 +94,7 @@ if __name__ == "__main__":
 
     # DeepCrawl arguments
     model_name = args.model_name
+    game_name = args.game_name
     work_id = int(args.work_id)
     save_frequency = int(args.save_frequency)
     logging = int(args.logging)
@@ -117,7 +119,6 @@ if __name__ == "__main__":
             "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
             "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-
             "coin_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
         }
     }
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_coin', p_lr=1e-4,
+        agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, input_length=156)
         # Initialize variables of models
@@ -151,7 +152,7 @@ if __name__ == "__main__":
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name="envs/OpenWorldDiscrete_coin", no_graphics=True, worker_id=work_id + i))
+            envs.append(OpenWorldEnv(game_name=game_name, no_graphics=True, worker_id=work_id + i))
 
     # No IRL
     reward_model = None
