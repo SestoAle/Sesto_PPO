@@ -138,7 +138,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_coin', p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=108)
+                    p_num_itr=10, input_length=156)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

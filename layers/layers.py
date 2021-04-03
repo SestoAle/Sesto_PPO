@@ -114,3 +114,25 @@ def layer_norm(input_tensor, axis):
   """Run layer normalization on the axis dimension of the tensor."""
   layer_norma = tf.keras.layers.LayerNormalization(axis = axis)
   return layer_norma(input_tensor)
+
+# Circular 1D convolution
+def circ_conv1d(inp, **conv_kwargs):
+    valid_activations = {'relu': tf.nn.relu, 'tanh': tf.tanh, '': None}
+    assert 'kernel_size' in conv_kwargs, f"Kernel size needs to be specified for circular convolution layer."
+    conv_kwargs['activation'] = valid_activations[conv_kwargs['activation']]
+
+    # Add T to input
+    inp = tf.expand_dims(inp, axis = 1)
+    # Concatenate input for circular convolution
+    kernel_size = conv_kwargs['kernel_size']
+    num_pad = kernel_size // 2
+    inp_shape = shape_list(inp)
+    inp_rs = tf.reshape(inp, shape=[inp_shape[0] * inp_shape[1]] + inp_shape[2:]) #  (BS * T, NE, feats)
+    inp_padded = tf.concat([inp_rs[..., -num_pad:, :], inp_rs, inp_rs[..., :num_pad, :]], -2)
+    out = tf.compat.v1.layers.conv1d(inp_padded,
+                           kernel_initializer=tf.initializers.GlorotUniform(),
+                           padding='valid',
+                           **conv_kwargs)
+
+    out = tf.reshape(out, shape=inp_shape[:3] + [conv_kwargs['filters']])
+    return out

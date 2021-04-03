@@ -5,7 +5,7 @@ import numpy as np
 from math import sqrt
 import utils
 from copy import deepcopy
-from layers.layers import transformer
+from layers.layers import transformer, circ_conv1d
 
 import os
 
@@ -297,8 +297,13 @@ class PPO:
 
 
         if self.input_length > 23:
-            global_state, obstacles = tf.split(global_state, [87, 21], axis=1)
+            global_state, rays, obstacles = tf.split(global_state, [7, 128, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+
+            rays = tf.reshape(rays, [-1, 64, 2])
+            rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
+            rays = tf.reshape(rays, [-1, 64*32])
+
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
             obstacles, att_weights = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
@@ -306,7 +311,7 @@ class PPO:
 
             obstacles = tf.math.reduce_max(obstacles, axis=2)
             obstacles = tf.reshape(obstacles, [-1, 1024])
-            global_state = tf.concat([global_state, obstacles], axis=1)
+            global_state = tf.concat([global_state, rays, obstacles], axis=1)
 
         else:
             # agent, goal, lidar = tf.split(global_state, [2, 5, 16], axis=1)
