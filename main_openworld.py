@@ -81,7 +81,6 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
-        print(-entr)
         return -entr
 
     def set_config(self, config):
