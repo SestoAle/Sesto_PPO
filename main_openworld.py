@@ -81,6 +81,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
+
         return -entr
 
     def set_config(self, config):
@@ -140,7 +141,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=70)
+                    p_num_itr=10, input_length=84)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

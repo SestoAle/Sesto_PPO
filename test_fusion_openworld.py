@@ -144,11 +144,11 @@ if __name__ == "__main__":
             if i == 0:
                 agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete',
                             p_lr=1e-4, v_lr=1e-4, recurrent=False, frequency_mode='episodes',
-                            distribution='gaussian', p_num_itr=10, input_length=156)
+                            distribution='gaussian', p_num_itr=10, input_length=70)
             else:
                 agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs',
                             p_lr=1e-4, v_lr=1e-4, recurrent=False, frequency_mode='episodes',
-                            distribution='gaussian', p_num_itr=10, input_length=156)
+                            distribution='gaussian', p_num_itr=10, input_length=70)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -227,7 +227,6 @@ if __name__ == "__main__":
                     print(min_entropy)
 
                     #min_entropy = (min_entropy - 1.2) / (0.9)
-                    min_entropy=0
                     min_entropy = np.clip(min_entropy, 0, 1)
                     # Transform the main state
                     main_state = env.transform_state(state, False)
