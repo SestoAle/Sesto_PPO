@@ -22,7 +22,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -139,7 +139,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=1e-4,
                     v_lr=1e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=156)
+                    p_num_itr=10, input_length=70)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

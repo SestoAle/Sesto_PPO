@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='hierarchical')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='asdsadasd')
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
@@ -55,7 +55,7 @@ class OpenWorldEnv:
         self.no_graphics = no_graphics
         self.env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=None, worker_id=worker_id)
         self._max_episode_timesteps = 100
-        self.behavior_name = 'PushBlockCollab?team=0'
+        self.behavior_name = 'PushBlock?team=0'
         self.config = None
         self.actions_eps = 0.1
         self.previous_action = [0, 0]
@@ -95,8 +95,17 @@ class OpenWorldEnv:
     def reset(self):
         self.previous_action = [0, 0]
         self.env.reset()
+        #for k in self.env.behavior_specs.keys():
+        #    print(k)
         decision_steps, terminal_steps = self.env.get_steps(self.behavior_name)
 
+
+        print(decision_steps.obs)
+        print(np.shape(decision_steps.obs[0]))
+        print(np.shape(decision_steps.obs[1]))
+        print(np.reshape(decision_steps.obs[1][0], [7,-1]))
+        print(np.reshape(decision_steps.obs[0][0], [7, -1]))
+        input('....')
         first_state = dict(global_in=decision_steps.obs[0][0,:])
         second_state = dict(global_in=decision_steps.obs[0][1,:])
         third_state = dict(global_in=decision_steps.obs[0][2,:])
@@ -164,7 +173,7 @@ if __name__ == "__main__":
         sess.run(init)
 
     # Open the environment with all the desired flags
-    env = OpenWorldEnv(game_name="envs/multigrid", no_graphics=True, worker_id=1)
+    env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
 
     # No IRL
     reward_model = None
