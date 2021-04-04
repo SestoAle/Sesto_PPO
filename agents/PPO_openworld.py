@@ -297,10 +297,10 @@ class PPO:
 
 
         if self.input_length > 23:
-            global_state, rays, obstacles = tf.split(global_state, [7, 42, 21], axis=1)
+            global_state, rays, obstacles = tf.split(global_state, [7, 56, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
-            rays = tf.reshape(rays, [-1, 14, 3])
+            rays = tf.reshape(rays, [-1, 14, 4])
             rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
             rays = tf.reshape(rays, [-1, 14*32])
 
