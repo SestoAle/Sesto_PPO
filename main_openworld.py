@@ -22,7 +22,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete2')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -121,7 +121,8 @@ if __name__ == "__main__":
             #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
             "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "coin_range":     [19, 19, 19, 19, 19, 19, 19, 19, 19, 19],
-            "num_coin":       [15, 14, 13, 12, 11, 10, 9, 8, 7, 6],
+            #"num_coin":       [15, 14, 13, 12, 11, 10, 9, 8, 7, 6],
+            "num_coin":       [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
         }
     }
 
