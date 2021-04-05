@@ -116,8 +116,8 @@ if __name__ == "__main__":
         "parameters": {
             "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
             #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "coin_range":     [19, 19, 19, 19, 19, 19, 19, 19, 19, 19],
