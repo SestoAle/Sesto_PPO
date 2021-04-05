@@ -64,7 +64,7 @@ class OpenWorldEnv:
 
     def __init__(self, game_name, no_graphics, worker_id):
         self.no_graphics = no_graphics
-        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=worker_id, worker_id=worker_id)
+        self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=np.random.randint(100), worker_id=worker_id)
         self._max_episode_timesteps = 150
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     curriculum = None
 
     # Total episode of training
-    total_episode = 10
+    total_episode = 20
 
     # Open the environment with all the desired flags
     env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0)
@@ -226,7 +226,8 @@ if __name__ == "__main__":
                     all_entropies.append(min_entropy)
                     print(min_entropy)
 
-                    #min_entropy = (min_entropy - 1.2) / (0.9)
+                    min_entropy = min_entropy / (0.2)
+                    #min_entropy = 0
                     min_entropy = np.clip(min_entropy, 0, 1)
                     # Transform the main state
                     main_state = env.transform_state(state, False)
