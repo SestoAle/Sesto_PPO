@@ -311,6 +311,11 @@ class PPO:
                 rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
                 rays = tf.reshape(rays, [-1, 14 * 32])
 
+            coins = tf.reshape(coins, [-1, 14, 2])
+            coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+                                      name='transformer_local', pooling='max')
+            coins = tf.reshape(coins, [-1, 1024])
+
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
             obstacles, _ = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
@@ -319,7 +324,7 @@ class PPO:
             obstacles = tf.reshape(obstacles, [-1, 1024])
 
             if self.with_circular:
-                global_state = tf.concat([global_state, rays, obstacles], axis=1)
+                global_state = tf.concat([global_state, obstacles, coins, rays], axis=1)
             else:
                 global_state = tf.concat([global_state, obstacles], axis=1)
 
