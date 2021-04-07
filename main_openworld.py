@@ -68,8 +68,6 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
-        print(actions)
-        input('...')
         return state, done, reward
 
     def reset(self):
@@ -84,7 +82,6 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
-        print(-entr)
         return -entr
 
     def set_config(self, config):
