@@ -22,7 +22,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete2,openworld_discrete_coin2')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discretes3,openworld_discrete_coin3')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -144,11 +144,11 @@ if __name__ == "__main__":
             if i == 0:
                 agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete',
                             p_lr=1e-4, v_lr=1e-4, recurrent=False, frequency_mode='episodes',
-                            distribution='gaussian', p_num_itr=10, input_length=84)
+                            distribution='gaussian', p_num_itr=10, input_length=98, with_circular=False)
             else:
                 agent = PPO(sess, action_type='discrete', action_size=9, model_name='openworld_discrete_obs',
                             p_lr=1e-4, v_lr=1e-4, recurrent=False, frequency_mode='episodes',
-                            distribution='gaussian', p_num_itr=10, input_length=84)
+                            distribution='gaussian', p_num_itr=10, input_length=98, with_circular=True)
             # Load agent
             agent.load_model(m, 'saved')
             agents.append(agent)
@@ -224,11 +224,10 @@ if __name__ == "__main__":
 
                     #min_entropy = 1
                     all_entropies.append(min_entropy)
-                    print(min_entropy)
 
-                    min_entropy = min_entropy / (0.2)
                     #min_entropy = 0
-                    min_entropy = np.clip(min_entropy, 0, 1)
+                    print(min_entropy)
+                    min_entropy = np.clip(min_entropy, 0.2, 0.8)
                     # Transform the main state
                     main_state = env.transform_state(state, False)
                     # Transform the sub state

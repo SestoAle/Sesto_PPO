@@ -17,7 +17,7 @@ class PPO:
     # PPO agent
     def __init__(self, sess, p_lr=5e-6, v_lr=5e-6, batch_fraction=0.33, p_num_itr=20, v_num_itr=1, v_batch_fraction=1,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
-                 action_max_value=1, frequency_mode='episodes', input_length=44,
+                 action_max_value=1, frequency_mode='episodes', input_length=44, with_circular=True,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
 
@@ -39,6 +39,8 @@ class PPO:
         self.model_name = model_name
         self.frequency_mode = frequency_mode
         self.input_length = input_length
+        # Whether to use LIDAR observation
+        self.with_circular = with_circular
 
         # PPO hyper-parameters
         self.epsilon = epsilon
@@ -295,23 +297,31 @@ class PPO:
     # Convolutional network, the same for both policy and value networks
     def conv_net(self, global_state, baseline=False):
 
-
         if self.input_length > 23:
-            global_state, rays, obstacles = tf.split(global_state, [7, 56, 21], axis=1)
+            global_state, rays, coins, obstacles = tf.split(global_state, [7, 70, 28, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
-            rays = tf.reshape(rays, [-1, 14, 4])
-            rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
-            rays = tf.reshape(rays, [-1, 14*32])
+            # rays = tf.reshape(rays, [-1, 14, 5])
+            # rays, _ = transformer(rays, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+            #                           name='transformer_local', pooling='max')
+            # rays = tf.reshape(rays, [-1, 1024])
+
+            if self.with_circular:
+                rays = tf.reshape(rays, [-1, 14, 5])
+                rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
+                rays = tf.reshape(rays, [-1, 14 * 32])
 
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
-            obstacles, att_weights = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
+            obstacles, _ = transformer(obstacles, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=False,
                                                         name='transformer_global')
-
             obstacles = tf.math.reduce_max(obstacles, axis=2)
             obstacles = tf.reshape(obstacles, [-1, 1024])
-            global_state = tf.concat([global_state, rays, obstacles], axis=1)
+
+            if self.with_circular:
+                global_state = tf.concat([global_state, rays, obstacles], axis=1)
+            else:
+                global_state = tf.concat([global_state, obstacles], axis=1)
 
         else:
             # agent, goal, lidar = tf.split(global_state, [2, 5, 16], axis=1)
