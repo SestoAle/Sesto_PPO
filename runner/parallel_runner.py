@@ -51,11 +51,13 @@ class EpisodeThreaded(Thread):
         self.agent = agent
         self.index = index
         self.num_episode = num_episode
+        self.recurrent = recurrent
         self.env.set_config(config)
         super().__init__()
 
     def run(self) -> None:
         # Run each thread for num_episode episodes
+
         for i in range(self.num_episode):
             done = False
             step = 0
@@ -67,8 +69,19 @@ class EpisodeThreaded(Thread):
 
             # Local entropies of the episode
             local_entropies = []
+
+            # If recurrent, initialize hidden state
+            if self.recurrent:
+                internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+                v_internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+
             while not done:
-                actions, logprobs, probs = self.agent.eval([state])
+                # Evaluation - Execute step
+                if not self.recurrent:
+                    actions, logprobs, probs = self.agent.eval([state])
+                else:
+                    actions, logprobs, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal,
+                                                                                                 v_internal)
                 actions = actions[0]
                 state_n, done, reward = self.env.execute(actions)
 
@@ -86,6 +99,12 @@ class EpisodeThreaded(Thread):
                 self.parallel_buffer['reward'][self.index].append(reward)
                 self.parallel_buffer['action'][self.index].append(actions)
                 self.parallel_buffer['logprob'][self.index].append(logprobs)
+
+                if self.recurrent:
+                    self.parallel_buffer['internal'][self.index].append(internal)
+                    self.parallel_buffer['v_internal'][self.index].append(v_internal)
+                    internal = internal_n
+                    v_internal = v_internal_n
 
                 state = state_n
                 step += 1
@@ -119,7 +138,7 @@ class Runner:
         self.curriculum_mode = curriculum_mode
 
         # Recurrent
-        self.recurrent = False
+        self.recurrent = self.agent.recurrent
 
         # Objects and parameters for IRL
         self.reward_model = reward_model
@@ -200,7 +219,8 @@ class Runner:
         threads = []
         for i, e in enumerate(self.envs):
             # Create a thread
-            threads.append(EpisodeThreaded(env=e, index=i, agent=agent, parallel_buffer=parallel_buffer, config=config))
+            threads.append(EpisodeThreaded(env=e, index=i, agent=agent, parallel_buffer=parallel_buffer, config=config,
+                                           recurrent=self.recurrent))
 
         # Return threads
         return threads
@@ -231,11 +251,14 @@ class Runner:
             'reward': [],
             'action': [],
             'logprob': [],
+            'internal': [],
+            'v_internal': [],
             # History
             'episode_rewards': [],
             'episode_timesteps': [],
             'mean_entropies': [],
             'std_entropies': [],
+
         }
 
         for i in range(len(self.envs)):
@@ -245,6 +268,8 @@ class Runner:
             parallel_buffer['reward'].append([])
             parallel_buffer['action'].append([])
             parallel_buffer['logprob'].append([])
+            parallel_buffer['internal'].append([])
+            parallel_buffer['v_internal'].append([])
             # History
             parallel_buffer['episode_rewards'].append([])
             parallel_buffer['episode_timesteps'].append([])
@@ -313,16 +338,36 @@ class Runner:
             # Update the history
             for i in range(len(self.envs)):
 
-                # Add to the agent experience in order of execution
-                for state, state_n, action, reward, logprob, done in zip(
-                        self.parallel_buffer['states'][i],
-                        self.parallel_buffer['states_n'][i],
-                        self.parallel_buffer['action'][i],
-                        self.parallel_buffer['reward'][i],
-                        self.parallel_buffer['logprob'][i],
-                        self.parallel_buffer['done'][i]
-                ):
-                    self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                if not self.recurrent:
+                    # Add to the agent experience in order of execution
+                    for state, state_n, action, reward, logprob, done in zip(
+                            self.parallel_buffer['states'][i],
+                            self.parallel_buffer['states_n'][i],
+                            self.parallel_buffer['action'][i],
+                            self.parallel_buffer['reward'][i],
+                            self.parallel_buffer['logprob'][i],
+                            self.parallel_buffer['done'][i]
+                    ):
+                        self.agent.add_to_buffer(state, state_n, action, reward, logprob, done)
+                else:
+                    # Add to the agent experience in order of execution
+                    for state, state_n, action, reward, logprob, done, internal, v_internal in zip(
+                            self.parallel_buffer['states'][i],
+                            self.parallel_buffer['states_n'][i],
+                            self.parallel_buffer['action'][i],
+                            self.parallel_buffer['reward'][i],
+                            self.parallel_buffer['logprob'][i],
+                            self.parallel_buffer['done'][i],
+                            self.parallel_buffer['internal'][i],
+                            self.parallel_buffer['v_internal'][i],
+                    ):
+                        try:
+                            self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
+                                                     internal.c[0], internal.h[0], v_internal.c[0], v_internal.h[0])
+                        except Exception as e:
+                            zero_state = np.reshape(internal[0], [-1, ])
+                            self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
+                                                     zero_state, zero_state, zero_state, zero_state)
 
                 # Upadte the hisotry in order of execution
                 for episode_reward, step, mean_entropies, std_entropies in zip(

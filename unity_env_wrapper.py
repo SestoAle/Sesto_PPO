@@ -584,8 +584,6 @@ class UnityEnvWrapper(Environment):
         for prob in probs:
             entropy += (prob + eps) * (math.log(prob + eps) + eps)
 
-        print(-entropy)
-
         return -entropy
 
     def states(self):

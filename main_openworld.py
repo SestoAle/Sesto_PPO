@@ -82,6 +82,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
+        print(-entr)
         return -entr
 
     def set_config(self, config):
@@ -112,7 +113,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000],
+        "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
             "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
@@ -122,8 +123,8 @@ if __name__ == "__main__":
             "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "coin_range":         [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            "max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            "min_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+            "max_num_coin":       [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+            "min_num_coin":       [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
             #"max_num_coin":       [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
             #"min_num_coin":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 
@@ -146,7 +147,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=126)
+                    p_num_itr=10, input_length=96)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
+        env = OpenWorldEnv(game_name=None, no_graphics=False, worker_id=0, max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environemnts
         envs = []

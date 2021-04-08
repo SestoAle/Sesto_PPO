@@ -22,7 +22,7 @@ class PPO:
                  model_name='agent',
 
                  # LSTM
-                 recurrent=False, recurrent_length=4, recurrent_baseline=False,
+                 recurrent=True, recurrent_length=8, recurrent_baseline=False,
 
                  **kwargs):
 
@@ -298,23 +298,24 @@ class PPO:
     def conv_net(self, global_state, baseline=False):
 
         if self.input_length > 23:
-            global_state, rays, coins, obstacles = tf.split(global_state, [7, 70, 28, 21], axis=1)
+            global_state, rays, coins, obstacles = tf.split(global_state, [7, 40, 28, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
-            # rays = tf.reshape(rays, [-1, 14, 5])
-            # rays, _ = transformer(rays, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
-            #                           name='transformer_local', pooling='max')
-            # rays = tf.reshape(rays, [-1, 1024])
+
 
             if self.with_circular:
-                rays = tf.reshape(rays, [-1, 14, 5])
+                # rays = tf.reshape(rays, [-1, 14, 5])
+                # rays, _ = transformer(rays, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+                #                           name='transformer_local', pooling='max')
+                # rays = tf.reshape(rays, [-1, 1024])
+                rays = tf.reshape(rays, [-1, 8, 5])
                 rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
-                rays = tf.reshape(rays, [-1, 14 * 32])
+                rays = tf.reshape(rays, [-1, 8 * 32])
 
-            coins = tf.reshape(coins, [-1, 14, 2])
-            coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
-                                      name='transformer_local', pooling='max')
-            coins = tf.reshape(coins, [-1, 1024])
+                coins = tf.reshape(coins, [-1, 14, 2])
+                coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+                                          name='transformer_coins', pooling='max')
+                coins = tf.reshape(coins, [-1, 1024])
 
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
@@ -324,7 +325,7 @@ class PPO:
             obstacles = tf.reshape(obstacles, [-1, 1024])
 
             if self.with_circular:
-                global_state = tf.concat([global_state, obstacles, coins, rays], axis=1)
+                global_state = tf.concat([global_state, obstacles, rays], axis=1)
             else:
                 global_state = tf.concat([global_state, obstacles], axis=1)
 
