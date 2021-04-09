@@ -275,7 +275,7 @@ class PPO:
                                             kernel_initializer=init)
             return lin
 
-    def conv_layer_2d(self, input, filters, kernel_size, strides=(2, 2), padding="SAME", name='conv',
+    def conv_layer_2d(self, input, filters, kernel_size, strides=(1, 1), padding="SAME", name='conv',
                       activation=None, bias=True):
 
         with tf.compat.v1.variable_scope(name):
@@ -298,7 +298,7 @@ class PPO:
     def conv_net(self, global_state, baseline=False):
 
         if self.input_length > 23:
-            global_state, rays, coins, obstacles = tf.split(global_state, [7, 40, 28, 21], axis=1)
+            global_state, rays, coins, obstacles = tf.split(global_state, [7, 25, 28, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
 
@@ -308,14 +308,23 @@ class PPO:
                 # rays, _ = transformer(rays, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
                 #                           name='transformer_local', pooling='max')
                 # rays = tf.reshape(rays, [-1, 1024])
-                rays = tf.reshape(rays, [-1, 8, 5])
-                rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
-                rays = tf.reshape(rays, [-1, 8 * 32])
+                # rays = tf.reshape(rays, [-1, 8, 5])
+                # rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
+                # rays = tf.reshape(rays, [-1, 8 * 32])
+                #
+
+                rays = tf.reshape(rays, [-1, 5, 5, 1])
+                rays = self.conv_layer_2d(rays, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
+                rays = self.conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
+                rays = tf.reshape(rays, [-1, 5 * 5 * 64])
+
 
                 coins = tf.reshape(coins, [-1, 14, 2])
                 coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
                                           name='transformer_coins', pooling='max')
                 coins = tf.reshape(coins, [-1, 1024])
+
+
 
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
             obstacles = self.linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)

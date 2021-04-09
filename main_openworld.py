@@ -61,6 +61,7 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
+        actions = int(input('actions'))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -82,7 +83,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
-        print(-entr)
+        #print(-entr)
         return -entr
 
     def set_config(self, config):
@@ -147,7 +148,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=96)
+                    p_num_itr=10, input_length=81)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
