@@ -22,7 +22,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin3')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin4')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -61,7 +61,6 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
-        actions = int(input('actions'))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -69,6 +68,7 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
+        print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
         return state, done, reward
 
     def reset(self):

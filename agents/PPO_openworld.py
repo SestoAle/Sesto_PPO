@@ -301,8 +301,6 @@ class PPO:
             global_state, rays, coins, obstacles = tf.split(global_state, [7, 25, 28, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
-
-
             if self.with_circular:
                 # rays = tf.reshape(rays, [-1, 14, 5])
                 # rays, _ = transformer(rays, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
@@ -313,7 +311,10 @@ class PPO:
                 # rays = tf.reshape(rays, [-1, 8 * 32])
                 #
 
-                rays = tf.reshape(rays, [-1, 5, 5, 1])
+                rays = tf.cast(tf.reshape(rays, [-1, 5, 5]), tf.int32)
+                rays = self.embedding(rays, indices=3, size=32, name='rays_embs')
+                print(rays.shape)
+                input('...')
                 rays = self.conv_layer_2d(rays, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
                 rays = self.conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
                 rays = tf.reshape(rays, [-1, 5 * 5 * 64])
@@ -334,7 +335,7 @@ class PPO:
             obstacles = tf.reshape(obstacles, [-1, 1024])
 
             if self.with_circular:
-                global_state = tf.concat([global_state, obstacles, rays], axis=1)
+                global_state = tf.concat([rays], axis=1)
             else:
                 global_state = tf.concat([global_state, obstacles], axis=1)
 

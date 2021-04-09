@@ -309,7 +309,7 @@ class PPO:
         else:
             flat_41 = self.linear(embs_41, 128, name='fc_41', activation=tf.nn.relu)
 
-        embs_51 = self.embedding(target_stats, 125, 256, name='embs_51')
+        embs_51 = tf.nn.tanh(self.embedding(target_stats, 125, 256, name='embs_51'))
         embs_51 = tf.reshape(embs_51, [-1, 15 * 256])
         if not baseline:
             flat_51 = self.linear(embs_51, 256, name='fc_51', activation=tf.nn.relu)
