@@ -68,7 +68,6 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
-        print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
         return state, done, reward
 
     def reset(self):
