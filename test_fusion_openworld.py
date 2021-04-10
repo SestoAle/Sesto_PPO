@@ -226,7 +226,7 @@ if __name__ == "__main__":
                     all_entropies.append(min_entropy)
                     print(min_entropy)
                     #min_entropy = (min_entropy - 0.85)/0.46
-                    min_entropy = np.clip(min_entropy, 0.0, 1.0)
+                    min_entropy = np.clip(min_entropy, 0.1, 0.9)
                     # Transform the main state
                     main_state = env.transform_state(state, False)
                     # Transform the sub state

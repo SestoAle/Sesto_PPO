@@ -22,7 +22,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin4')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin5')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -68,6 +68,7 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
+        #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
         return state, done, reward
 
     def reset(self):
@@ -115,12 +116,12 @@ if __name__ == "__main__":
         'current_step': 0,
         "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
-            #"spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            "spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
-            "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
+            #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+            #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
