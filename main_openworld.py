@@ -148,7 +148,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=81)
+                    p_num_itr=10, input_length=81, with_circular=False)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

@@ -313,8 +313,6 @@ class PPO:
 
                 rays = tf.cast(tf.reshape(rays, [-1, 5, 5]), tf.int32)
                 rays = self.embedding(rays, indices=3, size=32, name='rays_embs')
-                print(rays.shape)
-                input('...')
                 rays = self.conv_layer_2d(rays, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
                 rays = self.conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
                 rays = tf.reshape(rays, [-1, 5 * 5 * 64])
