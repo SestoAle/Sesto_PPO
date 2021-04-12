@@ -22,10 +22,10 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_coin5')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_obs4')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
+parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=1)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
@@ -61,6 +61,7 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
+        #actions = int(input(': '))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -68,7 +69,7 @@ class OpenWorldEnv:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
-        #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
+        #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+225], [15,15])), 0))
         return state, done, reward
 
     def reset(self):
@@ -77,6 +78,7 @@ class OpenWorldEnv:
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
+        #print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
         return state
 
     def entropy(self, probs):
@@ -116,12 +118,12 @@ if __name__ == "__main__":
         'current_step': 0,
         "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
-            "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
-            #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            #"spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
+            "spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+            "obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             "max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
@@ -148,7 +150,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=81, with_circular=False)
+                    p_num_itr=10, input_length=306, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

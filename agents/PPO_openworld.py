@@ -298,7 +298,7 @@ class PPO:
     def conv_net(self, global_state, baseline=False):
 
         if self.input_length > 23:
-            global_state, rays, coins, obstacles = tf.split(global_state, [7, 25, 28, 21], axis=1)
+            global_state, global_grid, rays, coins, obstacles = tf.split(global_state, [7, 225, 25, 28, 21], axis=1)
             global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
             if self.with_circular:
@@ -311,8 +311,14 @@ class PPO:
                 # rays = tf.reshape(rays, [-1, 8 * 32])
                 #
 
+                global_grid = tf.cast(tf.reshape(global_grid, [-1, 15, 15]), tf.int32)
+                global_grid = self.embedding(global_grid, indices=4, size=32, name='global_embs')
+                global_grid = self.conv_layer_2d(global_grid, 32, [3, 3], name='conv_01', activation=tf.nn.relu)
+                global_grid = self.conv_layer_2d(global_grid, 64, [3, 3], name='conv_02', activation=tf.nn.relu)
+                global_grid = tf.reshape(global_grid, [-1, 15 * 15 * 64])
+
                 rays = tf.cast(tf.reshape(rays, [-1, 5, 5]), tf.int32)
-                rays = self.embedding(rays, indices=3, size=32, name='rays_embs')
+                rays = self.embedding(rays, indices=4, size=32, name='rays_embs')
                 rays = self.conv_layer_2d(rays, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
                 rays = self.conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
                 rays = tf.reshape(rays, [-1, 5 * 5 * 64])
@@ -333,7 +339,7 @@ class PPO:
             obstacles = tf.reshape(obstacles, [-1, 1024])
 
             if self.with_circular:
-                global_state = tf.concat([rays], axis=1)
+                global_state = tf.concat([global_grid, rays], axis=1)
             else:
                 global_state = tf.concat([global_state, obstacles], axis=1)
 
@@ -721,7 +727,7 @@ class PPO:
         tf.compat.v1.disable_eager_execution()
         self.saver.save(self.sess, '{}/{}'.format(folder, name))
 
-        if False:
+        if True:
             graph_def = self.sess.graph.as_graph_def()
 
             # freeze_graph clear_devices option
