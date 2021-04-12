@@ -8,14 +8,13 @@ eps = 1e-5
 
 class HierarchicalAgent:
 
-    def __init__(self, sess, manager_lr, workers_lr, num_workers, workers_name=None):
+    def __init__(self, sess, manager_lr, workers_lr, num_workers, workers_name=None, model_name='hierarchical'):
 
         # Neural networks parameters
         self.manager_sess = sess
         self.manager_lr = manager_lr
         self.workers_lr = workers_lr
-        self.model_name = 'hierarchical'
-        self.frequency = 5
+        self.model_name = model_name
 
         # Manager and Workers parameters
         self.manager_memory = 10

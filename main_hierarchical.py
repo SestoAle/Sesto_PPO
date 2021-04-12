@@ -112,7 +112,7 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = HierarchicalAgent(sess=sess, manager_lr=5e-6, workers_lr=5e-6, num_workers=3,
-                                  workers_name=['ranger', 'irl_buff_attack', 'irl_defence_rl'])
+                                  workers_name=['ranger', 'irl_buff_attack', 'irl_defence_rl'], model_name=model_name)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
