@@ -61,7 +61,7 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
-        actions = int(input(': '))
+        #actions = int(input(': '))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -70,8 +70,6 @@ class OpenWorldEnv:
 
         state = dict(global_in=env_info.vector_observations[0])
         #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+225], [15,15])), 0))
-        print(state['global_in'][7:7+12])
-        print(reward)
         return state, done, reward
 
     def reset(self):
@@ -81,7 +79,6 @@ class OpenWorldEnv:
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
         #print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
-        print(state['global_in'][7:7 + 12])
         return state
 
     def entropy(self, probs):
