@@ -1,5 +1,6 @@
 import tensorflow as tf
 from utils import *
+from math import sqrt
 
 ## Layers
 def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None):
@@ -136,3 +137,22 @@ def circ_conv1d(inp, **conv_kwargs):
 
     out = tf.reshape(out, shape=inp_shape[:3] + [conv_kwargs['filters']])
     return out
+
+def conv_layer_2d(input, filters, kernel_size, strides=(1, 1), padding="SAME", name='conv',
+                  activation=None, bias=True):
+
+    with tf.compat.v1.variable_scope(name):
+        conv = tf.compat.v1.layers.conv2d(input, filters, kernel_size, strides, padding=padding, name=name,
+                                          activation=activation, use_bias=bias)
+        return conv
+
+def embedding(input, indices, size, name='embs'):
+    with tf.compat.v1.variable_scope(name):
+        shape = (indices, size)
+        stddev = min(0.1, sqrt(2.0 / (product(xs=shape[:-1]) + shape[-1])))
+        initializer = tf.random.normal(shape=shape, stddev=stddev, dtype=tf.float32)
+        W = tf.Variable(
+            initial_value=initializer, trainable=True, validate_shape=True, name='W',
+            dtype=tf.float32, shape=shape
+        )
+        return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
