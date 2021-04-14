@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 40
+    input_length = 23
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -12,7 +12,7 @@ def obs_to_state(obs):
     return [global_batch]
 
 def network_spec(states):
-    input_length = 40
+    input_length = 23
     with_circular = False
 
     global_state = states[0]
@@ -60,7 +60,9 @@ def network_spec(states):
             global_state = tf.concat([global_state, obstacles], axis=1)
 
     else:
-        agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
+        # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
+        # Jump
+        agent, goal, rays = tf.split(global_state, [6, 5, 12], axis=1)
 
         rays = tf.reshape(rays, [-1, 12, 1])
         rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)

@@ -61,7 +61,7 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
-        #actions = int(input(': '))
+        # actions = int(input(': '))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -70,6 +70,8 @@ class OpenWorldEnv:
 
         state = dict(global_in=env_info.vector_observations[0])
         #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+225], [15,15])), 0))
+        # print("local grid {}".format(np.flip(np.transpose(np.reshape(state['global_in'][7:7 + 25], [5, 5])), 0)))
+        # print("rays {}".format(state['global_in'][7+25:7+25+12]))
         return state, done, reward
 
     def reset(self):
@@ -78,7 +80,8 @@ class OpenWorldEnv:
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
-        #print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
+        # print("local grid {}".format(np.flip(np.transpose(np.reshape(state['global_in'][7:7 + 25], [5, 5])), 0)))
+        # print("rays {}".format(state['global_in'][7 + 25:7 + 25 + 12]))
         return state
 
     def entropy(self, probs):
@@ -150,7 +153,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=40, with_circular=True)
+                    p_num_itr=10, input_length=65, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

@@ -298,8 +298,9 @@ class PPO:
     def conv_net(self, global_state, baseline=False):
 
         if self.input_length > 41:
-            global_state, global_grid, rays, coins, obstacles = tf.split(global_state, [7, 225, 25, 28, 21], axis=1)
-            global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+            agent, goal, grid, rays, obstacles = tf.split(global_state, [4, 3, 25, 12, 21], axis=1)
+            #global_state, global_grid, rays, coins, obstacles = tf.split(global_state, [7, 225, 25, 28, 21], axis=1)
+            #global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
             if self.with_circular:
                 # rays = tf.reshape(rays, [-1, 14, 5])
@@ -311,24 +312,26 @@ class PPO:
                 # rays = tf.reshape(rays, [-1, 8 * 32])
                 #
 
-                global_grid = tf.cast(tf.reshape(global_grid, [-1, 15, 15]), tf.int32)
-                global_grid = self.embedding(global_grid, indices=4, size=32, name='global_embs')
-                global_grid = self.conv_layer_2d(global_grid, 32, [3, 3], name='conv_01', activation=tf.nn.relu)
-                global_grid = self.conv_layer_2d(global_grid, 64, [3, 3], name='conv_02', activation=tf.nn.relu)
-                global_grid = tf.reshape(global_grid, [-1, 15 * 15 * 64])
+                # global_grid = tf.cast(tf.reshape(global_grid, [-1, 15, 15]), tf.int32)
+                # global_grid = self.embedding(global_grid, indices=4, size=32, name='global_embs')
+                # global_grid = self.conv_layer_2d(global_grid, 32, [3, 3], name='conv_01', activation=tf.nn.relu)
+                # global_grid = self.conv_layer_2d(global_grid, 64, [3, 3], name='conv_02', activation=tf.nn.relu)
+                # global_grid = tf.reshape(global_grid, [-1, 15 * 15 * 64])
+                #
+                grid = tf.cast(tf.reshape(grid, [-1, 5, 5]), tf.int32)
+                grid = self.embedding(grid, indices=4, size=32, name='rays_embs')
+                grid = self.conv_layer_2d(grid, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
+                grid = self.conv_layer_2d(grid, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
+                grid = tf.reshape(grid, [-1, 5 * 5 * 64])
 
-                rays = tf.cast(tf.reshape(rays, [-1, 5, 5]), tf.int32)
-                rays = self.embedding(rays, indices=4, size=32, name='rays_embs')
-                rays = self.conv_layer_2d(rays, 32, [3, 3], name='conv_31', activation=tf.nn.relu)
-                rays = self.conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
-                rays = tf.reshape(rays, [-1, 5 * 5 * 64])
+                # coins = tf.reshape(coins, [-1, 14, 2])
+                # coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+                #                           name='transformer_coins', pooling='max')
+                # coins = tf.reshape(coins, [-1, 1024])
 
-
-                coins = tf.reshape(coins, [-1, 14, 2])
-                coins, _ = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
-                                          name='transformer_coins', pooling='max')
-                coins = tf.reshape(coins, [-1, 1024])
-
+                rays = tf.reshape(rays, [-1, 12, 1])
+                rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
+                rays = tf.reshape(rays, [-1, 12 * 32])
 
 
             obstacles = tf.reshape(obstacles, [-1, 7, 3])
@@ -339,7 +342,8 @@ class PPO:
             obstacles = tf.reshape(obstacles, [-1, 1024])
 
             if self.with_circular:
-                global_state = tf.concat([global_grid, rays], axis=1)
+                global_state = tf.concat([goal, rays, grid, obstacles], axis=1)
+                global_state = self.linear(global_state, 1024, name='embs', activation=tf.nn.relu)
             else:
                 global_state = tf.concat([global_state, obstacles], axis=1)
 

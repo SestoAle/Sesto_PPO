@@ -23,11 +23,11 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_discrete_obs4')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_jump')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
@@ -117,18 +117,18 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
+        "thresholds": [60000000, 6000, 6000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
             "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            "obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
+            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
             #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
             #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            "coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            "max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            "min_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+            #"coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
+            #"max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
+            #"min_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
             #"max_num_coin":       [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
             #"min_num_coin":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 
@@ -150,9 +150,9 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5,
+                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=40, with_circular=True)
+                    p_num_itr=10, input_length=23, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

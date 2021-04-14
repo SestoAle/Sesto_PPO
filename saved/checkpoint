@@ -1,2 +1,2 @@
-model_checkpoint_path: "openworld_discrete_obs4"
-all_model_checkpoint_paths: "openworld_discrete_obs4"
+model_checkpoint_path: "openworld_jump"
+all_model_checkpoint_paths: "openworld_jump"
