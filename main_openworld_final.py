@@ -24,7 +24,7 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_jump')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/OpenWorldJump")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [60000000, 6000, 6000, 3000, 3000, 3000, 3000, 3000, 3000],
+        "thresholds": [6000, 6000, 6000, 6000, 6000, 3000, 3000, 3000, 3000],
         "parameters": {
             "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
