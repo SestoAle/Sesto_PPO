@@ -8,6 +8,7 @@ def input_spec():
     local_two_state = tf.compat.v1.placeholder(tf.float32, [None, 3, 3, 52], name='local_two_state')
     agent_stats = tf.compat.v1.placeholder(tf.int32, [None, 16], name='agent_stats')
     target_stats = tf.compat.v1.placeholder(tf.int32, [None, 15], name='target_stats')
+
     previous_acts = tf.compat.v1.placeholder(tf.float32, [None, 19], name='previous_acts')
 
     return [global_state, local_state, local_two_state, agent_stats, target_stats, previous_acts]

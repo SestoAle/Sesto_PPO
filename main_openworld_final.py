@@ -1,4 +1,4 @@
-from agents.PPO_openworld_final import PPO
+from agents.PPO import PPO
 from architectures.openworld_arch import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner

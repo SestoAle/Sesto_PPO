@@ -6,6 +6,7 @@ import time
 from threading import Thread
 
 # Act thread
+# Act thread
 class ActThreaded(Thread):
     def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states):
         self.env = env
@@ -15,20 +16,25 @@ class ActThreaded(Thread):
         self.num_steps = num_steps
         self.agent = agent
         self.states = states
-        self.start()
         super().__init__()
+
 
     def run(self) -> None:
         state = self.states[self.index]
+        total_reward = 0
+        step = 0
+        entropies = []
         for i in range(self.num_steps):
             # Execute the environment with the action
             actions, logprobs, probs = self.agent.eval([state])
+            entropies.append(self.env.entropy(probs[0]))
+            actions = actions[0]
             state_n, done, reward = self.env.execute(actions)
-
+            step += 1
+            total_reward += reward
             if i == self.num_steps - 1:
                 done = 2
 
-            self.parallel_buffer[self.index].append(state)
             self.parallel_buffer['states'][self.index].append(state)
             self.parallel_buffer['states_n'][self.index].append(state_n)
             self.parallel_buffer['done'][self.index].append(done)
@@ -36,11 +42,16 @@ class ActThreaded(Thread):
             self.parallel_buffer['action'][self.index].append(actions)
             self.parallel_buffer['logprob'][self.index].append(logprobs)
             state = state_n
-            if done:
+            if done == 1:
                 state = self.env.reset()
 
         if not done:
-            self.parallel_buffer['done'][self.index].append(2)
+            self.parallel_buffer['done'][self.index][-1] = 2
+
+        self.parallel_buffer['episode_rewards'][self.index].append(total_reward)
+        self.parallel_buffer['episode_timesteps'][self.index].append(self.num_steps)
+        self.parallel_buffer['mean_entropies'][self.index].append(0)
+        self.parallel_buffer['std_entropies'][self.index].append(0)
         self.states[self.index] = state
 
 # Epsiode thread
@@ -289,6 +300,7 @@ class Runner:
             states = []
             for env in self.envs:
                 states.append(env.reset())
+
         while self.ep <= self.total_episode:
             # Reset the episode
             # Set actual curriculum
@@ -314,7 +326,6 @@ class Runner:
                 self.ep += len(threads)
             else:
             # If frequency is timesteps, run only the 'execute' in parallel for horizon steps
-
                 # Create threads
                 threads = self.create_act_threds(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config,
                                                  states=states, num_steps=self.frequency)
@@ -325,12 +336,9 @@ class Runner:
                 for t in threads:
                     t.join()
 
-                print(states[0])
-                input('...')
-
-                # Get how many episode are passed within threads
-                print(self.parallel_buffer['dones'][:])
-                input('...')
+                # Get how many episodes and steps are passed within threads
+                self.ep = np.sum(np.asarray(self.parallel_buffer['done'][:]) == 1)
+                self.total_step = len(threads) * self.frequency
 
 
 
@@ -384,7 +392,8 @@ class Runner:
 
             # Clear parallel buffer
             self.parallel_buffer = self.clear_parallel_buffer()
-
+            if self.frequency_mode == 'timesteps':
+                self.agent.train()
 
             # Logging information
             if self.ep > 0 and self.ep % self.logging == 0:
