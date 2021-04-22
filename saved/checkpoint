@@ -1,2 +1,2 @@
-model_checkpoint_path: "openworld_jump"
-all_model_checkpoint_paths: "openworld_jump"
+model_checkpoint_path: "openworld_catch"
+all_model_checkpoint_paths: "openworld_catch"

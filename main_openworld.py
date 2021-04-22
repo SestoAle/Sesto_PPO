@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_jump')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_patrol')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/OpenWorldJump")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -62,7 +62,7 @@ class OpenWorldEnv:
         self.previous_action = [0, 0]
 
     def execute(self, actions):
-        #actions = int(input(': '))
+        # actions = int(input(': '))
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -71,6 +71,9 @@ class OpenWorldEnv:
 
         state = dict(global_in=env_info.vector_observations[0])
         #print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+225], [15,15])), 0))
+        # print(state['global_in'][7:7+12])
+        # print(reward)
+        # print(done)
         return state, done, reward
 
     def reset(self):
@@ -86,7 +89,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
-        #print(-entr)
+        # print(-entr)
         return -entr
 
     def set_config(self, config):
@@ -117,13 +120,13 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [6000, 6000, 6000, 6000, 6000, 3000, 3000, 3000, 3000],
+        "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
         "parameters": {
-            "spawn_range": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
+            "agent_spawn": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
+            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
             #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
@@ -150,9 +153,10 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5,
+                    action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
+                    v_num_itr=1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=23, with_circular=True)
+                    p_num_itr=10, input_length=52, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
@@ -160,12 +164,13 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = OpenWorldEnv(game_name=None, no_graphics=False, worker_id=0, max_episode_timesteps=max_episode_timestep)
+        env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environemnts
         envs = []
         for i in range(5):
-            envs.append(OpenWorldEnv(game_name=game_name, no_graphics=True, worker_id=work_id + i, max_episode_timesteps=max_episode_timestep))
+            envs.append(OpenWorldEnv(game_name=game_name, no_graphics=True, worker_id=work_id + i,
+                                     max_episode_timesteps=max_episode_timestep))
 
     # No IRL
     reward_model = None

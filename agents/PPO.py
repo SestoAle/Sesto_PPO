@@ -16,13 +16,13 @@ eps = 1e-5
 class PPO:
     # PPO agent
     def __init__(self, sess, input_spec, network_spec, obs_to_state, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33,
-                 p_num_itr=20, v_num_itr=20, v_batch_fraction=0.33, previous_act=True,
+                 p_num_itr=20, v_num_itr=20, v_batch_fraction=0.33, previous_act=False,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
                  action_max_value=1, frequency_mode='episodes', input_length=44,
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
                  # LSTM
-                 recurrent=True, recurrent_length=8, recurrent_baseline=False,
+                 recurrent=False, recurrent_length=8, recurrent_baseline=False,
 
                  **kwargs):
 
@@ -90,7 +90,8 @@ class PPO:
 
                 # Final p_layers
                 self.p_network = self.linear(self.main_net, 256, name='p_fc1', activation=tf.nn.relu)
-                self.p_network = tf.concat([self.p_network, self.inputs[-1]], axis=1)
+                if self.previous_act:
+                    self.p_network = tf.concat([self.p_network, self.inputs[-1]], axis=1)
 
                 if not self.recurrent:
                     self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)

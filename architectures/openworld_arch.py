@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 23
+    input_length = 52
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -12,11 +12,11 @@ def obs_to_state(obs):
     return [global_batch]
 
 def network_spec(states):
-    input_length = 23
+    input_length = 52
     with_circular = False
 
     global_state = states[0]
-    if input_length > 41:
+    if input_length > 52:
         global_state, global_grid, rays, coins, obstacles = tf.split(global_state, [7, 225, 25, 28, 21], axis=1)
         global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
@@ -62,11 +62,16 @@ def network_spec(states):
     else:
         # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
         # Jump
-        agent, goal, rays = tf.split(global_state, [6, 5, 12], axis=1)
+        agent, goal, rays, obs, points = tf.split(global_state, [4, 3, 12, 21, 12], axis=1)
 
         rays = tf.reshape(rays, [-1, 12, 1])
         rays = circ_conv1d(rays, activation='relu', kernel_size=3, filters=32)
         rays = tf.reshape(rays, [-1, 12 * 32])
+
+        points = tf.reshape(points, [-1, 4, 3])
+        points, _ = transformer(points, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
+                                   name='transformer_global', pooling='max')
+        points = tf.reshape(points, [-1, 1024])
 
         global_state = tf.concat([goal, rays], axis=1)
 
