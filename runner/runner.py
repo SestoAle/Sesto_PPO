@@ -7,6 +7,7 @@ import time
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
                  frequency_mode='episodes', random_actions=None, curriculum_mode='steps', evaluation=False,
+                 callback_function = None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  # Adversarial Play
@@ -25,6 +26,10 @@ class Runner:
         self.env = env
         self.curriculum_mode = curriculum_mode
         self.evaluation = evaluation
+
+        # Function to call at the end of each episode.
+        # It takes the agent, the runner and the env as input arguments
+        self.callback_function = callback_function
 
         # Recurrent
         self.recurrent = self.agent.recurrent
@@ -221,6 +226,9 @@ class Runner:
                             format(self.logging, self.ep, np.mean(self.history['env_rewards'][-self.logging:])))
 
                 print('The agent made a total of {} steps'.format(self.total_step))
+
+                if self.callback_function is not None:
+                    self.callback_function(self.agent, self.env, self)
 
                 self.timer(start_time, time.time())
 
