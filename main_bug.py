@@ -259,7 +259,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
+        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id, max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environemnts
         envs = []
