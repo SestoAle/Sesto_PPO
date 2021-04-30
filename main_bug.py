@@ -118,6 +118,16 @@ class BugEnvironment:
     def close(self):
         self.unity_env.close()
 
+    def multidimensional_shifting(self, num_samples, sample_size, elements, probabilities):
+        # replicate probabilities as many times as `num_samples`
+        replicated_probabilities = np.tile(probabilities, (num_samples, 1))
+        # get random shifting numbers & scale them correctly
+        random_shifts = np.random.random(replicated_probabilities.shape)
+        random_shifts /= random_shifts.sum(axis=1)[:, np.newaxis]
+        # shift by numbers & find largest (by finding the smallest of the negative)
+        shifted_probabilities = random_shifts - replicated_probabilities
+        return np.argpartition(shifted_probabilities, sample_size, axis=1)[:, :sample_size]
+
     # Spawn a position from the buffer
     # If the buffer is empty, spawn at standard position
     def set_spawn_position(self):
@@ -128,7 +138,8 @@ class BugEnvironment:
             probs = 1 / values
             probs = probs / np.sum(probs)
 
-            index = np.random.choice(np.arange(len(probs)), p=probs)
+            index = self.multidimensional_shifting(1, 1, np.arange(len(probs)), probs)[0][0]
+            #index = np.random.choice(np.arange(len(probs)), p=probs)
 
             pos_key = list(self.pos_buffer.keys())[index]
             pos = np.asarray(list(map(float, pos_key.split(" "))))
