@@ -66,7 +66,7 @@ class BugEnvironment:
         self.r_max = 0.5
         self.max_counter = 500
         self.tau = 1 / 40
-        self.standard_position = [5, 5]
+        self.standard_position = [10, 10]
 
     def execute(self, actions):
         # actions = int(input(': '))
@@ -216,8 +216,8 @@ if __name__ == "__main__":
         "thresholds": [1000000000000000000000000000],
         "parameters": {
             #"agent_spawn": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            "agent_spawn_x": [3],
-            "agent_spawn_z": [3]
+            "agent_spawn_x": [10],
+            "agent_spawn_z": [10]
             #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
             #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
             #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
