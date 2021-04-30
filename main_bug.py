@@ -202,7 +202,7 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [100000000],
+        "thresholds": [1000000000000000000000000000],
         "parameters": {
             #"agent_spawn": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             "agent_spawn_x": [3],
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = BugEnvironment(game_name=None, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
+        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environemnts
         envs = []
