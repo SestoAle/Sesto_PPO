@@ -99,7 +99,7 @@ class BugEnvironment:
 
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
-        self.set_spawn_position()
+        #self.set_spawn_position()
 
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
