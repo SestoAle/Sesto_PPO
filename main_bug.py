@@ -144,7 +144,7 @@ class BugEnvironment:
 
             pos_key = list(self.pos_buffer.keys())[index]
             pos = np.asarray(list(map(float, pos_key.split(" "))))
-            if pos[3] == 0:
+            if pos[2] == 0:
                 return self.set_spawn_position()
             # re-normalize pos to world coordinates
             pos = (((pos + 1) / 2) * 40) - 20
