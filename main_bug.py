@@ -136,6 +136,13 @@ class BugEnvironment:
             values = np.asarray(list(values))
 
             probs = 1 / values
+
+            for i in range(len(values)):
+                pos_key = list(self.pos_buffer.keys())[i]
+                pos = np.asarray(list(map(float, pos_key.split(" "))))
+                if pos[2] == 0:
+                    probs[i] = 0
+
             probs = probs / np.sum(probs)
 
             index = self.multidimensional_shifting(1, 1, np.arange(len(probs)), probs)[0][0]
@@ -145,7 +152,8 @@ class BugEnvironment:
             pos_key = list(self.pos_buffer.keys())[index]
             pos = np.asarray(list(map(float, pos_key.split(" "))))
             if pos[2] == 0:
-                return self.set_spawn_position()
+                print('OOOOHOHOHOHOHOHOH')
+                input('.....')
             # re-normalize pos to world coordinates
             pos = (((pos + 1) / 2) * 40) - 20
 

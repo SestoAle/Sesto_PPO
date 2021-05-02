@@ -11,6 +11,6 @@ for k in buffer.keys():
     k_value = np.asarray(k_value)
     k_value = (((k_value + 1) / 2) * 19)
     k_value = k_value.astype(int)
-    img.putpixel(k_value, (155,155,55))
+    img.putpixel(k_value[:2], (155,155,55))
 
 img.save('sqr.png')
