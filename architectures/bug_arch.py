@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 44
+    input_length = 45
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -12,11 +12,11 @@ def obs_to_state(obs):
     return [global_batch]
 
 def network_spec(states):
-    input_length = 44
+    input_length = 45
     with_circular = False
 
     global_state = states[0]
-    if input_length > 44:
+    if input_length > 45:
         global_state, global_grid, rays, coins, obstacles = tf.split(global_state, [7, 225, 25, 28, 21], axis=1)
         global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
