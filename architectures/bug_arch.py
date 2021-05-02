@@ -62,7 +62,7 @@ def network_spec(states):
     else:
         # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
         # Jump
-        agent, goal, grid, rays = tf.split(global_state, [2, 5, 25, 12], axis=1)
+        agent, goal, grid, rays = tf.split(global_state, [3, 5, 25, 12], axis=1)
 
         # points = tf.reshape(points, [-1, 1024])
         grid = tf.cast(tf.reshape(grid, [-1, 5, 5]), tf.int32)

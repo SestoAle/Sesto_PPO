@@ -66,7 +66,7 @@ class BugEnvironment:
         self.r_max = 0.5
         self.max_counter = 500
         self.tau = 1 / 40
-        self.standard_position = [14, 14]
+        self.standard_position = [14, 14, 1]
 
     def execute(self, actions):
         # actions = int(input(': '))
@@ -81,7 +81,7 @@ class BugEnvironment:
 
 
         # Get the agent position from the state to compute reward
-        position = state['global_in'][:2]
+        position = state['global_in'][:3]
 
         # Get the counter of that position and compute reward
         counter = self.insert_to_pos_table(position)
@@ -139,10 +139,13 @@ class BugEnvironment:
             probs = probs / np.sum(probs)
 
             index = self.multidimensional_shifting(1, 1, np.arange(len(probs)), probs)[0][0]
+
             #index = np.random.choice(np.arange(len(probs)), p=probs)
 
             pos_key = list(self.pos_buffer.keys())[index]
             pos = np.asarray(list(map(float, pos_key.split(" "))))
+            if pos[3] == 0:
+                return self.set_spawn_position()
             # re-normalize pos to world coordinates
             pos = (((pos + 1) / 2) * 40) - 20
 
