@@ -179,7 +179,7 @@ class RND:
         # norm_rewards = self.normalize_rewards(rewards)
         # if norm_rewards[0] is None:
         #     rewards = norm_rewards
-        if isinstance(self.r_norm, DynamicRunningStat):
+        if not isinstance(self.r_norm, DynamicRunningStat):
             self.r_norm.push(rewards)
 
         return rewards[0]
