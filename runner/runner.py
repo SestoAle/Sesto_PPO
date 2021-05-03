@@ -342,7 +342,7 @@ class Runner:
     # Update its statistics AND train the model. We print also tje model loss
     def update_motivation(self):
         loss = self.motivation.train()
-        print('Mean motivation loss = {}'.format(loss))
+        #print('Mean motivation loss = {}'.format(loss))
 
     # For IRL, get initial experience from environment, the agent act in the env without update itself
     def get_experience(self, env, num_discriminator_exp=None, verbose=False, random=False):

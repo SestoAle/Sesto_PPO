@@ -279,7 +279,7 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state)
+            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state)
             init = tf.compat.v1.global_variables_initializer()
             sess.run(init)
 
