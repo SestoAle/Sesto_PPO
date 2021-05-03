@@ -218,7 +218,7 @@ class Runner:
                     else:
                         # If we use intrinsic motivation, we must normalize reward
                         if self.motivation is not None:
-                            self.agent.buffer['rewards'] -= self.motivation.r_norm.std
+                            self.agent.buffer['rewards'] -= self.motivation.r_norm.mean
                             self.agent.buffer['rewards'] /= self.motivation.r_norm.std
                             self.agent.buffer['rewards'] = list(self.agent.buffer['rewards'])
                         self.agent.train()
@@ -256,7 +256,7 @@ class Runner:
                     self.ep > 0 and self.ep % self.frequency == 0:
                 # If we use intrinsic motivation, we must normalize reward
                 if self.motivation is not None:
-                    self.agent.buffer['rewards'] -= self.motivation.r_norm.std
+                    self.agent.buffer['rewards'] -= self.motivation.r_norm.mean
                     self.agent.buffer['rewards'] /= self.motivation.r_norm.std
                     self.agent.buffer['rewards'] = list(self.agent.buffer['rewards'])
                 self.agent.train()

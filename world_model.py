@@ -2,7 +2,7 @@ import numpy as np
 import json
 from PIL import Image
 
-with open("arrays/{}.json".format("bug_detector_rnd_pos_buffer")) as f:
+with open("arrays/{}.json".format("bug_detector_start_rand_pos_buffer")) as f:
     buffer = json.load(f)
 
 img = Image.new('RGB', (20, 20))

@@ -45,7 +45,7 @@ class RND:
                 self.target = self.network_spec(self.inputs)
                 # Latent space
                 # TODO: move this to network specification
-                self.target = linear(self.target, 32, name='latent_1', activation=tf.nn.relu)
+                self.target = linear(self.target, 32, name='latent_1', activation=tf.nn.leaky_relu)
                 self.target = linear(self.target, 1, name='out')
 
             # Predictor network
@@ -54,7 +54,7 @@ class RND:
                 self.predictor = self.network_spec(self.inputs)
                 # Latent space
                 # TODO: move this to network specification
-                self.predictor = linear(self.predictor, 32, name='latent_1', activation=tf.nn.relu)
+                self.predictor = linear(self.predictor, 32, name='latent_1', activation=tf.nn.leaky_relu)
                 self.predictor = linear(self.predictor, 1, name='out')
 
 
