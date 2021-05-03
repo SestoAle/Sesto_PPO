@@ -180,7 +180,7 @@ class RND:
         # if norm_rewards[0] is None:
         #     rewards = norm_rewards
         if not isinstance(self.r_norm, DynamicRunningStat):
-            self.r_norm.push(rewards)
+            self.r_norm.push(rewards[0])
 
         return rewards[0]
 
