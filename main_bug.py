@@ -74,7 +74,7 @@ class BugEnvironment:
         self.standard_position = [14, 14, 1]
 
     def execute(self, actions):
-        actions = int(input(': '))
+        # actions = int(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
@@ -93,7 +93,7 @@ class BugEnvironment:
         #reward = self.compute_intrinsic_reward(counter)
         reward = 0
 
-        print(state['global_in'][:2])
+        # print(state['global_in'][:2])
         # print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
         # print(state['global_in'][7:7+12])
         # print(reward)

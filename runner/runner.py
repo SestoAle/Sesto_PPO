@@ -168,7 +168,6 @@ class Runner:
                 # Add the intrinsic motivation to the environment reward
                 if self.motivation is not None:
                     motivation_reward = self.motivation.eval([state_n])
-                    print(motivation_reward)
                     self.motivation.add_to_buffer(state_n)
                     reward += motivation_reward
 
