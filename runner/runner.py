@@ -167,8 +167,8 @@ class Runner:
                 # Intrinsic Motivation
                 # Add the intrinsic motivation to the environment reward
                 if self.motivation is not None:
-                    motivation_reward = self.motivation.eval([state])
-                    self.motivation.add_to_buffer(state)
+                    motivation_reward = self.motivation.eval([state_n])
+                    self.motivation.add_to_buffer(state_n)
                     reward += motivation_reward
 
                 # If exists a reward model, use it instead of the env reward
