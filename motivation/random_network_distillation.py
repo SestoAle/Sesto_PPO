@@ -71,7 +71,6 @@ class RND:
     # Fit function
     def train(self):
         losses = []
-        print("Oooh I'm training this!")
 
         for it in range(self.num_itr):
 
