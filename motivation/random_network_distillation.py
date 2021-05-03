@@ -14,7 +14,7 @@ class RND:
                  num_itr = 3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
-        self.r_norm = DynamicRunningStat()
+        self.r_norm = RunningStat()
 
         # The tensorflow session
         self.sess = sess
@@ -124,29 +124,29 @@ class RND:
 
         # Update the normalization statistics
 
-        # Take a mini-batch of batch_size experience
-        mini_batch_idxs = random.sample(range(len(self.buffer)), len(self.buffer))
-
-        mini_batch = [self.buffer[id] for id in mini_batch_idxs]
-
-        # Convert the observation to states
-        states = self.obs_to_state(mini_batch)
-
-        # Create the feed dict for the target network
-        feed_target = self.create_state_feed_dict(states)
-
-        # Get the target prediction (without training it)
-        target_labels = self.sess.run([self.target], feed_target)[0]
-
-        # Get the predictor estimation
-        feed_predictor = self.create_state_feed_dict(states)
-        feed_predictor[self.target_labels] = target_labels
-
-        # Update the predictor networks
-        rewards = self.sess.run([self.rewards], feed_predictor)
-        rewards = np.squeeze(rewards)
-        self.push_reward(rewards)
-
+        # # Take a mini-batch of batch_size experience
+        # mini_batch_idxs = random.sample(range(len(self.buffer)), len(self.buffer))
+        #
+        # mini_batch = [self.buffer[id] for id in mini_batch_idxs]
+        #
+        # # Convert the observation to states
+        # states = self.obs_to_state(mini_batch)
+        #
+        # # Create the feed dict for the target network
+        # feed_target = self.create_state_feed_dict(states)
+        #
+        # # Get the target prediction (without training it)
+        # target_labels = self.sess.run([self.target], feed_target)[0]
+        #
+        # # Get the predictor estimation
+        # feed_predictor = self.create_state_feed_dict(states)
+        # feed_predictor[self.target_labels] = target_labels
+        #
+        # # Update the predictor networks
+        # rewards = self.sess.run([self.rewards], feed_predictor)
+        # rewards = np.squeeze(rewards)
+        # self.push_reward(rewards)
+        #
         # Update normalization statistics
         # Update Dynamic Running Stat
         if isinstance(self.r_norm, DynamicRunningStat):
@@ -176,9 +176,11 @@ class RND:
         # Update the predictor networks
         rewards = self.sess.run([self.reward_loss], feed_predictor)
 
-        norm_rewards = self.normalize_rewards(rewards)
-        if norm_rewards[0] is None:
-            rewards = norm_rewards
+        # norm_rewards = self.normalize_rewards(rewards)
+        # if norm_rewards[0] is None:
+        #     rewards = norm_rewards
+        if isinstance(self.r_norm, DynamicRunningStat):
+            self.r_norm.push(rewards)
 
         return rewards[0]
 

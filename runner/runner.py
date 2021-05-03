@@ -216,6 +216,9 @@ class Runner:
                         if self.total_step > self.random_actions:
                             self.agent.train()
                     else:
+                        # If we use intrinsic motivation, we must normalize reward
+                        if self.motivation is not None:
+                            self.agent.buffer['rewards'] /= self.motivation.r_norm.std()
                         self.agent.train()
                         # If we use intrinsic motivation, update also intrinsic motivation
                         if self.motivation is not None:
@@ -249,6 +252,13 @@ class Runner:
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
                     self.ep > 0 and self.ep % self.frequency == 0:
+                # If we use intrinsic motivation, we must normalize reward
+                if self.motivation is not None:
+                    print(self.agent.buffer['rewards'])
+                    self.agent.buffer['rewards'] /= self.motivation.r_norm.std()
+                    print(self.agent.buffer['rewards'])
+                    print(self.motivation.r_norm.n())
+                    input('...')
                 self.agent.train()
                 # If we use intrinsic motivation, update also intrinsic motivation
                 if self.motivation is not None:
