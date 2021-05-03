@@ -256,6 +256,7 @@ class Runner:
                 if self.motivation is not None:
                     print(self.agent.buffer['rewards'])
                     self.agent.buffer['rewards'] /= self.motivation.r_norm.std
+                    self.agent.buffer['rewards'] = list(self.agent.buffer['rewards'])
                     print(self.agent.buffer['rewards'])
                     print(self.motivation.r_norm.n)
                     print(self.motivation.r_norm.std)
