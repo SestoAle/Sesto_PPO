@@ -180,3 +180,19 @@ class RND:
             del self.buffer[0]
 
         self.buffer.append(obs)
+
+    # Save the entire model
+    def save_model(self, name=None, folder='saved'):
+        tf.compat.v1.disable_eager_execution()
+        self.saver.save(self.sess, '{}/{}_rnd'.format(folder, name))
+
+        return
+
+    # Load entire model
+    def load_model(self, name=None, folder='saved'):
+        # self.saver = tf.compat.v1.train.import_meta_graph('{}/{}.meta'.format(folder, name))
+        tf.compat.v1.disable_eager_execution()
+        self.saver.restore(self.sess, '{}/{}_rnd'.format(folder, name))
+
+        print('RND loaded correctly!')
+        return

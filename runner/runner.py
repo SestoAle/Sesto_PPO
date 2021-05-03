@@ -283,10 +283,20 @@ class Runner:
 
         # Save the tf model
         agent.save_model(name=model_name, folder='saved')
+
+        # If we use intrinsic motivation, save the motivation model
+        if self.motivation is not None:
+            self.motivation.save_model(name=model_name, folder='saved')
+
         print('Model saved with name: {}'.format(model_name))
 
     def load_model(self, model_name, agent):
         agent.load_model(name=model_name, folder='saved')
+
+        # Load intrinsic motivation for testing
+        if self.motivation is not None:
+            self.motivation.load_model(name=model_name, folder='saved')
+
         with open("arrays/{}.json".format(model_name)) as f:
             history = json.load(f)
 
