@@ -277,7 +277,7 @@ if __name__ == "__main__":
     motivation = None
     if args.use_motivation:
         sess = tf.compat.v1.Session()
-        motivation = RND(sess)
+        motivation = RND(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state)
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
