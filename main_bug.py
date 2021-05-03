@@ -283,10 +283,6 @@ if __name__ == "__main__":
             init = tf.compat.v1.global_variables_initializer()
             sess.run(init)
 
-    # Create model for intrinsic motivation
-    parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
-    parser.set_defaults(use_motivation=False)
-
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
