@@ -24,8 +24,8 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_patrol')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/OpenWorldJump")
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_rnd')
+parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)

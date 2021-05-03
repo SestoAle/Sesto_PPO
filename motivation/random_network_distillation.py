@@ -10,8 +10,8 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=1e-6, buffer_size=1e4, batch_size = 32,
-                 num_itr = 16, name='rnd', **kwargs):
+    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=1e-4, buffer_size=1e4, batch_size = 128,
+                 num_itr = 3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = DynamicRunningStat()
@@ -126,6 +126,8 @@ class RND:
         # Update Dynamic Running Stat
         if isinstance(self.r_norm, DynamicRunningStat):
             self.r_norm.reset()
+
+        self.buffer = []
 
         # Return the mean losses of all the iterations
         return np.mean(losses)
