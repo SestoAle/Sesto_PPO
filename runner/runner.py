@@ -255,9 +255,10 @@ class Runner:
                 # If we use intrinsic motivation, we must normalize reward
                 if self.motivation is not None:
                     print(self.agent.buffer['rewards'])
-                    self.agent.buffer['rewards'] /= self.motivation.r_norm.std()
+                    self.agent.buffer['rewards'] /= self.motivation.r_norm.std
                     print(self.agent.buffer['rewards'])
-                    print(self.motivation.r_norm.n())
+                    print(self.motivation.r_norm.n)
+                    print(self.motivation.r_norm.std)
                     input('...')
                 self.agent.train()
                 # If we use intrinsic motivation, update also intrinsic motivation
