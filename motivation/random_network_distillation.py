@@ -182,4 +182,6 @@ class RND:
         if len(self.buffer) >= self.buffer_size:
             del self.buffer[0]
 
+        print(obs)
+
         self.buffer.append(obs)
