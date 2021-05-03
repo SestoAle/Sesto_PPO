@@ -276,10 +276,12 @@ if __name__ == "__main__":
     # If we use intrinsic motivation, create the model
     motivation = None
     if args.use_motivation:
-        sess = tf.compat.v1.Session()
-        motivation = RND(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state)
-        init = tf.compat.v1.global_variables_initializer()
-        sess.run(init)
+        with graph.as_default():
+            tf.compat.v1.disable_eager_execution()
+            sess = tf.compat.v1.Session(graph=graph)
+            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state)
+            init = tf.compat.v1.global_variables_initializer()
+            sess.run(init)
 
     # Create model for intrinsic motivation
     parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
