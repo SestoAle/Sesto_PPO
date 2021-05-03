@@ -97,30 +97,55 @@ class RND:
 
             losses.append(loss)
 
+        # # Update the normalization statistics
+        # for it in range(self.num_itr):
+        #     # Take a mini-batch of batch_size experience
+        #     mini_batch_idxs = random.sample(range(len(self.buffer)), self.batch_size)
+        #
+        #     mini_batch = [self.buffer[id] for id in mini_batch_idxs]
+        #
+        #     # Convert the observation to states
+        #     states = self.obs_to_state(mini_batch)
+        #
+        #     # Create the feed dict for the target network
+        #     feed_target = self.create_state_feed_dict(states)
+        #
+        #     # Get the target prediction (without training it)
+        #     target_labels = self.sess.run([self.target], feed_target)[0]
+        #
+        #     # Get the predictor estimation
+        #     feed_predictor = self.create_state_feed_dict(states)
+        #     feed_predictor[self.target_labels] = target_labels
+        #
+        #     # Update the predictor networks
+        #     rewards = self.sess.run([self.rewards], feed_predictor)
+        #     rewards = np.squeeze(rewards)
+        #     self.push_reward(rewards)
+
         # Update the normalization statistics
-        for it in range(self.num_itr):
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer)), self.batch_size)
 
-            mini_batch = [self.buffer[id] for id in mini_batch_idxs]
+        # Take a mini-batch of batch_size experience
+        mini_batch_idxs = random.sample(range(len(self.buffer)), len(self.buffer))
 
-            # Convert the observation to states
-            states = self.obs_to_state(mini_batch)
+        mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 
-            # Create the feed dict for the target network
-            feed_target = self.create_state_feed_dict(states)
+        # Convert the observation to states
+        states = self.obs_to_state(mini_batch)
 
-            # Get the target prediction (without training it)
-            target_labels = self.sess.run([self.target], feed_target)[0]
+        # Create the feed dict for the target network
+        feed_target = self.create_state_feed_dict(states)
 
-            # Get the predictor estimation
-            feed_predictor = self.create_state_feed_dict(states)
-            feed_predictor[self.target_labels] = target_labels
+        # Get the target prediction (without training it)
+        target_labels = self.sess.run([self.target], feed_target)[0]
 
-            # Update the predictor networks
-            rewards = self.sess.run([self.rewards], feed_predictor)
-            rewards = np.squeeze(rewards)
-            self.push_reward(rewards)
+        # Get the predictor estimation
+        feed_predictor = self.create_state_feed_dict(states)
+        feed_predictor[self.target_labels] = target_labels
+
+        # Update the predictor networks
+        rewards = self.sess.run([self.rewards], feed_predictor)
+        rewards = np.squeeze(rewards)
+        self.push_reward(rewards)
 
         # Update normalization statistics
         # Update Dynamic Running Stat

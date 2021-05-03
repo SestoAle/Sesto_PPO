@@ -169,7 +169,6 @@ class Runner:
                 if self.motivation is not None:
                     motivation_reward = self.motivation.eval([state_n])
                     self.motivation.add_to_buffer(state_n)
-                    print(motivation_reward)
                     reward += motivation_reward
 
                 # If exists a reward model, use it instead of the env reward
