@@ -66,6 +66,8 @@ class RND:
             gradients, _ = tf.compat.v1.clip_by_global_norm(gradients, 1.0)
             self.step = optimizer.apply_gradients(zip(gradients, variables))
 
+        self.saver = tf.compat.v1.train.Saver(max_to_keep=None)
+
     # Fit function
     def train(self):
         losses = []
