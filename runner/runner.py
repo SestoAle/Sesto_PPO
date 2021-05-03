@@ -7,7 +7,7 @@ import time
 class Runner:
     def __init__(self, agent, frequency, env, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
                  frequency_mode='episodes', random_actions=None, curriculum_mode='steps', evaluation=False,
-                 callback_function = None,
+                 callback_function = None, motivation=None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  # Adversarial Play
@@ -26,6 +26,10 @@ class Runner:
         self.env = env
         self.curriculum_mode = curriculum_mode
         self.evaluation = evaluation
+
+        # If we want to use intrinsic motivation
+        # Right now only RND is available
+        self.motivation = motivation
 
         # Function to call at the end of each episode.
         # It takes the agent, the runner and the env as input arguments
@@ -160,6 +164,13 @@ class Runner:
                 # Execute in the environment
                 state_n, done, reward = self.env.execute(action)
 
+                # Intrinsic Motivation
+                # Add the intrinsic motivation to the environment reward
+                if self.motivation is not None:
+                    motivation_reward = self.motivation.eval([state])
+                    self.motivation.add_to_buffer([state])
+                    reward += motivation_reward
+
                 # If exists a reward model, use it instead of the env reward
                 if self.reward_model is not None:
                     env_episode_reward += reward
@@ -206,6 +217,9 @@ class Runner:
                             self.agent.train()
                     else:
                         self.agent.train()
+                        # If we use intrinsic motivation, update also intrinsic motivation
+                        if self.motivation is not None:
+                            self.update_motivation()
 
                 # If done, end the episode and save statistics
                 if done == 1:
@@ -236,6 +250,9 @@ class Runner:
             if not self.evaluation and self.frequency_mode == 'episodes' and \
                     self.ep > 0 and self.ep % self.frequency == 0:
                 self.agent.train()
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.motivation is not None:
+                    self.update_motivation()
 
             # If IRL, update the reward model after reward_frequency episode
             if not self.evaluation and self.reward_model is not None:
@@ -321,6 +338,12 @@ class Runner:
 
         return config
 
+    # Update intrinsic motivation
+    # Update its statistics AND train the model. We print also tje model loss
+    def update_motivation(self):
+        loss = self.motivation.train()
+        print('Mean motivation loss = {}'.format(loss))
+
     # For IRL, get initial experience from environment, the agent act in the env without update itself
     def get_experience(self, env, num_discriminator_exp=None, verbose=False, random=False):
 
@@ -356,3 +379,4 @@ class Runner:
         hours, rem = divmod(end - start, 3600)
         minutes, seconds = divmod(rem, 60)
         print("Time passed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+

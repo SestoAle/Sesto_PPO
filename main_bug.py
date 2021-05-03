@@ -2,6 +2,7 @@ from agents.PPO import PPO
 from architectures.bug_arch import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
+from motivation.random_network_distillation import RND
 import os
 import tensorflow as tf
 import argparse
@@ -41,10 +42,14 @@ parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations f
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 
+# Parse arguments for Intrinsic Motivation
+parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
+
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
+parser.set_defaults(use_motivation=False)
 
 args = parser.parse_args()
 
@@ -85,7 +90,8 @@ class BugEnvironment:
 
         # Get the counter of that position and compute reward
         counter = self.insert_to_pos_table(position)
-        reward = self.compute_intrinsic_reward(counter)
+        #reward = self.compute_intrinsic_reward(counter)
+        reward = 0
 
         # print(state['global_in'][:2])
         # print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
@@ -267,6 +273,18 @@ if __name__ == "__main__":
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
 
+    # If we use intrinsic motivation, create the model
+    motivation = None
+    if args.use_motivation:
+        sess = tf.compat.v1.Session()
+        motivation = RND(sess)
+        init = tf.compat.v1.global_variables_initializer()
+        sess.run(init)
+
+    # Create model for intrinsic motivation
+    parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
+    parser.set_defaults(use_motivation=False)
+
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
@@ -287,7 +305,7 @@ if __name__ == "__main__":
                         logging=logging, total_episode=total_episode, curriculum=curriculum,
                         frequency_mode=frequency_mode, curriculum_mode='episodes', callback_function=callback,
                         reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
-                        fixed_reward_model=fixed_reward_model)
+                        fixed_reward_model=fixed_reward_model, motivation=motivation)
     else:
         runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
                         logging=logging, total_episode=total_episode, curriculum=curriculum,
