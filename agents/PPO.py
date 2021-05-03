@@ -632,7 +632,6 @@ class PPO:
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
                                          reversed(range(len(self.buffer['rewards'])))):
             if terminal == 1:
-                continue
                 discounted_reward = 0
             elif terminal == 2:
                 state = self.obs_to_state([self.buffer['states_n'][i]])
