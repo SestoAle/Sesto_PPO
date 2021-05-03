@@ -79,6 +79,8 @@ class RND:
             mini_batch_idxs = random.sample(range(len(self.buffer)), self.batch_size)
 
             mini_batch = [self.buffer[id] for id in mini_batch_idxs]
+            print(mini_batch)
+            input('...')
 
             # Convert the observation to states
             states = self.obs_to_state(mini_batch)
@@ -181,7 +183,5 @@ class RND:
 
         if len(self.buffer) >= self.buffer_size:
             del self.buffer[0]
-
-        print(obs)
 
         self.buffer.append(obs)
