@@ -74,7 +74,7 @@ class BugEnvironment:
         self.standard_position = [14, 14, 1]
 
     def execute(self, actions):
-        # actions = int(input(': '))
+        actions = int(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
