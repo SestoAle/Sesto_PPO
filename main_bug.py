@@ -93,7 +93,7 @@ class BugEnvironment:
         #reward = self.compute_intrinsic_reward(counter)
         reward = 0
 
-        # print(state['global_in'][:2])
+        print(state['global_in'][:2])
         # print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
         # print(state['global_in'][7:7+12])
         # print(reward)
