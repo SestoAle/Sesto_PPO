@@ -1,11 +1,10 @@
 import tensorflow as tf
 import numpy as np
-import pickle
-#from reward_model.utils import LimitedRunningStat, RunningStat
+from layers.layers import *
+
 from utils import DynamicRunningStat, LimitedRunningStat, RunningStat
 import random
-from math import sqrt
-from tensorforce import util
+
 
 eps = 1e-12
 
@@ -44,11 +43,21 @@ class RND:
             with tf.compat.v1.variable_scope('target'):
                 # Network specification from external function
                 self.target = self.network_spec(self.inputs)
+                # Latent space
+                # TODO: move this to network specification
+                self.target = linear(self.target, 128, name='latent_1', activation=tf.nn.relu)
+                self.target = linear(self.target, 128, name='latent_2', activation=tf.nn.relu)
+                self.target = linear(self.target, 1, name='out')
 
             # Predictor network
             with tf.compat.v1.variable_scope('predictor'):
                 # Network specification from external function
                 self.predictor = self.network_spec(self.inputs)
+                # Latent space
+                # TODO: move this to network specification
+                self.predictor = linear(self.predictor, 128, name='latent_1', activation=tf.nn.relu)
+                self.predictor = linear(self.predictor, 128, name='latent_2', activation=tf.nn.relu)
+                self.predictor = linear(self.predictor, 1, name='out')
 
 
             self.reward_loss = tf.compat.v1.losses.mean_squared_error(self.target_labels, self.predictor)
