@@ -1,2 +1,2 @@
-model_checkpoint_path: "openworld_catch"
-all_model_checkpoint_paths: "openworld_catch"
+model_checkpoint_path: "bug_detector_rnd_rnd"
+all_model_checkpoint_paths: "bug_detector_rnd_rnd"

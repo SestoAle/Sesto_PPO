@@ -10,11 +10,12 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=1e-4, buffer_size=1e4, batch_size = 128,
-                 num_itr = 3, name='rnd', **kwargs):
+    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e4, batch_size=32,
+                 num_itr=5, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
+        self.obs_norm = RunningStat(shape=(45))
 
         # The tensorflow session
         self.sess = sess
@@ -43,20 +44,11 @@ class RND:
             with tf.compat.v1.variable_scope('target'):
                 # Network specification from external function
                 self.target = self.network_spec(self.inputs)
-                # Latent space
-                # TODO: move this to network specification
-                self.target = linear(self.target, 32, name='latent_1', activation=tf.nn.leaky_relu)
-                self.target = linear(self.target, 1, name='out')
 
             # Predictor network
             with tf.compat.v1.variable_scope('predictor'):
                 # Network specification from external function
                 self.predictor = self.network_spec(self.inputs)
-                # Latent space
-                # TODO: move this to network specification
-                self.predictor = linear(self.predictor, 32, name='latent_1', activation=tf.nn.leaky_relu)
-                self.predictor = linear(self.predictor, 1, name='out')
-
 
             self.reward_loss = tf.compat.v1.losses.mean_squared_error(self.target_labels, self.predictor)
             self.rewards = tf.math.squared_difference(self.target_labels, self.predictor)
@@ -75,7 +67,7 @@ class RND:
         for it in range(self.num_itr):
 
             # Take a mini-batch of batch_size experience
-            mini_batch_idxs = random.sample(range(len(self.buffer)), self.batch_size)
+            mini_batch_idxs = random.sample(range(len(self.buffer)), len(self.buffer))
 
             mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 
@@ -122,32 +114,6 @@ class RND:
         #     rewards = np.squeeze(rewards)
         #     self.push_reward(rewards)
 
-        # Update the normalization statistics
-
-        # # Take a mini-batch of batch_size experience
-        # mini_batch_idxs = random.sample(range(len(self.buffer)), len(self.buffer))
-        #
-        # mini_batch = [self.buffer[id] for id in mini_batch_idxs]
-        #
-        # # Convert the observation to states
-        # states = self.obs_to_state(mini_batch)
-        #
-        # # Create the feed dict for the target network
-        # feed_target = self.create_state_feed_dict(states)
-        #
-        # # Get the target prediction (without training it)
-        # target_labels = self.sess.run([self.target], feed_target)[0]
-        #
-        # # Get the predictor estimation
-        # feed_predictor = self.create_state_feed_dict(states)
-        # feed_predictor[self.target_labels] = target_labels
-        #
-        # # Update the predictor networks
-        # rewards = self.sess.run([self.rewards], feed_predictor)
-        # rewards = np.squeeze(rewards)
-        # self.push_reward(rewards)
-        #
-        # Update normalization statistics
         # Update Dynamic Running Stat
         if isinstance(self.r_norm, DynamicRunningStat):
             self.r_norm.reset()
@@ -174,15 +140,16 @@ class RND:
 
         # Compute the MSE to use as reward (after normalization)
         # Update the predictor networks
-        rewards = self.sess.run([self.reward_loss], feed_predictor)
-
+        rewards = self.sess.run(self.rewards, feed_predictor)
+        rewards = np.reshape(rewards, (-1))
         # norm_rewards = self.normalize_rewards(rewards)
         # if norm_rewards[0] is None:
         #     rewards = norm_rewards
         if not isinstance(self.r_norm, DynamicRunningStat):
-            self.r_norm.push(rewards[0])
+            for r in rewards:
+                self.r_norm.push(r)
 
-        return rewards[0]
+        return rewards
 
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
@@ -193,22 +160,12 @@ class RND:
 
         return feed_dict
 
-    # Normalize the reward for each frame of the sequence.
-    def push_reward(self, rewards):
-        for r in rewards:
-            self.r_norm.push(r)
-
-    def normalize_rewards(self, rewards):
-        rewards -= self.r_norm.mean
-        rewards /= (self.r_norm.std + 1e-12)
-        rewards *= 1
-
-        return rewards
-
     def add_to_buffer(self, obs):
 
         if len(self.buffer) >= self.buffer_size:
             del self.buffer[0]
+
+        self.obs_norm.push(obs['global_in'])
 
         self.buffer.append(obs)
 
@@ -227,3 +184,13 @@ class RND:
 
         print('RND loaded correctly!')
         return
+
+    # Normalize the buffer state based on the running mean
+    def normalize_buffer(self):
+        for state in self.buffer:
+            state['global_in'] = (state['global_in'] - self.obs_norm.mean) / (self.obs_norm.std + eps)
+            state['global_in'] = np.clip(state['global_in'], -5, 5)
+
+    # Clear experience buffer
+    def clear_buffer(self):
+        self.buffer = []

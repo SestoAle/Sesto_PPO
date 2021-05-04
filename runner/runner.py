@@ -165,11 +165,12 @@ class Runner:
                 state_n, done, reward = self.env.execute(action)
 
                 # Intrinsic Motivation
-                # Add the intrinsic motivation to the environment reward
+                # # Add the intrinsic motivation to the environment reward
                 if self.motivation is not None:
-                    motivation_reward = self.motivation.eval([state_n])
+                    # motivation_reward = self.motivation.eval([state_n])
                     self.motivation.add_to_buffer(state_n)
-                    reward += motivation_reward
+                    # print(motivation_reward)
+                #     reward += motivation_reward
 
                 # If exists a reward model, use it instead of the env reward
                 if self.reward_model is not None:
@@ -254,11 +255,25 @@ class Runner:
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
                     self.ep > 0 and self.ep % self.frequency == 0:
+
+                if self.random_actions is not None:
+                    if self.total_step <= self.random_actions:
+                        self.motivation.clear_buffer()
+                        continue
+
                 # If we use intrinsic motivation, we must normalize reward
                 if self.motivation is not None:
-                    self.agent.buffer['rewards'] -= self.motivation.r_norm.mean
-                    self.agent.buffer['rewards'] /= self.motivation.r_norm.std
-                    self.agent.buffer['rewards'] = list(self.agent.buffer['rewards'])
+                    # Normalize observation of the motivation buffer
+                    # self.motivation.normalize_buffer()
+                    # Compute intrinsic rewards
+                    intrinsic_rews = self.motivation.eval(self.motivation.buffer)
+
+                    # Normalize rewards
+                    intrinsic_rews -= self.motivation.r_norm.mean
+                    intrinsic_rews /= self.motivation.r_norm.std
+                    intrinsic_rews = list(intrinsic_rews)
+                    self.agent.buffer['rewards'] = intrinsic_rews
+
                 self.agent.train()
                 # If we use intrinsic motivation, update also intrinsic motivation
                 if self.motivation is not None:

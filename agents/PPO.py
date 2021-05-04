@@ -18,7 +18,7 @@ class PPO:
     def __init__(self, sess, input_spec, network_spec, obs_to_state, p_lr=5e-6, v_lr=5e-4, batch_fraction=0.33,
                  p_num_itr=20, v_num_itr=20, v_batch_fraction=0.33, previous_act=False,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
-                 action_max_value=1, frequency_mode='episodes', input_length=44,
+                 action_max_value=1, frequency_mode='episodes',
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
                  # LSTM
@@ -38,7 +38,6 @@ class PPO:
         self.norm_reward = norm_reward
         self.model_name = model_name
         self.frequency_mode = frequency_mode
-        self.input_length = input_length
         # Functions that define input and network specifications
         self.input_spec = input_spec
         self.network_spec = network_spec
@@ -369,7 +368,12 @@ class PPO:
                 v_internal_states = (v_internal_states_c, v_internal_states_h)
                 mini_batch_idxs = mini_batch_idxs_last_step
 
-            rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            try:
+                rewards_mini_batch = [discounted_rewards[id] for id in mini_batch_idxs]
+            except Exception as e:
+                print(e)
+                print(mini_batch_idxs)
+                input('....')
             # Reshape problem, why?
             rewards_mini_batch = np.reshape(rewards_mini_batch, [-1, ])
 
@@ -632,8 +636,10 @@ class PPO:
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
                                          reversed(range(len(self.buffer['rewards'])))):
             if terminal == 1:
-                #discounted_reward = 0
-                discounted_reward = discounted_reward
+                discounted_reward = 0
+                # state = self.obs_to_state([self.buffer['states_n'][i]])
+                # feed_dict = self.create_state_feed_dict(state)
+                # discounted_reward = self.sess.run([self.value], feed_dict)[0]
             elif terminal == 2:
                 state = self.obs_to_state([self.buffer['states_n'][i]])
                 feed_dict = self.create_state_feed_dict(state)
