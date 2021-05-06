@@ -321,7 +321,7 @@ class Runner:
                         self.ep > 0 and self.ep % self.reward_frequency == 0:
 
                     # If we use intrinsic motivation, update also intrinsic motivation
-                    if self.motivation is not None:
+                    if self.reward_model is not None:
                         self.update_reward_model()
 
 
