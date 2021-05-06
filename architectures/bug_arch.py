@@ -79,6 +79,10 @@ def network_spec(states):
 
     return global_state
 
+def obs_to_state_rnd(obs):
+    global_batch = np.stack([((state['global_in'] + 1) / 2) * 40 for state in obs])
+    return [global_batch]
+
 def network_spec_rnd(states):
     input_length = 45
     with_circular = False
@@ -89,10 +93,20 @@ def network_spec_rnd(states):
     # Jump
     agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
 
-    global_state = tf.concat([agent], axis=1)
+    agent = tf.cast(agent, tf.int32)
 
-    global_state = linear(global_state, 32, name='latent_1', activation=tf.nn.relu)
-    global_state = linear(global_state, 32, name='latent_2', activation=tf.nn.relu)
-    global_state = linear(global_state, 1, name='out')
+    global_state = agent
+
+    global_state = embedding(global_state, indices=41, size=32, name='embs')
+    global_state = tf.reshape(global_state, (-1, 2*32))
+    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
+    global_state = linear(global_state, 64, name='latent_2',
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
+
 
     return global_state

@@ -22,7 +22,7 @@ class EnsembleRewardModel:
         m_losses = []
         for model in self.models:
 
-            loss, _ = model.fit(expert_traj, policy_traj, num_itr, batch_size)
+            loss, _ = model.train(expert_traj, policy_traj, num_itr, batch_size)
             m_losses.append(loss)
 
         return np.mean(m_losses), 0

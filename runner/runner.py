@@ -27,6 +27,8 @@ class Runner:
         self.curriculum_mode = curriculum_mode
         self.evaluation = evaluation
 
+        self.motivation_frequency = 1
+
         # If we want to use intrinsic motivation
         # Right now only RND is available
         self.motivation = motivation
@@ -51,6 +53,13 @@ class Runner:
         if self.adversarial_play:
             self.agent.save_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
             self.double_agent.load_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
+
+        # Statistics for IRL
+        # TODO: they are really necessary?
+        self._reset = True
+        self.initial_states = []
+        self._rewards = {}
+        self._discs = {}
 
         # Initialize reward model
         if self.reward_model is not None:
@@ -165,12 +174,21 @@ class Runner:
                 state_n, done, reward = self.env.execute(action)
 
                 # Intrinsic Motivation
-                # # Add the intrinsic motivation to the environment reward
+                # Add the next state to the motivation buffer
+                # - The intrinsic reward will be added later -
                 if self.motivation is not None:
+
                     # motivation_reward = self.motivation.eval([state_n])
-                    self.motivation.add_to_buffer(state_n)
                     # print(motivation_reward)
-                #     reward += motivation_reward
+                    self.motivation.add_to_buffer(state_n)
+
+                # Inverse Reinforcement Learning
+                # Add the next state to the IRL buffer
+                # - The intrinsic reward will be added later -
+                if self.reward_model is not None:
+                    # motivation_reward = self.motivation.eval([state_n])
+                    # print(motivation_reward)
+                    self.reward_model.add_to_buffer(state, state_n, action)
 
                 # If exists a reward model, use it instead of the env reward
                 if self.reward_model is not None:
@@ -252,6 +270,7 @@ class Runner:
 
                 self.timer(start_time, time.time())
 
+
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
                     self.ep > 0 and self.ep % self.frequency == 0:
@@ -261,23 +280,50 @@ class Runner:
                         self.motivation.clear_buffer()
                         continue
 
-                # If we use intrinsic motivation, we must normalize reward
                 if self.motivation is not None:
                     # Normalize observation of the motivation buffer
                     # self.motivation.normalize_buffer()
                     # Compute intrinsic rewards
-                    intrinsic_rews = self.motivation.eval(self.motivation.buffer)
+                    intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
 
                     # Normalize rewards
                     intrinsic_rews -= self.motivation.r_norm.mean
                     intrinsic_rews /= self.motivation.r_norm.std
                     intrinsic_rews = list(intrinsic_rews)
+
+                    self.agent.buffer['rewards'] = intrinsic_rews
+
+                if self.reward_model is not None:
+
+                    # Compute intrinsic rewards
+                    intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+                                                            self.agent.buffer['actions'])
+
+                    # Normalize rewards
+                    # intrinsic_rews -= self.motivation.r_norm.mean
+                    # intrinsic_rews /= self.motivation.r_norm.std
+                    # intrinsic_rews = list(intrinsic_rews)
+                    print(intrinsic_rews)
                     self.agent.buffer['rewards'] = intrinsic_rews
 
                 self.agent.train()
+
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.motivation_frequency == 0:
+
                 # If we use intrinsic motivation, update also intrinsic motivation
                 if self.motivation is not None:
                     self.update_motivation()
+
+                # If frequency episodes are passed, update the policy
+                if not self.evaluation and self.frequency_mode == 'episodes' and \
+                        self.ep > 0 and self.ep % self.reward_frequency == 0:
+
+                    # If we use intrinsic motivation, update also intrinsic motivation
+                    if self.motivation is not None:
+                        self.update_reward_model()
+
 
             # If IRL, update the reward model after reward_frequency episode
             if not self.evaluation and self.reward_model is not None:
@@ -321,6 +367,9 @@ class Runner:
         # Load intrinsic motivation for testing
         if self.motivation is not None:
             self.motivation.load_model(name=model_name, folder='saved')
+
+        if self.reward_model is not None:
+            self.reward_model.load_model(name=model_name, folder='saved')
 
         with open("arrays/{}.json".format(model_name)) as f:
             history = json.load(f)
@@ -379,6 +428,9 @@ class Runner:
         loss = self.motivation.train()
         #print('Mean motivation loss = {}'.format(loss))
 
+    def update_reward_model(self):
+        loss, _ = self.reward_model.train()
+
     # For IRL, get initial experience from environment, the agent act in the env without update itself
     def get_experience(self, env, num_discriminator_exp=None, verbose=False, random=False):
 
@@ -414,4 +466,3 @@ class Runner:
         hours, rem = divmod(end - start, 3600)
         minutes, seconds = divmod(rem, 60)
         print("Time passed: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
-

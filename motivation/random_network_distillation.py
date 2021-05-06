@@ -11,7 +11,7 @@ eps = 1e-12
 class RND:
     # Random Network Distillation class
     def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e4, batch_size=32,
-                 num_itr=5, name='rnd', **kwargs):
+                 num_itr=3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
@@ -37,9 +37,6 @@ class RND:
             # Input placeholders, they depend on DeepCrawl
             self.inputs = self.input_spec()
 
-            # For fixed target labels, use a placeholder in order to NOT update the target network
-            self.target_labels = tf.compat.v1.placeholder(tf.float32, [None, 1], name='target_labels')
-
             # Target network, it must remain fixed during all the training
             with tf.compat.v1.variable_scope('target'):
                 # Network specification from external function
@@ -50,8 +47,13 @@ class RND:
                 # Network specification from external function
                 self.predictor = self.network_spec(self.inputs)
 
+            # For fixed target labels, use a placeholder in order to NOT update the target network
+            _, latent = shape_list(self.target)
+            self.target_labels = tf.compat.v1.placeholder(tf.float32, [None, latent], name='target_labels')
+
             self.reward_loss = tf.compat.v1.losses.mean_squared_error(self.target_labels, self.predictor)
-            self.rewards = tf.math.squared_difference(self.target_labels, self.predictor)
+            #self.rewards = tf.math.squared_difference(self.target_labels, self.predictor)
+            self.rewards = tf.reduce_sum(tf.math.pow(self.target_labels - self.predictor, 2), axis=1)
 
             optimizer = tf.compat.v1.train.AdamOptimizer(self.lr)
             gradients, variables = zip(*optimizer.compute_gradients(self.reward_loss))
@@ -89,31 +91,6 @@ class RND:
 
             losses.append(loss)
 
-        # # Update the normalization statistics
-        # for it in range(self.num_itr):
-        #     # Take a mini-batch of batch_size experience
-        #     mini_batch_idxs = random.sample(range(len(self.buffer)), self.batch_size)
-        #
-        #     mini_batch = [self.buffer[id] for id in mini_batch_idxs]
-        #
-        #     # Convert the observation to states
-        #     states = self.obs_to_state(mini_batch)
-        #
-        #     # Create the feed dict for the target network
-        #     feed_target = self.create_state_feed_dict(states)
-        #
-        #     # Get the target prediction (without training it)
-        #     target_labels = self.sess.run([self.target], feed_target)[0]
-        #
-        #     # Get the predictor estimation
-        #     feed_predictor = self.create_state_feed_dict(states)
-        #     feed_predictor[self.target_labels] = target_labels
-        #
-        #     # Update the predictor networks
-        #     rewards = self.sess.run([self.rewards], feed_predictor)
-        #     rewards = np.squeeze(rewards)
-        #     self.push_reward(rewards)
-
         # Update Dynamic Running Stat
         if isinstance(self.r_norm, DynamicRunningStat):
             self.r_norm.reset()
@@ -142,9 +119,8 @@ class RND:
         # Update the predictor networks
         rewards = self.sess.run(self.rewards, feed_predictor)
         rewards = np.reshape(rewards, (-1))
-        # norm_rewards = self.normalize_rewards(rewards)
-        # if norm_rewards[0] is None:
-        #     rewards = norm_rewards
+
+        # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):
             for r in rewards:
                 self.r_norm.push(r)
@@ -160,6 +136,7 @@ class RND:
 
         return feed_dict
 
+    # Add observation to buffer
     def add_to_buffer(self, obs):
 
         if len(self.buffer) >= self.buffer_size:

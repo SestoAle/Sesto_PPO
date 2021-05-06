@@ -13,8 +13,7 @@ import gym
 from mlagents.envs import UnityEnvironment
 import logging as logs
 
-
-from reward_model.reward_model import RewardModel
+from reward_model.reward_model import GAIL
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -41,15 +40,17 @@ parser.add_argument('-rm', '--reward-model', help="The name of the reward model"
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems_archer.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
+parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
 
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
+parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
+parser.set_defaults(get_demonstrations=False)
 
 args = parser.parse_args()
 
@@ -84,14 +85,13 @@ class BugEnvironment:
 
         state = dict(global_in=env_info.vector_observations[0])
 
-
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
 
         # Get the counter of that position and compute reward
         counter = self.insert_to_pos_table(position)
-        #reward = self.compute_intrinsic_reward(counter)
-        reward = 0
+        # reward = self.compute_intrinsic_reward(counter)
+        # reward = 0
 
         # print(state['global_in'][:2])
         # print(np.flip(np.transpose(np.reshape(state['global_in'][7:7+25], [5,5])), 0))
@@ -157,9 +157,6 @@ class BugEnvironment:
 
             pos_key = list(self.pos_buffer.keys())[index]
             pos = np.asarray(list(map(float, pos_key.split(" "))))
-            if pos[2] == 0:
-                print('OOOOHOHOHOHOHOHOH')
-                input('.....')
             # re-normalize pos to world coordinates
             pos = (((pos + 1) / 2) * 40) - 20
 
@@ -168,8 +165,6 @@ class BugEnvironment:
         else:
             self.config['agent_spawn_x'] = self.standard_position[0]
             self.config['agent_spawn_z'] = self.standard_position[1]
-
-
 
     # Insert to the table. Position must be a 2 element vector
     # Return the counter of that position
@@ -232,21 +227,8 @@ if __name__ == "__main__":
         'current_step': 0,
         "thresholds": [1000000000000000000000000000],
         "parameters": {
-            #"agent_spawn": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
             "agent_spawn_x": [14],
             "agent_spawn_z": [14]
-            #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            #"obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            #"obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
-            #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            #"min_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            #"max_num_coin":       [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
-            #"min_num_coin":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-
         }
     }
 
@@ -279,23 +261,33 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state)
+            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state_rnd)
             init = tf.compat.v1.global_variables_initializer()
             sess.run(init)
+
+    # If we use IRL, create the reward model
+    reward_model = None
+    if args.use_reward_model:
+        if not args.fixed_reward_model:
+            with graph.as_default():
+                tf.compat.v1.disable_eager_execution()
+                sess = tf.compat.v1.Session(graph=graph)
+                reward_model = GAIL(input_architecture=input_spec, network_architecture=network_spec_rnd,
+                                    obs_to_state=obs_to_state_rnd, actions_size=9, policy=agent, sess=sess, lr=7e-5,
+                                    name=model_name, fixed_reward_model=False)
+                init = tf.compat.v1.global_variables_initializer()
+                sess.run(init)
 
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
         env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id, max_episode_timesteps=max_episode_timestep)
     else:
-        # If parallel, create more environemnts
+        # If parallel, create more environments
         envs = []
         for i in range(5):
             envs.append(BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id + i,
                                        max_episode_timesteps=max_episode_timestep))
-
-    # No IRL
-    reward_model = None
 
     # Create runner
     if not parallel:
