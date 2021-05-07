@@ -356,6 +356,7 @@ class Runner:
         if self.motivation is not None:
             self.motivation.load_model(name=model_name, folder='saved')
 
+        # Load reward motivation for testing
         if self.reward_model is not None:
             self.reward_model.load_model(name=model_name, folder='saved')
 
@@ -418,6 +419,7 @@ class Runner:
 
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
+        print('Mean reward loss = {}'.format(loss))
 
     # For IRL, get initial experience from environment, the agent act in the env without update itself
     def get_experience(self, env, num_discriminator_exp=None, verbose=False, random=False):

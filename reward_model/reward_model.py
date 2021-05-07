@@ -276,7 +276,8 @@ class RewardModel:
                 del self.policy_traj['obs_n'][0]
                 del self.policy_traj['acts'][0]
             else:
-                index = random.randint(0, len(self.policy_traj['obs']))
+                index = np.random.randint(0, len(self.policy_traj['obs']))
+
                 del self.policy_traj['obs'][index]
                 del self.policy_traj['obs_n'][index]
                 del self.policy_traj['acts'][index]
