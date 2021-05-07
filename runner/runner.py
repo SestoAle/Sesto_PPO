@@ -419,7 +419,7 @@ class Runner:
 
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
-        print('Mean reward loss = {}'.format(loss))
+        #print('Mean reward loss = {}'.format(loss))
 
     # For IRL, get initial experience from environment, the agent act in the env without update itself
     def get_experience(self, env, num_discriminator_exp=None, verbose=False, random=False):
