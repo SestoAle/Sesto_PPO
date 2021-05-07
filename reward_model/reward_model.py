@@ -257,8 +257,12 @@ class RewardModel:
 
     # Load entire model
     def load_model(self, name=None):
+        print(name)
+        input('...')
         self.saver = tf.compat.v1.train.import_meta_graph('reward_model/models/' + name + '.meta')
         self.saver.restore(self.sess, 'reward_model/models/' + name)
+        print('Reward model with name {} loaded!'.format(name))
+        input('...')
         return
 
     def clear_policy_buffer(self):

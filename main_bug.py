@@ -24,7 +24,7 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/BugEnv")
+parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -36,7 +36,7 @@ parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='reward_model')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_4000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -46,7 +46,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
 parser.set_defaults(use_reward_model=True)
-parser.set_defaults(fixed_reward_model=False)
+parser.set_defaults(fixed_reward_model=True)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
@@ -258,23 +258,27 @@ if __name__ == "__main__":
     if args.use_motivation:
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
-            sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state_rnd)
+            motivation_sess = tf.compat.v1.Session(graph=graph)
+            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state_rnd)
             init = tf.compat.v1.global_variables_initializer()
-            sess.run(init)
+            motivation_sess.run(init)
 
     # If we use IRL, create the reward model
     reward_model = None
     if args.use_reward_model:
-        if not args.fixed_reward_model:
-            with graph.as_default():
-                tf.compat.v1.disable_eager_execution()
-                sess = tf.compat.v1.Session(graph=graph)
-                reward_model = GAIL(input_architecture=input_spec, network_architecture=network_spec_irl,
-                                    obs_to_state=obs_to_state_rnd, actions_size=9, policy=agent, sess=sess, lr=7e-5,
-                                    name=model_name, fixed_reward_model=False)
-                init = tf.compat.v1.global_variables_initializer()
-                sess.run(init)
+        with graph.as_default():
+            tf.compat.v1.disable_eager_execution()
+            reward_sess = tf.compat.v1.Session(graph=graph)
+            reward_model = GAIL(input_architecture=input_spec, network_architecture=network_spec_irl,
+                                obs_to_state=obs_to_state_rnd, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
+                                name=model_name, fixed_reward_model=False)
+            init = tf.compat.v1.global_variables_initializer()
+            reward_sess.run(init)
+            # If we want, we can use an already trained reward model
+            if fixed_reward_model:
+                reward_model.load_model(reward_model_name)
+                print("Model loaded!")
+
 
     # Open the environment with all the desired flags
     if not parallel:
