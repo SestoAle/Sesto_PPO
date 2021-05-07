@@ -110,3 +110,31 @@ def network_spec_rnd(states):
 
 
     return global_state
+
+def network_spec_irl(states):
+    input_length = 45
+    with_circular = False
+
+    global_state = states[0]
+
+    # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
+    # Jump
+    agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
+
+    agent = tf.cast(agent, tf.int32)
+
+    global_state = agent
+
+    global_state = embedding(global_state, indices=41, size=32, name='embs')
+    global_state = tf.reshape(global_state, (-1, 2*32))
+    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
+    global_state = linear(global_state, 1, name='latent_2',
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
+
+
+    return global_state

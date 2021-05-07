@@ -61,28 +61,6 @@ class Runner:
         self._rewards = {}
         self._discs = {}
 
-        # Initialize reward model
-        if self.reward_model is not None:
-            if not self.fixed_reward_model:
-                # Ask for demonstrations
-                answer = None
-                while answer != 'y' and answer != 'n':
-                    answer = input('Do you want to create new demonstrations? [y/n] ')
-                if answer == 'y':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.env)
-                elif answer == 'p':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.env, with_policy=True)
-                else:
-                    print('Loading demonstrations...')
-                    dems, vals = self.reward_model.load_demonstrations(self.dems_name)
-
-                print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
-                print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
-
-                # Getting initial experience from the environment to do the first training epoch of the reward model
-                self.get_experience(env, self.reward_frequency, random=True)
-                self.reward_model.train()
-
         # Global runner statistics
         # total episode
         self.ep = 0
@@ -98,6 +76,31 @@ class Runner:
             "reward_model_loss": [],
             "env_rewards": []
         }
+
+        # Initialize reward model
+        if self.reward_model is not None:
+            if not self.fixed_reward_model:
+                # Ask for demonstrations
+                answer = None
+                while answer != 'y' and answer != 'n':
+                    answer = input('Do you want to create new demonstrations? [y/n] ')
+                # Before asking for demonstrations, set the curriculum of the environment
+                config = self.set_curriculum(self.curriculum, self.history, self.curriculum_mode)
+                self.env.set_config(config)
+                if answer == 'y':
+                    dems, vals = self.reward_model.create_demonstrations(env=self.env)
+                elif answer == 'p':
+                    dems, vals = self.reward_model.create_demonstrations(env=self.env, with_policy=True)
+                else:
+                    print('Loading demonstrations...')
+                    dems, vals = self.reward_model.load_demonstrations(self.dems_name)
+
+                print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
+                #print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
+
+                # Getting initial experience from the environment to do the first training epoch of the reward model
+                self.get_experience(env, self.reward_frequency, random=True)
+                self.reward_model.train()
 
         # For curriculum training
         self.start_training = 0
@@ -188,18 +191,8 @@ class Runner:
                 if self.reward_model is not None:
                     # motivation_reward = self.motivation.eval([state_n])
                     # print(motivation_reward)
-                    self.reward_model.add_to_buffer(state, state_n, action)
+                    self.reward_model.add_to_policy_buffer(state, state_n, action)
 
-                # If exists a reward model, use it instead of the env reward
-                if self.reward_model is not None:
-                    env_episode_reward += reward
-                    # If we use a trained reward model, use a simple eval without updating it
-                    if self.fixed_reward_model:
-                        reward = self.reward_model.eval([state], [state_n], [action])  # , probs=[probs[actions]])
-                    # If not, eval with discriminator and update its buffer for training it
-                    else:
-                        reward = self.reward_model.eval_discriminator([state], [state_n], [probs[0][action]], [action])
-                        self.reward_model.add_to_buffer(state, state_n, action)
                 # If step is equal than max timesteps, terminate the episode
                 if step >= self.env._max_episode_timesteps - 1:
                     done = True
@@ -302,8 +295,7 @@ class Runner:
                     # Normalize rewards
                     # intrinsic_rews -= self.motivation.r_norm.mean
                     # intrinsic_rews /= self.motivation.r_norm.std
-                    # intrinsic_rews = list(intrinsic_rews)
-                    print(intrinsic_rews)
+                    intrinsic_rews = list(intrinsic_rews)
                     self.agent.buffer['rewards'] = intrinsic_rews
 
                 self.agent.train()
@@ -316,26 +308,18 @@ class Runner:
                 if self.motivation is not None:
                     self.update_motivation()
 
-                # If frequency episodes are passed, update the policy
-                if not self.evaluation and self.frequency_mode == 'episodes' and \
-                        self.ep > 0 and self.ep % self.reward_frequency == 0:
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.reward_frequency == 0:
 
-                    # If we use intrinsic motivation, update also intrinsic motivation
-                    if self.reward_model is not None:
-                        self.update_reward_model()
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.reward_model is not None and not self.fixed_reward_model:
+                    self.update_reward_model()
 
-
-            # If IRL, update the reward model after reward_frequency episode
-            if not self.evaluation and self.reward_model is not None:
-                if not self.fixed_reward_model and self.ep > 0 and self.ep % self.reward_frequency == 0:
-                    self.reward_model.train()
 
             # Save model and statistics
             if self.ep > 0 and self.ep % self.save_frequency == 0:
                 self.save_model(self.history, self.agent.model_name, self.curriculum, self.agent)
-                if self.reward_model is not None:
-                    if not self.fixed_reward_model:
-                        self.reward_model.save_model('{}_{}'.format(self.agent.model_name, self.ep))
 
 
     def save_model(self, history, model_name, curriculum, agent):
@@ -358,6 +342,10 @@ class Runner:
         # If we use intrinsic motivation, save the motivation model
         if self.motivation is not None:
             self.motivation.save_model(name=model_name, folder='saved')
+
+        # If we use IRL, save the reward model
+        if self.reward_model is not None and not self.fixed_reward_model:
+            self.reward_model.save_model('{}_{}'.format(model_name, self.ep))
 
         print('Model saved with name: {}'.format(model_name))
 
@@ -448,10 +436,10 @@ class Runner:
                 step += 1
                 action, _, c_probs = self.agent.eval([state])
                 if random:
-                    num_actions = env.actions()['num_values']
+                    num_actions = self.agent.action_size
                     action = np.random.randint(0, num_actions)
                 state_n, terminal, step_reward = env.execute(actions=action)
-                self.reward_model.add_to_buffer(state, state_n, action)
+                self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 state = state_n
                 reward += step_reward

@@ -45,9 +45,6 @@ class RewardModel:
         self.batch_size = batch_size
         self.buffer_size = buffer_size
 
-        # Name of the demonstrations to load
-        self.dems_name = dems_name
-
         # Initialize network architecture
         self.initialize_network(self.input_architecture, self.network)
 
@@ -82,7 +79,7 @@ class RewardModel:
     def select_action(self, state):
         # TODO: eval_recurrent
         act, _, probs = self.policy.eval(state)
-        return (act, probs)
+        return (act, probs[0])
 
     # Update demonstrations
     def set_demonstrations(self, demonstrations, validations):
@@ -93,7 +90,7 @@ class RewardModel:
 
     # Create demonstrations manually or with a policy
     def create_demonstrations(self, env, save_demonstrations=True, inference=False, verbose=False,
-                              with_policy=False, num_episode=None, max_timestep=20,
+                              with_policy=False, num_episode=3,
                               model_name='model', random=False, dems_name='dems.pkl', sampled_env=None,
                               ):
         end = False
@@ -114,7 +111,7 @@ class RewardModel:
         if with_policy is False:
             num_episode = None
 
-        if sampled_env > 0:
+        if sampled_env is not None and sampled_env > 0:
             num_episode = sampled_env
 
         episode = 1
@@ -133,7 +130,7 @@ class RewardModel:
                 try:
                     # Input the action and save the new state and action
                     step += 1
-                    print('Timesteps number {}/{}'.format(step, max_timestep))
+                    print('Timesteps number {}/{}'.format(step, env._max_episode_timesteps))
                     if verbose:
                         env.print_observation(state)
                     if not with_policy:
@@ -141,8 +138,8 @@ class RewardModel:
                         if action == "f":
                             done = True
                             continue
-                        while env.command_to_action(action) >= 99:
-                            action = input('action: ')
+                        # while env.command_to_action(action) >= 99:
+                        #     action = input('action: ')
                     else:
                         if random:
                             action = np.random.randint(0, self.actions_size)
@@ -150,9 +147,6 @@ class RewardModel:
                             action, probs = self.select_action(state)
 
                     state_n, done, reward = env.execute(action)
-
-                    if not with_policy:
-                        action = env.command_to_action(action)
 
                     # If inference is true, print the reward
                     if inference:
@@ -173,7 +167,7 @@ class RewardModel:
                     state = state_n
                     states.append(state)
                     actions.append(action)
-                    if step >= max_timestep:
+                    if step >= env._max_episode_timesteps:
                         done = True
                 except Exception as e:
                     print(e)
@@ -181,7 +175,7 @@ class RewardModel:
 
             if not inference:
                 y = None
-                if with_policy or sampled_env > 0:
+                if with_policy or (sampled_env is not None and sampled_env > 0):
                     if episode <= num_episode:
                         y = 'y'
 
@@ -194,16 +188,16 @@ class RewardModel:
                     expert_traj['obs_n'].extend(np.array(states[1:]))
                     expert_traj['acts'].extend(np.array(actions))
                     episode += 1
-                # else:
-                #     if num_episode is None or episode >= num_episode:
-                #         y = input('Do you want to save this demonstration as validation? [y/n] ')
-                #     else:
-                #         y = 'n'
-                #     if y == 'y':
-                #         val_traj['obs'].extend(np.array(states[:-1]))
-                #         val_traj['obs_n'].extend(np.array(states[1:]))
-                #         val_traj['acts'].extend(np.array(actions))
-                #         episode += 1
+                else:
+                    if num_episode is None or episode >= num_episode:
+                        y = input('Do you want to save this demonstration as validation? [y/n] ')
+                    else:
+                        y = 'n'
+                    if y == 'y':
+                        val_traj['obs'].extend(np.array(states[:-1]))
+                        val_traj['obs_n'].extend(np.array(states[1:]))
+                        val_traj['acts'].extend(np.array(actions))
+                        episode += 1
 
             y = None
             if num_episode is None:
@@ -243,11 +237,11 @@ class RewardModel:
                 pickle.dump(validations, f, pickle.HIGHEST_PROTOCOL)
 
     # Load demonstrations from file
-    def load_demonstrations(self):
-        with open('reward_model/dems/' + self.dems_name, 'rb') as f:
+    def load_demonstrations(self, dems_name):
+        with open('reward_model/dems/' + dems_name, 'rb') as f:
             expert_traj = pickle.load(f)
 
-        # with open('reward_model/dems/vals_' + self.dems_name, 'rb') as f:
+        # with open('reward_model/dems/vals_' + dems_name, 'rb') as f:
         #     val_traj = pickle.load(f)
 
         val_traj = None
@@ -282,7 +276,7 @@ class RewardModel:
                 del self.policy_traj['obs_n'][0]
                 del self.policy_traj['acts'][0]
             else:
-                index = random.randint(len(self.policy_traj['obs']))
+                index = random.randint(0, len(self.policy_traj['obs']))
                 del self.policy_traj['obs'][index]
                 del self.policy_traj['obs_n'][index]
                 del self.policy_traj['acts'][index]
@@ -317,7 +311,14 @@ class AIRL(RewardModel):
                 self.probs = tf.compat.v1.placeholder(tf.float32, [None, 1], name='probs')
                 self.labels = tf.compat.v1.placeholder(tf.float32, [None, 1], name='labels')
 
-                self.states, self.act, self.states_n = input_architecture()
+                # Only discrete action space
+                # TODO: add continuous action space
+                self.act = tf.compat.v1.placeholder(tf.float32, [None, 1], name='act')
+
+                with tf.compat.v1.variable_scope('states'):
+                    self.states = input()
+                with tf.compat.v1.variable_scope('states_n'):
+                    self.states_n = input()
 
                 self.reward = network(self.states, act=self.act, with_action=self.with_action,
                                       actions_size=self.actions_size)
@@ -556,13 +557,10 @@ class GAIL(RewardModel):
         with tf.compat.v1.variable_scope(self.name) as vs:
             with tf.compat.v1.variable_scope('irl'):
                 self.labels = tf.compat.v1.placeholder(tf.float32, [None, 1], name='labels')
-                self.act = tf.compat.v1.placeholder(tf.float32, [None, 1], name='labels')
 
                 self.states = input()
-                self.states_n = input()
 
-                self.reward = network(self.states, act=self.act, with_action=self.with_action,
-                                      actions_size=self.actions_size)
+                self.reward = network(self.states)
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
 
@@ -587,40 +585,22 @@ class GAIL(RewardModel):
             expert_obs = [expert_traj['obs'][id] for id in expert_batch_idxs]
             policy_obs = [policy_traj['obs'][id] for id in policy_batch_idxs]
 
-            expert_obs_n = [expert_traj['obs_n'][id] for id in expert_batch_idxs]
-            policy_obs_n = [policy_traj['obs_n'][id] for id in policy_batch_idxs]
-
-            expert_acts = [expert_traj['acts'][id] for id in expert_batch_idxs]
-            policy_acts = [policy_traj['acts'][id] for id in policy_batch_idxs]
-
             labels = np.ones((self.batch_size, 1))
             labels = np.concatenate([labels, np.zeros((self.batch_size, 1))])
 
             e_states = self.obs_to_state(expert_obs)
             p_states = self.obs_to_state(policy_obs)
 
-            e_states_n = self.obs_to_state(expert_obs_n)
-            p_states_n = self.obs_to_state(policy_obs_n)
-
             all_states = []
-            all_states_n = []
 
             for i in range(len(e_states)):
                 all_states.append(np.concatenate([e_states[i], p_states[i]], axis=0))
-                all_states_n.append(np.concatenate([e_states_n[i], p_states_n[i]], axis=0))
 
             feed_dict = {}
             for i in range(len(self.states)):
                 feed_dict[self.states[i]] = all_states[i]
-                feed_dict[self.states_n[i]] = all_states_n[i]
 
             feed_dict[self.labels] = labels
-
-            if self.with_action:
-                all_acts = np.concatenate([expert_acts, policy_acts], axis=0)
-                all_acts = np.expand_dims(all_acts, axis=1)
-
-                feed_dict[self.act] = all_acts
 
             loss, discriminator, _ = self.sess.run([self.loss, self.discriminator, self.step], feed_dict=feed_dict)
 
@@ -632,18 +612,14 @@ class GAIL(RewardModel):
     def eval_discriminator(self, obs, obs_n, probs, acts=None):
 
         states = self.obs_to_state(obs)
-        states_n = self.obs_to_state(obs_n)
 
         feed_dict = {}
         for i in range(len(states)):
             feed_dict[self.states[i]] = states[i]
-            feed_dict[self.states_n[i]] = states_n[i]
-
-        if self.with_action and acts is not None:
-            acts = np.expand_dims(acts, axis=1)
-            feed_dict[self.act] = acts
 
         rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
+        rew = np.reshape(rew, (-1))
+
         rew = - np.log(1 - rew)
 
         return rew
