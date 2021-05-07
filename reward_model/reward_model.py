@@ -11,7 +11,7 @@ class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
                  sess=None, buffer_size=100000,
-                 dems_name='dems', with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
+                 with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
         # RunningStat to normalize reward from the model
@@ -252,17 +252,15 @@ class RewardModel:
 
     # Save the entire model
     def save_model(self, name=None):
+        tf.compat.v1.disable_eager_execution()
         self.saver.save(self.sess, 'reward_model/models/' + name)
         return
 
     # Load entire model
     def load_model(self, name=None):
-        print(name)
-        input('...')
-        self.saver = tf.compat.v1.train.import_meta_graph('reward_model/models/' + name + '.meta')
+        tf.compat.v1.disable_eager_execution()
+        #self.saver = tf.compat.v1.train.import_meta_graph('reward_model/models/' + name + '.meta')
         self.saver.restore(self.sess, 'reward_model/models/' + name)
-        print('Reward model with name {} loaded!'.format(name))
-        input('...')
         return
 
     def clear_policy_buffer(self):
