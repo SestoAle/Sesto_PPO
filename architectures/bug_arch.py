@@ -132,7 +132,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     with_circular = False
 
     global_state = states[0]
-    action_state = act
+    action_state = act[0]
 
     # Jump
     agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
@@ -147,9 +147,10 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                                                                           dtype=tf.dtypes.float32)
                           )
 
+    action_state = tf.compat.v1.Print(action_state, [action_state.shape], 'action ', summarize=1e5)
     action_state = tf.one_hot(action_state, actions_size)
     action_state = tf.reshape(action_state, [-1, actions_size])
-    action_state = tf.compat.v1.Print(action_state, [action_state.shape], 'action ', summarize=1e5)
+
     action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
 
 
