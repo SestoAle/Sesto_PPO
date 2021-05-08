@@ -137,9 +137,13 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     # Jump
     agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
+    agent_n, goal_n, grid_n, rays_n = tf.split(global_state_n, [2, 6, 25, 12], axis=1)
 
     agent = tf.cast(agent, tf.int32)
     global_state = agent
+
+    agent_n = tf.cast(agent_n, tf.int32)
+    global_state_n = agent_n
 
     global_state = embedding(global_state, indices=41, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 2*32))
@@ -155,9 +159,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                                                                           dtype=tf.dtypes.float32)
                           )
 
-    action_state = tf.one_hot(action_state, actions_size)
-    action_state = tf.reshape(action_state, [-1, actions_size])
-    action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
+    #action_state = tf.one_hot(action_state, actions_size)
+    #action_state = tf.reshape(action_state, [-1, actions_size])
+    #action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
 
 
     global_state = tf.concat([global_state, global_state_n], axis=1)
