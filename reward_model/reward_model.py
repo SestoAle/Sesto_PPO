@@ -595,11 +595,6 @@ class GAIL(RewardModel):
             expert_acts = [expert_traj['acts'][id] for id in expert_batch_idxs]
             policy_acts = [policy_traj['acts'][id] for id in policy_batch_idxs]
 
-            print(expert_acts)
-            print(" ")
-            print(policy_acts)
-            print(" ")
-
             labels = np.ones((self.batch_size, 1))
             labels = np.concatenate([labels, np.zeros((self.batch_size, 1))])
 
@@ -625,6 +620,7 @@ class GAIL(RewardModel):
 
             if self.with_action:
                 all_acts = np.concatenate([expert_acts, policy_acts], axis=0)
+                all_acts = int(all_acts)
                 all_acts = np.expand_dims(all_acts, axis=1)
                 print(all_acts)
                 input('...')
