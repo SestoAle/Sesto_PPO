@@ -132,7 +132,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     with_circular = False
 
     global_state = states[0]
-    action_state = act[0]
+    action_state = act
 
     # Jump
     agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
