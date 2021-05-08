@@ -621,7 +621,7 @@ class GAIL(RewardModel):
             if self.with_action:
                 all_acts = np.concatenate([expert_acts, policy_acts], axis=0)
                 all_acts = np.expand_dims(all_acts, axis=1)
-                print(all_acts.shape)
+                print(all_acts)
                 input('...')
 
                 feed_dict[self.act] = all_acts
