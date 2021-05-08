@@ -148,9 +148,10 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                           )
 
     action_state = tf.one_hot(action_state, actions_size)
-    action_state = tf.compat.v1.Print(action_state, [action_state], 'action ', summarize=1e5)
     action_state = tf.reshape(action_state, [-1, actions_size])
+    action_state = tf.compat.v1.Print(action_state, [action_state.shape], 'action ', summarize=1e5)
     action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
+
 
     global_state = tf.concat([global_state, action_state], axis=1)
 
