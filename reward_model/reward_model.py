@@ -580,9 +580,6 @@ class GAIL(RewardModel):
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
 
-        print(self.batch_size)
-        input('...')
-
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
 
@@ -624,6 +621,8 @@ class GAIL(RewardModel):
             if self.with_action:
                 all_acts = np.concatenate([expert_acts, policy_acts], axis=0)
                 all_acts = np.expand_dims(all_acts, axis=1)
+                print(all_acts.shape)
+                input('...')
 
                 feed_dict[self.act] = all_acts
 
