@@ -132,6 +132,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     with_circular = False
 
     global_state = states[0]
+    global_state_n = states_n[0]
     action_state = act
 
     # Jump
@@ -147,13 +148,19 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                                                                           dtype=tf.dtypes.float32)
                           )
 
+    global_state_n = embedding(global_state_n, indices=41, size=32, name='embs_n')
+    global_state_n = tf.reshape(global_state_n, (-1, 2 * 32))
+    global_state_n = linear(global_state_n, 64, name='latent_1_n', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
 
     action_state = tf.one_hot(action_state, actions_size)
     action_state = tf.reshape(action_state, [-1, actions_size])
     action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
 
 
-    global_state = tf.concat([global_state, action_state], axis=1)
+    global_state = tf.concat([global_state, global_state_n], axis=1)
 
     global_state = linear(global_state, 1, name='latent_2',
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
