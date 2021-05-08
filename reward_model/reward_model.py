@@ -580,6 +580,10 @@ class GAIL(RewardModel):
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
 
+        print(self.expert_traj['acts'])
+        print(self.policy_traj['acts'])
+        input('...')
+
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
 
