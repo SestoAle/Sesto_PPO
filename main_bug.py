@@ -36,7 +36,7 @@ parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_4000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_60000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -45,8 +45,8 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
-parser.set_defaults(fixed_reward_model=True)
+parser.set_defaults(use_reward_model=False)
+parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
@@ -75,7 +75,7 @@ class BugEnvironment:
         self.standard_position = [14, 14, 1]
 
     def execute(self, actions):
-        # actions = int(input(': '))
+        #actions = int(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
@@ -235,7 +235,7 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 5
+    frequency = 1
     # Memory of the agent (in episode)
     memory = 5
 
@@ -259,7 +259,8 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, obs_to_state=obs_to_state_rnd)
+            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
+                             obs_to_state=obs_to_state_rnd)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 
@@ -269,9 +270,9 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             reward_sess = tf.compat.v1.Session(graph=graph)
-            reward_model = GAIL(input_architecture=input_spec, network_architecture=network_spec_irl,
-                                obs_to_state=obs_to_state_rnd, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
-                                name=model_name, fixed_reward_model=False)
+            reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
+                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
+                                name=model_name, fixed_reward_model=False, with_action=True)
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)
             # If we want, we can use an already trained reward model

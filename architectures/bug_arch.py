@@ -111,18 +111,33 @@ def network_spec_rnd(states):
 
     return global_state
 
-def network_spec_irl(states):
+
+
+def input_spec_irl():
+    input_length = 45
+    global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
+
+    global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
+
+    act = tf.compat.v1.placeholder(tf.int32, [None, 1], name='act')
+
+    return [[global_state], act, [global_state_n]]
+
+def obs_to_state_irl(obs):
+    global_batch = np.stack([((state['global_in'] + 1) / 2) * 40 for state in obs])
+    return [global_batch]
+
+def network_spec_irl(states, states_n, act, with_action, actions_size):
     input_length = 45
     with_circular = False
 
     global_state = states[0]
+    action_state = act[0]
 
-    # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
     agent, goal, grid, rays = tf.split(global_state, [2, 6, 25, 12], axis=1)
 
     agent = tf.cast(agent, tf.int32)
-
     global_state = agent
 
     global_state = embedding(global_state, indices=41, size=32, name='embs')
@@ -131,10 +146,18 @@ def network_spec_irl(states):
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
+
+    action_state = tf.one_hot(action_state, actions_size)
+    action_state = tf.reshape(action_state, [-1, actions_size])
+    action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
+
+    global_state = tf.concat([global_state, action_state], axis=1)
+
     global_state = linear(global_state, 1, name='latent_2',
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
+
 
 
     return global_state

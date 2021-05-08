@@ -561,9 +561,10 @@ class GAIL(RewardModel):
             with tf.compat.v1.variable_scope('irl'):
                 self.labels = tf.compat.v1.placeholder(tf.float32, [None, 1], name='labels')
 
-                self.states = input()
+                self.states, self.act, self.states_n = input()
 
-                self.reward = network(self.states)
+                self.reward = network(states=self.states, states_n=self.states_n, act=self.act, with_action=self.with_action,
+                                      actions_size=self.actions_size)
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
 
@@ -588,22 +589,40 @@ class GAIL(RewardModel):
             expert_obs = [expert_traj['obs'][id] for id in expert_batch_idxs]
             policy_obs = [policy_traj['obs'][id] for id in policy_batch_idxs]
 
+            expert_obs_n = [expert_traj['obs_n'][id] for id in expert_batch_idxs]
+            policy_obs_n = [policy_traj['obs_n'][id] for id in policy_batch_idxs]
+
+            expert_acts = [expert_traj['acts'][id] for id in expert_batch_idxs]
+            policy_acts = [policy_traj['acts'][id] for id in policy_batch_idxs]
+
             labels = np.ones((self.batch_size, 1))
             labels = np.concatenate([labels, np.zeros((self.batch_size, 1))])
 
             e_states = self.obs_to_state(expert_obs)
             p_states = self.obs_to_state(policy_obs)
 
+            e_states_n = self.obs_to_state(expert_obs_n)
+            p_states_n = self.obs_to_state(policy_obs_n)
+
             all_states = []
+            all_states_n = []
 
             for i in range(len(e_states)):
                 all_states.append(np.concatenate([e_states[i], p_states[i]], axis=0))
+                all_states_n.append(np.concatenate([e_states_n[i], p_states_n[i]], axis=0))
 
             feed_dict = {}
             for i in range(len(self.states)):
                 feed_dict[self.states[i]] = all_states[i]
+                feed_dict[self.states_n[i]] = all_states_n[i]
 
             feed_dict[self.labels] = labels
+
+            if self.with_action:
+                all_acts = np.concatenate([expert_acts, policy_acts], axis=0)
+                all_acts = np.expand_dims(all_acts, axis=1)
+
+                feed_dict[self.act] = all_acts
 
             loss, discriminator, _ = self.sess.run([self.loss, self.discriminator, self.step], feed_dict=feed_dict)
 
@@ -615,15 +634,21 @@ class GAIL(RewardModel):
     def eval_discriminator(self, obs, obs_n, probs, acts=None):
 
         states = self.obs_to_state(obs)
+        states_n = self.obs_to_state(obs_n)
 
         feed_dict = {}
         for i in range(len(states)):
             feed_dict[self.states[i]] = states[i]
+            feed_dict[self.states_n[i]] = states_n[i]
+
+        if self.with_action and acts is not None:
+            acts = np.expand_dims(acts, axis=1)
+            feed_dict[self.act] = acts
 
         rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
         rew = np.reshape(rew, (-1))
 
-        rew = - np.log(1 - rew)
+        rew = - np.log(1 - rew + eps)
 
         return rew
 

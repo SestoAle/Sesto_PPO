@@ -189,9 +189,10 @@ class Runner:
                 # Add the next state to the IRL buffer
                 # - The intrinsic reward will be added later -
                 if self.reward_model is not None:
-                    # motivation_reward = self.reward_model.eval([state], [state_n],
-                    #                                         [action])
-                    # print(motivation_reward)
+
+                    #motivation_reward = self.reward_model.eval([state], [state_n],
+                    #                                        [action])
+                    #print(motivation_reward)
                     self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 # If step is equal than max timesteps, terminate the episode
@@ -296,6 +297,8 @@ class Runner:
                     # Normalize rewards
                     # intrinsic_rews -= self.motivation.r_norm.mean
                     # intrinsic_rews /= self.motivation.r_norm.std
+                    print(intrinsic_rews)
+                    input('....')
                     intrinsic_rews = list(intrinsic_rews)
                     self.agent.buffer['rewards'] = intrinsic_rews
 
