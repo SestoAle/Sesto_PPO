@@ -642,8 +642,6 @@ class GAIL(RewardModel):
             feed_dict[self.states_n[i]] = states_n[i]
 
         if self.with_action and acts is not None:
-            print(acts)
-            input('...')
             acts = np.expand_dims(acts, axis=1)
             feed_dict[self.act] = acts
 
