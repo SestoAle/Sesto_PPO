@@ -584,6 +584,7 @@ class GAIL(RewardModel):
                     self.gradient_magnitude = tf.gradients(self.gradient_magnitude, [self.latent])[0]
                     self.gradient_magnitude = tf.sqrt(tf.reduce_sum(self.gradient_magnitude ** 2, axis=-1) + eps)
                     self.gradient_magnitude = tf.reduce_mean(tf.pow(self.gradient_magnitude - 1, 2))
+                    self.gradient_magnitude = tf.compat.v1.Print(self.gradient_magnitude, [self.gradient_magnitude], 'Gr ', summarize=1e5)
                     self.loss += self.gradient_penalty_weight * self.gradient_magnitude
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
@@ -641,8 +642,6 @@ class GAIL(RewardModel):
             loss, discriminator, _ = self.sess.run([self.loss, self.discriminator, self.step], feed_dict=feed_dict)
 
             losses.append(loss)
-
-        print(losses)
 
         return np.mean(losses), 0
 
