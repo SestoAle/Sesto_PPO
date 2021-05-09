@@ -642,6 +642,8 @@ class GAIL(RewardModel):
 
             losses.append(loss)
 
+        print(losses)
+
         return np.mean(losses), 0
 
     # Return the log(D(s,a))
