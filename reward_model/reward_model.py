@@ -10,7 +10,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -44,6 +44,8 @@ class RewardModel:
         self.num_itr = num_itr
         self.batch_size = batch_size
         self.buffer_size = buffer_size
+        # Gradient penalty
+        self.gradient_penalty_weight = gradient_penalty_weight
 
         # Initialize network architecture
         self.initialize_network(self.input_architecture, self.network)
@@ -563,14 +565,26 @@ class GAIL(RewardModel):
 
                 self.states, self.act, self.states_n = input()
 
-                self.reward = network(states=self.states, states_n=self.states_n, act=self.act, with_action=self.with_action,
+                self.reward, self.latent = network(states=self.states, states_n=self.states_n, act=self.act, with_action=self.with_action,
                                       actions_size=self.actions_size)
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
 
                 # Loss Function
-                self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                # Original loss from GAIL paper
+                #self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
+                #        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                # Loss from AMP
+                self.loss = -tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
+                       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+
+                if self.gradient_penalty_weight > 0.0:
+                    # Compute gradient penaly as AMP
+                    self.gradient_magnitude = self.labels * tf.math.log(self.discriminator + eps)
+                    self.gradient_magnitude = tf.gradients(self.gradient_magnitude, [self.latent])[0]
+                    self.gradient_magnitude = tf.sqrt(tf.reduce_sum(self.gradient_magnitude ** 2, axis=-1) + eps)
+                    self.gradient_magnitude = tf.reduce_mean(tf.pow(self.gradient_magnitude - 1, 2))
+                    self.loss += self.gradient_penalty_weight * self.gradient_magnitude
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
 
@@ -655,3 +669,15 @@ class GAIL(RewardModel):
     def eval(self, obs, obs_n, acts=None, probs=None):
 
         return self.eval_discriminator(obs, obs_n, probs, acts)
+
+    def create_gradient_magnitude(self):
+
+
+
+        grad = tf.gradients(grad_estimate, [grad_input])[0]
+
+        # Norm's gradient could be NaN at 0. Use our own safe_norm
+        safe_norm = tf.sqrt(tf.reduce_sum(grad ** 2, axis=-1) + eps)
+        gradient_mag = tf.reduce_mean(tf.pow(safe_norm - 1, 2))
+
+        return gradient_mag
