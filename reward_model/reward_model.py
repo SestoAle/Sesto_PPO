@@ -667,7 +667,7 @@ class GAIL(RewardModel):
         # Reward from original GAIL
         #rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = np.maximum(0, 1 - 0.25 * np.pow((rew - 1), 2))
+        rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
 
         # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):
