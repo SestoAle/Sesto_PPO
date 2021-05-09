@@ -594,6 +594,8 @@ class GAIL(RewardModel):
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
 
+        print('jaslkjdsa')
+
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
 
@@ -665,7 +667,10 @@ class GAIL(RewardModel):
         # Reward from original GAIL
         #rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = np.max(0, 1 - 0.25*np.power(((rew) - 1), 2))
+        rew = rew - 1
+        rew = np.power(rew, 2)
+
+        rew = np.max(0, 1 - 0.25*rew)
 
         return rew
 
