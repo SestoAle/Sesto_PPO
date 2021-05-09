@@ -10,7 +10,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=5.0,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=0.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -572,11 +572,11 @@ class GAIL(RewardModel):
 
                 # Loss Function
                 # Original loss from GAIL paper
-                #self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                #        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
+                        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
                 # Loss from AMP
-                self.loss = -tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
-                       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+                # self.loss = -tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
+                #        (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
                 if self.gradient_penalty_weight > 0.0:
                     # Compute gradient penaly as AMP
@@ -663,9 +663,9 @@ class GAIL(RewardModel):
         rew = np.reshape(rew, (-1))
 
         # Reward from original GAIL
-        #rew = - np.log(1 - rew + eps)
+        rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
+        # rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
 
         # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):
