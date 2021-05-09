@@ -296,8 +296,8 @@ class Runner:
                                                             self.agent.buffer['actions'])
 
                     # Normalize rewards
-                    # intrinsic_rews -= self.motivation.r_norm.mean
-                    # intrinsic_rews /= self.motivation.r_norm.std
+                    intrinsic_rews -= self.reward_model.r_norm.mean
+                    intrinsic_rews /= self.reward_model.r_norm.std
                     intrinsic_rews = list(intrinsic_rews)
                     print(intrinsic_rews)
                     input('...')

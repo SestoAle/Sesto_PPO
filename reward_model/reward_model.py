@@ -15,7 +15,7 @@ class RewardModel:
 
         # Initialize some model attributes
         # RunningStat to normalize reward from the model
-        self.r_norm = DynamicRunningStat()
+        self.r_norm = RunningStat()
 
         # Policy agent needed to compute the discriminator
         self.policy = policy
@@ -667,11 +667,12 @@ class GAIL(RewardModel):
         # Reward from original GAIL
         #rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = rew - 1
-        rew = np.power(rew, 2)
-        rew = 0.25 * rew
-        rew = 1 - rew
-        rew = np.maximum(0, rew)
+        rew = np.maximum(0, 1 - 0.25 * np.pow((rew - 1), 2))
+
+        # Add the rewards to the normalization statistics
+        if not isinstance(self.r_norm, DynamicRunningStat):
+            for r in rew:
+                self.r_norm.push(r)
 
         return rew
 
