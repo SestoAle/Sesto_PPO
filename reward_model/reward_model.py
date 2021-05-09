@@ -669,8 +669,8 @@ class GAIL(RewardModel):
         # Reward from AMP
         rew = rew - 1
         rew = np.power(rew, 2)
-
-        rew = np.max(0, 1 - 0.25*rew)
+        rew = 0.25 * rew
+        rew = np.max(0, 1 - rew)
 
         return rew
 
