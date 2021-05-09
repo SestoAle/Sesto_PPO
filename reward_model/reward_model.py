@@ -670,7 +670,8 @@ class GAIL(RewardModel):
         rew = rew - 1
         rew = np.power(rew, 2)
         rew = 0.25 * rew
-        rew = np.max(0, 1 - rew)
+        rew = 1 - rew
+        rew = np.maximum(0, rew)
 
         return rew
 
