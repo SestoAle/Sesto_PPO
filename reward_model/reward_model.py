@@ -662,22 +662,13 @@ class GAIL(RewardModel):
         rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
         rew = np.reshape(rew, (-1))
 
-        rew = - np.log(1 - rew + eps)
+        # Reward from original GAIL
+        #rew = - np.log(1 - rew + eps)
+        # Reward from AMP
+        rew = np.max(0, 1 - 0.25*np.power(((rew) - 1), 2))
 
         return rew
 
     def eval(self, obs, obs_n, acts=None, probs=None):
 
         return self.eval_discriminator(obs, obs_n, probs, acts)
-
-    def create_gradient_magnitude(self):
-
-
-
-        grad = tf.gradients(grad_estimate, [grad_input])[0]
-
-        # Norm's gradient could be NaN at 0. Use our own safe_norm
-        safe_norm = tf.sqrt(tf.reduce_sum(grad ** 2, axis=-1) + eps)
-        gradient_mag = tf.reduce_mean(tf.pow(safe_norm - 1, 2))
-
-        return gradient_mag

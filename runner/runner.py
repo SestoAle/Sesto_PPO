@@ -299,6 +299,8 @@ class Runner:
                     # intrinsic_rews -= self.motivation.r_norm.mean
                     # intrinsic_rews /= self.motivation.r_norm.std
                     intrinsic_rews = list(intrinsic_rews)
+                    print(intrinsic_rews)
+                    input('...')
                     self.agent.buffer['rewards'] = intrinsic_rews
 
                 self.agent.train()
