@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import pickle
-from utils import LimitedRunningStat, RunningStat, DynamicRunningStat
+from utils import *
 import random
 
 eps = 1e-12
@@ -10,7 +10,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=0.0,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=5.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -565,8 +565,9 @@ class GAIL(RewardModel):
 
                 self.states, self.act, self.states_n = input()
 
-                self.reward, self.latent = network(states=self.states, states_n=self.states_n, act=self.act, with_action=self.with_action,
-                                      actions_size=self.actions_size)
+                with tf.compat.v1.variable_scope('net'):
+                    self.reward, self.latent = network(states=self.states, states_n=self.states_n, act=self.act,
+                                                   with_action=self.with_action, actions_size=self.actions_size)
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
 
@@ -580,11 +581,18 @@ class GAIL(RewardModel):
 
                 if self.gradient_penalty_weight > 0.0:
                     # Compute gradient penaly as AMP
-                    self.gradient_magnitude = self.labels * tf.math.log(self.discriminator + eps)
-                    self.gradient_magnitude = tf.gradients(self.gradient_magnitude, [self.latent])[0]
-                    self.gradient_magnitude = tf.sqrt(tf.reduce_sum(self.gradient_magnitude ** 2, axis=-1) + eps)
-                    self.gradient_magnitude = tf.reduce_mean(tf.pow(self.gradient_magnitude - 1, 2))
-                    self.loss += self.gradient_penalty_weight * self.gradient_magnitude
+                    # TODO: I pass the expert traj as input, maybe it is not ideal
+                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 45], name='gp_states')
+                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 45], name='gp_states_n')
+
+                    with tf.compat.v1.variable_scope('net', reuse=True):
+                        expert_logits, latent = network([self.expert_states], [self.expert_states_n], act=None,
+                                                           with_action=self.with_action, actions_size=self.actions_size)
+
+                    self.gradient_magnitude = tf.gradients(expert_logits, [latent])
+                    self.gradient_magnitude = tf.concat(self.gradient_magnitude, axis=-1)
+                    self.gradient_magnitude = tf.reduce_sum(tf.square(self.gradient_magnitude), axis=-1)
+                    self.loss += self.gradient_penalty_weight * tf.reduce_mean(self.gradient_magnitude)
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
 
@@ -637,6 +645,10 @@ class GAIL(RewardModel):
                 all_acts = np.expand_dims(all_acts, axis=1)
 
                 feed_dict[self.act] = all_acts
+
+            if self.gradient_penalty_weight > 0.0:
+                feed_dict[self.expert_states] = e_states[0]
+                feed_dict[self.expert_states_n] = e_states_n[0]
 
             loss, discriminator, _ = self.sess.run([self.loss, self.discriminator, self.step], feed_dict=feed_dict)
 
