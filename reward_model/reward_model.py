@@ -10,7 +10,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=5.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
