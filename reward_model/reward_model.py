@@ -574,18 +574,19 @@ class GAIL(RewardModel):
 
                 # Loss Function
                 # Original loss from GAIL paper
-                # self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                #         (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
+                        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
                 # Loss from AMP
-                self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
-                       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+                # self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
+                #        (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
                 if self.gradient_penalty_weight > 0.0:
                     self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state')
+                    self.expert_acts = tf.compat.v1.placeholder(tf.int32, [None, 1], name='expert_acts')
                     self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state_n')
 
                     with tf.compat.v1.variable_scope('net', reuse=True):
-                        logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.act,
+                        logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
                                                            with_action=self.with_action, actions_size=self.actions_size)
 
                     grad_tfs = tf.gradients(logits, latent)
@@ -676,9 +677,9 @@ class GAIL(RewardModel):
         rew = np.reshape(rew, (-1))
 
         # Reward from original GAIL
-        # rew = - np.log(1 - rew + eps)
+        rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
+        # rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
 
         # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):
