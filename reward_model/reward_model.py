@@ -651,6 +651,7 @@ class GAIL(RewardModel):
             if self.gradient_penalty_weight > 0.0:
                 feed_dict[self.expert_states] = e_states[0]
                 feed_dict[self.expert_states_n] = e_states_n[0]
+                feed_dict[self.expert_acts] = np.expand_dims(expert_acts, axis=1)
 
             loss, discriminator, _ = self.sess.run([self.loss, self.discriminator, self.step], feed_dict=feed_dict)
 
