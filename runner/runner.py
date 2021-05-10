@@ -170,7 +170,7 @@ class Runner:
                     action = [np.random.randint(self.agent.action_size)]
 
                 action = action[0]
-                # action = int(input('action: '))
+                #action = int(input('action: '))
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 

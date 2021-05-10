@@ -11,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=0.0,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -579,6 +579,20 @@ class GAIL(RewardModel):
                 # Loss from AMP
                 # self.loss = -tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
                 #        (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+
+                if self.gradient_penalty_weight > 0.0:
+                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state')
+                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state_n')
+
+                    with tf.compat.v1.variable_scope('net', reuse=True):
+                        logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.act,
+                                                           with_action=self.with_action, actions_size=self.actions_size)
+
+                    grad_tfs = tf.gradients(logits, latent)
+                    grad_tf = tf.concat(grad_tfs, axis=-1)
+                    norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
+                    loss_tf = 0.5 * tf.reduce_mean(norm_tf)
+                    self.loss += (self.gradient_penalty_weight * loss_tf)
 
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
