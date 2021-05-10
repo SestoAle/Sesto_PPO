@@ -164,13 +164,18 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #action_state = linear(action_state, 64, name='action_embs', activation=tf.nn.relu)
 
 
-    latent = tf.concat([global_state, global_state_n], axis=1)
+    encoded = tf.concat([global_state, global_state_n], axis=1)
 
-    global_state = linear(latent, 1, name='latent_2',
+    global_state = linear(encoded, 128, name='latent_2', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                         )
+
+    global_state = linear(global_state, 1, name='out',
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
 
 
 
-    return global_state, latent
+    return global_state, encoded
