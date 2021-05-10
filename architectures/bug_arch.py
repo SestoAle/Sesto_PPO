@@ -160,7 +160,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                          )
 
     action_state = embedding(action_state, indices=10, size=32, name='action_embs')
-    action_state = tf.reshape(action_state, [-1, actions_size * 32])
+    action_state = tf.reshape(action_state, [-1, 32])
     action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
