@@ -157,7 +157,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     global_state_n = linear(global_state_n, 64, name='latent_1_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
-                          )
+                         )
 
     #action_state = tf.one_hot(action_state, actions_size)
     #action_state = tf.reshape(action_state, [-1, actions_size])

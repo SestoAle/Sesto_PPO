@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 from utils import *
 import random
+from layers.layers import *
 
 eps = 1e-12
 
@@ -10,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=5.0,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=0.0,
                  with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -579,20 +580,6 @@ class GAIL(RewardModel):
                 # self.loss = -tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
                 #        (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
-                if self.gradient_penalty_weight > 0.0:
-                    # Compute gradient penaly as AMP
-                    # TODO: I pass the expert traj as input, maybe it is not ideal
-                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 45], name='gp_states')
-                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 45], name='gp_states_n')
-
-                    with tf.compat.v1.variable_scope('net', reuse=True):
-                        expert_logits, latent = network([self.expert_states], [self.expert_states_n], act=None,
-                                                           with_action=self.with_action, actions_size=self.actions_size)
-
-                    self.gradient_magnitude = tf.gradients(expert_logits, [latent])
-                    self.gradient_magnitude = tf.concat(self.gradient_magnitude, axis=-1)
-                    self.gradient_magnitude = tf.reduce_sum(tf.square(self.gradient_magnitude), axis=-1)
-                    self.loss += self.gradient_penalty_weight * tf.reduce_mean(self.gradient_magnitude)
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
 
