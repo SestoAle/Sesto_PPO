@@ -3,7 +3,7 @@ import json
 from PIL import Image
 import matplotlib.pyplot as plt
 
-name = 'bug_detector_gail_schifo_irl'
+name = 'bug_detector_gail_schifo_moti'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(name))) as f:
     buffer = json.load(f)
