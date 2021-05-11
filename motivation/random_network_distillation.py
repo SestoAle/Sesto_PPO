@@ -11,6 +11,7 @@ eps = 1e-12
 class RND:
     # Random Network Distillation class
     def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e4, batch_size=32,
+                 motivation_weight=1.,
                  num_itr=3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
@@ -29,6 +30,8 @@ class RND:
         self.input_spec = input_spec
         self.network_spec = network_spec
         self.obs_to_state = obs_to_state
+        # Weight of the reward output by the motivation model
+        self.motivation_weight = motivation_weight
 
         # Buffer of experience
         self.buffer = []

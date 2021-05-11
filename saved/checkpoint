@@ -1,2 +1,2 @@
-model_checkpoint_path: "bug_detector_rnd_base"
-all_model_checkpoint_paths: "bug_detector_rnd_base"
+model_checkpoint_path: "bug_detector_gail_schifo_rnd"
+all_model_checkpoint_paths: "bug_detector_gail_schifo_rnd"

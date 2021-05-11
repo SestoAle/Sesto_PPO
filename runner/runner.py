@@ -170,7 +170,7 @@ class Runner:
                     action = [np.random.randint(self.agent.action_size)]
 
                 action = action[0]
-                # action = int(input('action: '))
+                action = int(input('action: '))
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
@@ -191,9 +191,9 @@ class Runner:
                 # - The intrinsic reward will be added later -
                 if self.reward_model is not None:
 
-                    # motivation_reward = self.reward_model.eval([state], [state_n],
-                    #                                         [action])
-                    # print(motivation_reward)
+                    motivation_reward = self.reward_model.eval([state], [state_n],
+                                                            [action])
+                    print(motivation_reward)
                     self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 # If step is equal than max timesteps, terminate the episode
@@ -285,9 +285,8 @@ class Runner:
                     # Normalize rewards
                     intrinsic_rews -= self.motivation.r_norm.mean
                     intrinsic_rews /= self.motivation.r_norm.std
-                    intrinsic_rews = list(intrinsic_rews)
-
-                    self.agent.buffer['rewards'] = intrinsic_rews
+                    intrinsic_rews *= self.motivation.motivation_weight
+                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
 
@@ -298,8 +297,8 @@ class Runner:
                     # Normalize rewards
                     intrinsic_rews -= self.reward_model.r_norm.mean
                     intrinsic_rews /= self.reward_model.r_norm.std
-                    intrinsic_rews = list(intrinsic_rews)
-                    self.agent.buffer['rewards'] = intrinsic_rews
+                    intrinsic_rews *= self.reward_model.reward_model_weight
+                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 self.agent.train()
 
