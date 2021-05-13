@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_irl')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_3')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -36,7 +36,7 @@ parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_irl_3000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_45000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -47,7 +47,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=False)
+parser.set_defaults(recurrent=True)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
@@ -75,6 +75,10 @@ class BugEnvironment:
         self.standard_position = [14, 14, 1]
         self.coverage_of_points = []
 
+        # Dict to store the trajectopry at each episode
+        self.trajectories_for_episode = dict()
+        self.episode = -1
+
     def execute(self, actions):
         #actions = int(input(': '))
 
@@ -88,6 +92,7 @@ class BugEnvironment:
 
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
+        self.trajectories_for_episode[self.episode].append(((position + 1) / 2) * 40)
 
         # Get the counter of that position and compute reward
         counter = self.insert_to_pos_table(position)
@@ -107,6 +112,8 @@ class BugEnvironment:
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
         self.coverage_of_points.append(len(env.pos_buffer.keys()))
+        self.episode += 1
+        self.trajectories_for_episode[self.episode] = []
         # self.set_spawn_position()
 
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
@@ -206,6 +213,12 @@ def callback(agent, env, runner):
     # Save position coverage during time as json
     json_str = json.dumps(env.coverage_of_points, cls=NumpyEncoder)
     f = open("arrays/{}_coverage.json".format(model_name), "w")
+    f.write(json_str)
+    f.close()
+
+    # Save the trajectories
+    json_str = json.dumps(env.trajectories_for_episode, cls=NumpyEncoder)
+    f = open("arrays/{}_trajectories.json".format(model_name), "w")
     f.write(json_str)
     f.close()
 

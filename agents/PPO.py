@@ -203,7 +203,6 @@ class PPO:
                             self.real_action = tf.clip_by_value(t=self.real_action, clip_value_min=-1+eps, clip_value_max=1-eps)
                             self.real_action = tf.atanh(self.real_action)
 
-
                     self.log_prob_with_action = self.dist.log_prob(self.real_action)
                     # If there are more than 1 continuous actions, do the mean of log_probs
                     if self.action_size > 1 and self.action_type == 'continuous':

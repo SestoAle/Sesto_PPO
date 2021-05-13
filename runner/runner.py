@@ -438,10 +438,11 @@ class Runner:
             reward = 0
             while True:
                 step += 1
-                action, _, c_probs = self.agent.eval([state])
                 if random:
                     num_actions = self.agent.action_size
                     action = np.random.randint(0, num_actions)
+                else:
+                    action, _, c_probs = self.agent.eval([state])
                 state_n, terminal, step_reward = env.execute(actions=action)
                 self.reward_model.add_to_policy_buffer(state, state_n, action)
 

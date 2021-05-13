@@ -3,13 +3,20 @@ import json
 from PIL import Image
 import matplotlib.pyplot as plt
 
-name = 'bug_detector_gail_schifo_moti'
+name = 'bug_detector_gail_schifo_3'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(name))) as f:
     buffer = json.load(f)
 
 with open("arrays/{}.json".format("{}_coverage".format(name))) as f:
     coverage = json.load(f)
+
+trajectories = None
+try:
+    with open("arrays/{}.json".format("{}_trajectories".format(name))) as f:
+        trajectories = json.load(f)
+except Exception as e:
+    pass
 
 # Saving Heatmap with PIL
 img = Image.new('RGB', (20, 20))
@@ -31,7 +38,10 @@ for k in buffer.keys():
     k_value = (((k_value + 1) / 2) * 39)
     k_value = k_value.astype(int)
 
-    data[k_value[0], k_value[1]] += 255
+    # data[k_value[0], k_value[1]] += buffer[k]
+    data[k_value[0], k_value[1]] = 1
+
+data = np.clip(data, 0, np.max(data)/20)
 
 data = np.rot90(data)
 
@@ -67,4 +77,29 @@ ax.tick_params(which="minor", bottom=False, left=False)
 fig = plt.figure()
 plt.plot(range(len(coverage)), coverage)
 
+def print_traj(traj):
+    ep_trajectory = np.asarray(traj)
+    plt.xlim(0, 40)
+    plt.ylim(0, 40)
+    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1])
+
+# Show last trajectory
+fig = plt.figure()
+threshold = 5
+desired_point_x = 35
+desired_point_z = 5
+real_traj = None
+if trajectories is not None:
+
+    for traj in trajectories.values():
+
+        traj = np.asarray(traj)
+        for point in traj:
+            if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
+                print_traj(traj)
+                # real_traj = traj
+                break
+
+# print(real_traj)
+# print_traj(real_traj)
 plt.show()
