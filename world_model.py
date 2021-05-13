@@ -11,7 +11,11 @@ physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-model_name = 'bug_detector_gail_schifo_3'
+name1 = "bug_detector_gail_schifo_3"
+name2 = "bug_detector_gail_schifo_moti"
+name3 = "bug_detector_gail_schifo_irl"
+
+model_name = name1
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
     buffer = json.load(f)
@@ -38,48 +42,44 @@ for k in buffer.keys():
 
 img.save('sqr.png')
 
+def plot_map(map):
+    ax = plt.gca()
+    # Plot the heatmap
+    im = ax.imshow(map)
+
+    # Turn spines off and create white grid.
+    for edge, spine in ax.spines.items():
+        spine.set_visible(False)
+
+    ax.set_xticks(np.arange(heatmap.shape[1] + 1) - .5, minor=True)
+    ax.set_yticks(np.arange(heatmap.shape[0] + 1) - .5, minor=True)
+    # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
 # Create Heatmap with matplot
-data = np.zeros((40, 40))
+heatmap = np.zeros((40, 40))
+covmap = np.zeros((40, 40))
 for k in buffer.keys():
     k_value = list(map(float, k.split(" ")))
     k_value = np.asarray(k_value)
     k_value = (((k_value + 1) / 2) * 39)
     k_value = k_value.astype(int)
 
-    # data[k_value[0], k_value[1]] += buffer[k]
-    data[k_value[0], k_value[1]] = 1
+    heatmap[k_value[0], k_value[1]] += buffer[k]
+    covmap[k_value[0], k_value[1]] = 1
 
-data = np.clip(data, 0, np.max(data)/20)
+heatmap = np.clip(heatmap, 0, np.max(heatmap) / 20)
 
-data = np.rot90(data)
+heatmap = np.rot90(heatmap)
+covmap = np.rot90(covmap)
 
-ax = plt.gca()
-# Plot the heatmap
-im = ax.imshow(data)
+# Plot heatmap
+plt.figure()
+plot_map(heatmap)
 
-# We want to show all ticks...
-# ax.set_xticks(np.arange(data.shape[1]))
-# ax.set_yticks(np.arange(data.shape[0]))
-# ... and label them with the respective list entries.
-# ax.set_xticklabels(col_labels)
-# ax.set_yticklabels(row_labels)
-
-# # Let the horizontal axes labeling appear on top.
-# ax.tick_params(top=True, bottom=False,
-#                labeltop=True, labelbottom=False)
-#
-# # Rotate the tick labels and set their alignment.
-# plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
-#          rotation_mode="anchor")
-
-# Turn spines off and create white grid.
-for edge, spine in ax.spines.items():
-    spine.set_visible(False)
-
-ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-# ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-ax.tick_params(which="minor", bottom=False, left=False)
+# Plot coverage map
+plt.figure()
+plot_map(covmap)
 
 # Show coverage
 fig = plt.figure()
@@ -90,7 +90,7 @@ def print_traj(traj):
     plt.xlim(0, 40)
     plt.ylim(0, 40)
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1])
-#
+
 # # Show last trajectory
 # fig = plt.figure()
 # threshold = 5
@@ -115,24 +115,24 @@ def print_traj(traj):
 '''
     Compute the cumulative value of the learnt RND to compare trajectories
 '''
-graph = tf.compat.v1.Graph()
-with graph.as_default():
-    tf.compat.v1.disable_eager_execution()
-    motivation_sess = tf.compat.v1.Session(graph=graph)
-    motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
-                     obs_to_state=obs_to_state_rnd)
-    init = tf.compat.v1.global_variables_initializer()
-    motivation_sess.run(init)
-    motivation.load_model(name=model_name, folder='saved')
-
-filler = np.zeros((42))
-traj_to_observe = []
-rnd_batch = []
-desired_point_x = 35
-desired_point_z = 5
-threshold = 5
-moti_rews = []
 if trajectories is not None:
+    graph = tf.compat.v1.Graph()
+    with graph.as_default():
+        tf.compat.v1.disable_eager_execution()
+        motivation_sess = tf.compat.v1.Session(graph=graph)
+        motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
+                         obs_to_state=obs_to_state_rnd)
+        init = tf.compat.v1.global_variables_initializer()
+        motivation_sess.run(init)
+        motivation.load_model(name=model_name, folder='saved')
+
+    filler = np.zeros((42))
+    traj_to_observe = []
+    rnd_batch = []
+    desired_point_x = 35
+    desired_point_z = 5
+    threshold = 5
+    moti_rews = []
     for traj in trajectories.values():
         for point in traj:
             if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
@@ -152,7 +152,6 @@ if trajectories is not None:
         moti_rews.append(moti_rew)
 
     moti_mean = np.mean(moti_rews)
-    print(np.max(moti_rews))
     idxs_to_observe = np.where(moti_rews > np.asarray(15.))
     idxs_to_observe = np.reshape(idxs_to_observe, -1)
     traj_to_observe = np.asarray(traj_to_observe)
