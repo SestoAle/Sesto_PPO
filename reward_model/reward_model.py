@@ -12,7 +12,7 @@ class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
                  sess=None, buffer_size=100000, gradient_penalty_weight=10.0, reward_model_weight=1.,
-                 with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
+                 with_action=False, num_itr=3, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
         # RunningStat to normalize reward from the model
@@ -609,8 +609,8 @@ class GAIL(RewardModel):
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
 
-            expert_batch_idxs = np.random.randint(0, len(expert_traj['obs']), self.batch_size)
-            policy_batch_idxs = np.random.randint(0, len(policy_traj['obs']), self.batch_size)
+            expert_batch_idxs = np.random.randint(0, len(expert_traj['obs']), len(expert_traj['obs']))
+            policy_batch_idxs = np.random.randint(0, len(policy_traj['obs']), len(expert_traj['obs'])
 
             expert_obs = [expert_traj['obs'][id] for id in expert_batch_idxs]
             policy_obs = [policy_traj['obs'][id] for id in policy_batch_idxs]
