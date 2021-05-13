@@ -15,7 +15,7 @@ name1 = "bug_detector_gail_schifo_3"
 name2 = "bug_detector_gail_schifo_moti"
 name3 = "bug_detector_gail_schifo_irl"
 
-model_name = name1
+model_name = 'bug_detector_gail_schifo_irl_4'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
     buffer = json.load(f)
@@ -115,48 +115,48 @@ def print_traj(traj):
 '''
     Compute the cumulative value of the learnt RND to compare trajectories
 '''
-if trajectories is not None:
-    graph = tf.compat.v1.Graph()
-    with graph.as_default():
-        tf.compat.v1.disable_eager_execution()
-        motivation_sess = tf.compat.v1.Session(graph=graph)
-        motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
-                         obs_to_state=obs_to_state_rnd)
-        init = tf.compat.v1.global_variables_initializer()
-        motivation_sess.run(init)
-        motivation.load_model(name=model_name, folder='saved')
-
-    filler = np.zeros((42))
-    traj_to_observe = []
-    rnd_batch = []
-    desired_point_x = 35
-    desired_point_z = 5
-    threshold = 5
-    moti_rews = []
-    for traj in trajectories.values():
-        for point in traj:
-            if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
-                traj_to_observe.append(traj)
-                break
-
-    for traj in traj_to_observe:
-        rnd_batch = []
-        for state in traj:
-            state = np.asarray(state)
-            state = 2 * (state/40) - 1
-            state = np.concatenate([state, filler])
-            state = dict(global_in=state)
-            rnd_batch.append(state)
-
-        moti_rew = np.sum(motivation.eval(rnd_batch))
-        moti_rews.append(moti_rew)
-
-    moti_mean = np.mean(moti_rews)
-    idxs_to_observe = np.where(moti_rews > np.asarray(15.))
-    idxs_to_observe = np.reshape(idxs_to_observe, -1)
-    traj_to_observe = np.asarray(traj_to_observe)
-    for traj in traj_to_observe[idxs_to_observe]:
-        print_traj(traj)
+# if trajectories is not None:
+#     graph = tf.compat.v1.Graph()
+#     with graph.as_default():
+#         tf.compat.v1.disable_eager_execution()
+#         motivation_sess = tf.compat.v1.Session(graph=graph)
+#         motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
+#                          obs_to_state=obs_to_state_rnd)
+#         init = tf.compat.v1.global_variables_initializer()
+#         motivation_sess.run(init)
+#         motivation.load_model(name=model_name, folder='saved')
+#
+#     filler = np.zeros((42))
+#     traj_to_observe = []
+#     rnd_batch = []
+#     desired_point_x = 35
+#     desired_point_z = 5
+#     threshold = 5
+#     moti_rews = []
+#     for traj in trajectories.values():
+#         for point in traj:
+#             if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
+#                 traj_to_observe.append(traj)
+#                 break
+#
+#     for traj in traj_to_observe:
+#         rnd_batch = []
+#         for state in traj:
+#             state = np.asarray(state)
+#             state = 2 * (state/40) - 1
+#             state = np.concatenate([state, filler])
+#             state = dict(global_in=state)
+#             rnd_batch.append(state)
+#
+#         moti_rew = np.sum(motivation.eval(rnd_batch))
+#         moti_rews.append(moti_rew)
+#
+#     moti_mean = np.mean(moti_rews)
+#     idxs_to_observe = np.where(moti_rews > np.asarray(15.))
+#     idxs_to_observe = np.reshape(idxs_to_observe, -1)
+#     traj_to_observe = np.asarray(traj_to_observe)
+#     for traj in traj_to_observe[idxs_to_observe]:
+#         print_traj(traj)
 
 
 plt.show()

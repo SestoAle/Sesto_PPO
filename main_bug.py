@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_3')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_4')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -75,8 +75,10 @@ class BugEnvironment:
         self.standard_position = [14, 14, 1]
         self.coverage_of_points = []
 
-        # Dict to store the trajectopry at each episode
+        # Dict to store the trajectories at each episode
         self.trajectories_for_episode = dict()
+        # Dict to store the actions at each episode
+        self.actions_for_episode = dict()
         self.episode = -1
 
     def execute(self, actions):
@@ -92,7 +94,9 @@ class BugEnvironment:
 
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
+
         self.trajectories_for_episode[self.episode].append(((position + 1) / 2) * 40)
+        self.actions_for_episode[self.episode].append(actions)
 
         # Get the counter of that position and compute reward
         counter = self.insert_to_pos_table(position)
@@ -114,6 +118,7 @@ class BugEnvironment:
         self.coverage_of_points.append(len(env.pos_buffer.keys()))
         self.episode += 1
         self.trajectories_for_episode[self.episode] = []
+        self.actions_for_episode[self.episode] = []
         # self.set_spawn_position()
 
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
@@ -219,6 +224,12 @@ def callback(agent, env, runner):
     # Save the trajectories
     json_str = json.dumps(env.trajectories_for_episode, cls=NumpyEncoder)
     f = open("arrays/{}_trajectories.json".format(model_name), "w")
+    f.write(json_str)
+    f.close()
+
+    # Save the actions
+    json_str = json.dumps(env.actions_for_episode, cls=NumpyEncoder)
+    f = open("arrays/{}_actions.json".format(model_name), "w")
     f.write(json_str)
     f.close()
 
