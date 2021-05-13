@@ -606,11 +606,13 @@ class GAIL(RewardModel):
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
 
+        self.batch_size = len(expert_traj['obs'])
+
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
 
-            expert_batch_idxs = np.random.randint(0, len(expert_traj['obs']), len(expert_traj['obs']))
-            policy_batch_idxs = np.random.randint(0, len(policy_traj['obs']), len(expert_traj['obs'])
+            expert_batch_idxs = np.random.randint(0, len(expert_traj['obs']), self.batch_size)
+            policy_batch_idxs = np.random.randint(0, len(policy_traj['obs']), self.batch_size)
 
             expert_obs = [expert_traj['obs'][id] for id in expert_batch_idxs]
             policy_obs = [policy_traj['obs'][id] for id in policy_batch_idxs]
