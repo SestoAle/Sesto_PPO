@@ -44,10 +44,6 @@ except Exception as e:
     print(e)
     pass
 
-print(len(actions.keys()))
-print(len(trajectories.keys()))
-input('....')
-
 # Saving Heatmap with PIL
 img = Image.new('RGB', (20, 20))
 for k in buffer.keys():
@@ -135,7 +131,6 @@ if trajectories is not None and actions is not None:
         init = tf.compat.v1.global_variables_initializer()
         reward_sess.run(init)
         reward_model.load_model(reward_model_name)
-        print("Model loaded!")
 
     filler = np.zeros((42))
     traj_to_observe = []
@@ -175,7 +170,10 @@ if trajectories is not None and actions is not None:
     il_mean = np.mean(il_rews)
 
     print(il_mean)
-    print(np.max(il_mean))
+    print(np.max(il_rews))
+    print(moti_mean)
+    print(np.max(moti_rews))
+    input('...')
 
     idxs_to_observe = np.where(moti_rews > np.asarray(10.))
     idxs_to_observe = np.reshape(idxs_to_observe, -1)

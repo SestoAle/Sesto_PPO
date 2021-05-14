@@ -266,6 +266,9 @@ class RewardModel:
         tf.compat.v1.disable_eager_execution()
         #self.saver = tf.compat.v1.train.import_meta_graph('reward_model/models/' + name + '.meta')
         self.saver.restore(self.sess, 'reward_model/models/' + name)
+
+        print("IL/IRL model loaded!")
+
         return
 
     def clear_policy_buffer(self):
