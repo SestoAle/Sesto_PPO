@@ -168,17 +168,15 @@ if trajectories is not None and actions is not None:
 
     moti_mean = np.mean(moti_rews)
     il_mean = np.mean(il_rews)
-
-    print(il_mean)
     print(np.max(il_rews))
-    print(moti_mean)
-    print(np.max(moti_rews))
-    input('...')
 
-    idxs_to_observe = np.where(moti_rews > np.asarray(10.))
-    idxs_to_observe = np.reshape(idxs_to_observe, -1)
+    moti_to_observe = np.where(moti_rews > np.asarray(8.))
+    moti_to_observe = np.reshape(moti_to_observe, -1)
+    il_to_observe = np.where(il_rews < np.asarray(10.))
+    il_to_observe = np.reshape(il_to_observe, -1)
+    idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
     traj_to_observe = np.asarray(traj_to_observe)
-    for traj in traj_to_observe[idxs_to_observe]:
+    for traj in traj_to_observe[il_to_observe]:
         print_traj(traj)
 
 
