@@ -18,7 +18,7 @@ name3 = "bug_detector_gail_schifo_irl"
 
 reward_model_name = "bug_detector_gail_schifo_5_42000"
 
-model_name = 'bug_detector_gail_schifo_irl_6'
+model_name = 'bug_detector_gail_schifo_irl_9'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
     buffer = json.load(f)
