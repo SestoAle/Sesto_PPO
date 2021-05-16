@@ -154,8 +154,6 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     global_state = embedding(global_state, indices=41, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 2*32))
-    inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
-    global_state = tf.concat([global_state, inventory], axis=1)
     global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
@@ -175,9 +173,15 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                                                                           dtype=tf.dtypes.float32)
                          )
 
-    encoded = tf.concat([global_state, action_state], axis=1)
+    inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
+    inventory = linear(inventory, 64, name='latent_inventory_n', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
 
-    global_state = linear(encoded, 128, name='latent_2', activation=tf.nn.relu,
+    encoded = tf.concat([global_state, action_state, inventory], axis=1)
+
+    global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )

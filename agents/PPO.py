@@ -154,10 +154,11 @@ class PPO:
                 # Sample action
                 if self.action_type == 'discrete':
                     self.action = self.dist.sample(name='action')
+                    self.log_prob = self.dist.log_prob(self.action)
                 elif self.action_type == 'continuous':
                     self.action = self.dist.sample(name='action')
+                    self.log_prob = self.dist.log_prob(self.action)
 
-                self.log_prob = self.dist.log_prob(self.action)
                 # If there are more than 1 continuous actions, do the mean of log_probs
                 if self.action_size > 1 and self.action_type == 'continuous':
                     self.log_prob = tf.reduce_sum(self.log_prob, axis=1)

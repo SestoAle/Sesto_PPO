@@ -11,12 +11,12 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0, reward_model_weight=1.,
-                 with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
+                 sess=None, buffer_size=10, gradient_penalty_weight=10.0, reward_model_weight=1.,
+                 with_action=False, num_itr=10, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
         # RunningStat to normalize reward from the model
-        self.r_norm = RunningStat()
+        self.r_norm = DynamicRunningStat()
 
         # Policy agent needed to compute the discriminator
         self.policy = policy
@@ -96,7 +96,7 @@ class RewardModel:
     # Create demonstrations manually or with a policy
     def create_demonstrations(self, env, save_demonstrations=True, inference=False, verbose=False,
                               with_policy=False, num_episode=3,
-                              model_name='model', random=False, dems_name='dems.pkl', sampled_env=None,
+                              model_name='model', random=False, dems_name='dems_100.pkl', sampled_env=None,
                               ):
         end = False
 
@@ -277,14 +277,25 @@ class RewardModel:
         policy_traj['obs_n'] = []
         policy_traj['acts'] = []
         return policy_traj
+
     # Add ot policy buffer a new transitions
-    def add_to_policy_buffer(self, obs, obs_n, acts, random_del=True):
+    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='prob'):
 
         if len(self.policy_traj['obs']) >= self.buffer_size:
-            if not random_del:
+            if del_mode=="rand":
                 del self.policy_traj['obs'][0]
                 del self.policy_traj['obs_n'][0]
                 del self.policy_traj['acts'][0]
+
+            elif del_mode=="prob":
+                N = len(self.policy_traj['obs'])
+                probs = np.arange(N) + 1
+                probs = probs / float(np.sum(probs))
+                pidx = np.random.choice(np.arange(N), p=probs)
+                del self.policy_traj['obs'][pidx]
+                del self.policy_traj['obs_n'][pidx]
+                del self.policy_traj['acts'][pidx]
+
             else:
                 index = np.random.randint(0, len(self.policy_traj['obs']))
 
@@ -295,6 +306,9 @@ class RewardModel:
         self.policy_traj['obs'].append(obs)
         self.policy_traj['obs_n'].append(obs_n)
         self.policy_traj['acts'].append(acts)
+
+        print(len(self.policy_traj['obs']))
+
 
 
 # AIRL model, can be state-only or state-action, with or without value function \phi
@@ -580,15 +594,15 @@ class GAIL(RewardModel):
                 # Loss Function
                 # Original loss from GAIL paper
                 self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                        (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                         (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
                 # Loss from AMP
                 # self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
-                #        (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+                #       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
                 if self.gradient_penalty_weight > 0.0:
-                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 71], name='exp_state')
+                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state')
                     self.expert_acts = tf.compat.v1.placeholder(tf.int32, [None, 1], name='expert_acts')
-                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 71], name='exp_state_n')
+                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 45], name='exp_state_n')
 
                     with tf.compat.v1.variable_scope('net', reuse=True):
                         logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,

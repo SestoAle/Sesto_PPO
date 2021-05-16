@@ -170,7 +170,7 @@ class Runner:
                     action = [np.random.randint(self.agent.action_size)]
 
                 action = action[0]
-                # action = int(input('action: '))
+                #action = int(input('action: '))
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
@@ -295,8 +295,12 @@ class Runner:
                                                             self.agent.buffer['actions'])
 
                     # Normalize rewards
-                    intrinsic_rews -= self.reward_model.r_norm.mean
-                    intrinsic_rews /= self.reward_model.r_norm.std
+                    # intrinsic_rews -= self.reward_model.r_norm.mean
+                    # intrinsic_rews /= self.reward_model.r_norm.std
+
+                    intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / np.max(intrinsic_rews)
+                    print(intrinsic_rews)
+                    input('...')
                     intrinsic_rews *= self.reward_model.reward_model_weight
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
