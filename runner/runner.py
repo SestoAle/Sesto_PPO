@@ -297,7 +297,8 @@ class Runner:
                     # Normalize rewards
                     # intrinsic_rews -= self.reward_model.r_norm.mean
                     # intrinsic_rews /= self.reward_model.r_norm.std
-
+                    print(np.min(intrinsic_rews))
+                    print(np.max(intrinsic_rews))
                     intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / np.max(intrinsic_rews)
                     print(intrinsic_rews)
                     input('...')
