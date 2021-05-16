@@ -11,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100, gradient_penalty_weight=10.0, reward_model_weight=1.,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0, reward_model_weight=1.,
                  with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -292,7 +292,6 @@ class RewardModel:
                 probs = np.arange(N) + 1
                 probs = probs / float(np.sum(probs))
                 pidx = np.random.choice(np.arange(N), p=probs)
-                print(pidx)
                 del self.policy_traj['obs'][pidx]
                 del self.policy_traj['obs_n'][pidx]
                 del self.policy_traj['acts'][pidx]
