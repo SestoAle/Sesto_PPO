@@ -45,8 +45,8 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
-parser.set_defaults(fixed_reward_model=True)
+parser.set_defaults(use_reward_model=False)
+parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
@@ -278,9 +278,9 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-4, v_batch_fraction=1.,
+                    action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
                     v_num_itr=1, memory=memory,
-                    v_lr=7e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
+                    v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
@@ -292,7 +292,7 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-4,
+            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
                              obs_to_state=obs_to_state_rnd)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
@@ -304,7 +304,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             reward_sess = tf.compat.v1.Session(graph=graph)
             reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-4,
+                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
                                 name=model_name, fixed_reward_model=False, with_action=True)
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)
@@ -317,7 +317,8 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id, max_episode_timesteps=max_episode_timestep)
+        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id,
+                             max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environments
         envs = []
