@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_irl_8')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_irl_12')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -36,7 +36,7 @@ parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_irl_8_30000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_irl_12_3000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -45,8 +45,8 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
-parser.set_defaults(fixed_reward_model=False)
+parser.set_defaults(use_reward_model=True)
+parser.set_defaults(fixed_reward_model=True)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
