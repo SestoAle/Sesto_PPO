@@ -283,8 +283,10 @@ class Runner:
                     intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
 
                     # Normalize rewards
-                    intrinsic_rews -= self.motivation.r_norm.mean
-                    intrinsic_rews /= self.motivation.r_norm.std
+                    # intrinsic_rews -= self.motivation.r_norm.mean
+                    # intrinsic_rews /= self.motivation.r_norm.std
+                    intrinsic_rews -= np.mean(intrinsic_rews)
+                    intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 

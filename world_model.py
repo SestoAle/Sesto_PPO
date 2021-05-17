@@ -18,7 +18,7 @@ name3 = "bug_detector_gail_schifo_irl"
 
 reward_model_name = "bug_detector_gail_schifo_5_42000"
 
-model_name = 'bug_detector_gail_schifo_irl_9'
+model_name = 'bug_detector_gail_schifo_irl_11'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
     buffer = json.load(f)
@@ -170,7 +170,7 @@ def print_traj(traj):
 #     # il_mean = np.mean(il_rews)
 #     print(np.max(moti_rews))
 #
-#     moti_to_observe = np.where(moti_rews > np.asarray(10.))
+#     moti_to_observe = np.where(moti_rews > np.asarray(12.))
 #     moti_to_observe = np.reshape(moti_to_observe, -1)
 #     #il_to_observe = np.where(il_rews < np.asarray(10.))
 #     #il_to_observe = np.reshape(il_to_observe, -1)
