@@ -15,7 +15,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_complex')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_complex_irl_moti')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -47,7 +47,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=False)
+parser.set_defaults(recurrent=True)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
@@ -94,8 +94,7 @@ class BugEnvironment:
 
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
-
-        self.trajectories_for_episode[self.episode].append(((position + 1) / 2) * 40)
+        self.trajectories_for_episode[self.episode].append(np.concatenate([((position + 1) / 2) * 40, state['global_in'][-2:]]))
         self.actions_for_episode[self.episode].append(actions)
 
         # Get the counter of that position and compute reward

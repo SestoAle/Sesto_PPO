@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch import *
+from architectures.bug_arch_complex import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -16,9 +16,9 @@ name1 = "bug_detector_gail_schifo_3"
 name2 = "bug_detector_gail_schifo_moti"
 name3 = "bug_detector_gail_schifo_irl"
 
-reward_model_name = "bug_detector_gail_schifo_irl_11_12000"
+reward_model_name = "bug_detector_gail_schifo_complex_irl_moti_21000"
 
-model_name = 'bug_detector_gail_schifo_complex'
+model_name = 'bug_detector_gail_schifo_complex_irl_moti_2'
 
 with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
     buffer = json.load(f)
@@ -84,7 +84,7 @@ for k in buffer.keys():
     heatmap[k_value[0], k_value[1]] += buffer[k]
     covmap[k_value[0], k_value[1]] = 1
 
-heatmap = np.clip(heatmap, 0, np.max(heatmap) / 10)
+heatmap = np.clip(heatmap, 0, np.max(heatmap) / 5)
 
 heatmap = np.rot90(heatmap)
 covmap = np.rot90(covmap)
@@ -134,7 +134,8 @@ def print_traj(traj):
 #         reward_sess.run(init)
 #         reward_model.load_model(reward_model_name)
 #
-#     filler = np.zeros((42))
+#     filler = np.zeros((68))
+#     filler[-2] = 1.
 #     traj_to_observe = []
 #     episodes_to_observe = []
 #     desired_point_x = 35
@@ -176,15 +177,16 @@ def print_traj(traj):
 #     print(np.median(moti_mean))
 #     print(moti_mean)
 #     print(il_mean)
+#     print(np.min(il_rews))
 #
 #
-#     moti_to_observe = np.where(moti_rews > np.asarray(moti_mean))
+#     moti_to_observe = np.where(moti_rews > np.asarray(7.5))
 #     moti_to_observe = np.reshape(moti_to_observe, -1)
-#     il_to_observe = np.where(il_rews < np.asarray(il_mean))
+#     il_to_observe = np.where(il_rews < np.asarray(19.5))
 #     il_to_observe = np.reshape(il_to_observe, -1)
 #     idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
 #     traj_to_observe = np.asarray(traj_to_observe)
-#     for traj in traj_to_observe[il_to_observe]:
+#     for traj in traj_to_observe[moti_to_observe]:
 #         print_traj(traj)
 
 
