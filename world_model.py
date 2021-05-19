@@ -109,100 +109,109 @@ if __name__ == '__main__':
     # Compute the cumulative reward of the learnt RND and GAIL to compare trajectories
 
     if trajectories is not None and actions is not None:
-        # Load motivation model
+
         graph = tf.compat.v1.Graph()
-        with graph.as_default():
-            tf.compat.v1.disable_eager_execution()
-            motivation_sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
-                             obs_to_state=obs_to_state_rnd)
-            init = tf.compat.v1.global_variables_initializer()
-            motivation_sess.run(init)
-            motivation.load_model(name=model_name, folder='saved')
+        motivation = None
+        reward_model = None
+        try:
+            # Load motivation model
+            with graph.as_default():
+                tf.compat.v1.disable_eager_execution()
+                motivation_sess = tf.compat.v1.Session(graph=graph)
+                motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
+                                 obs_to_state=obs_to_state_rnd)
+                init = tf.compat.v1.global_variables_initializer()
+                motivation_sess.run(init)
+                motivation.load_model(name=model_name, folder='saved')
 
-        # Load imitation model
-        with graph.as_default():
-            tf.compat.v1.disable_eager_execution()
-            reward_sess = tf.compat.v1.Session(graph=graph)
-            reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess, lr=7e-5,
-                                name=model_name, fixed_reward_model=False, with_action=True)
-            init = tf.compat.v1.global_variables_initializer()
-            reward_sess.run(init)
-            reward_model.load_model(reward_model_name)
+            # Load imitation model
+            with graph.as_default():
+                tf.compat.v1.disable_eager_execution()
+                reward_sess = tf.compat.v1.Session(graph=graph)
+                reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
+                                    obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess,
+                                    lr=7e-5,
+                                    name=model_name, fixed_reward_model=False, with_action=True)
+                init = tf.compat.v1.global_variables_initializer()
+                reward_sess.run(init)
+                reward_model.load_model(reward_model_name)
+        except Exception as e:
+            print(e)
 
-        # Filler the state
-        # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
-        # TODO: it is probably better to save everything
-        filler = np.zeros((66))
-        filler[-2] = 1.
-        traj_to_observe = []
-        episodes_to_observe = []
+        if motivation is not None and reward_model is not None:
 
-        # Define the desired points to check
-        # I will get all the saved trajectories that touch one of these points at least once
-        desired_point_x = 35
-        desired_point_z = 5
-        threshold = 5
+            # Filler the state
+            # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
+            # TODO: it is probably better to save everything
+            filler = np.zeros((66))
+            filler[-2] = 1.
+            traj_to_observe = []
+            episodes_to_observe = []
 
-        # Save the motivation rewards and the imitation rewards
-        moti_rews = []
-        il_rews = []
+            # Define the desired points to check
+            # I will get all the saved trajectories that touch one of these points at least once
+            desired_point_x = 35
+            desired_point_z = 5
+            threshold = 5
 
-        # Get only those trajectories that touch the desired points
-        for keys, traj in zip(trajectories.keys(), trajectories.values()):
-            for point in traj:
-                if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
-                    traj_to_observe.append(traj)
-                    episodes_to_observe.append(keys)
-                    break
+            # Save the motivation rewards and the imitation rewards
+            moti_rews = []
+            il_rews = []
 
-        # Get the value of the motivation and imitation models of the extracted trajectories
-        for key, traj in zip(episodes_to_observe, traj_to_observe):
-            states_batch = []
-            actions_batch = []
-            for state in traj:
-                # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-                # TODO: correct form
-                state = np.asarray(state)
-                state[:3] = 2 * (state[:3]/40) - 1
-                state = np.concatenate([state, filler])
-                state[-2:] = state[3:5]
+            # Get only those trajectories that touch the desired points
+            for keys, traj in zip(trajectories.keys(), trajectories.values()):
+                for point in traj:
+                    if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
+                        traj_to_observe.append(traj)
+                        episodes_to_observe.append(keys)
+                        break
 
-                # Create the states batch to feed the models
-                state = dict(global_in=state)
-                states_batch.append(state)
+            # Get the value of the motivation and imitation models of the extracted trajectories
+            for key, traj in zip(episodes_to_observe, traj_to_observe):
+                states_batch = []
+                actions_batch = []
+                for state in traj:
+                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                    # TODO: correct form
+                    state = np.asarray(state)
+                    state[:3] = 2 * (state[:3]/40) - 1
+                    state = np.concatenate([state, filler])
+                    state[-2:] = state[3:5]
 
-            # Get the action batches for imitation model
-            for action in actions[key]:
-                actions_batch.append(action)
+                    # Create the states batch to feed the models
+                    state = dict(global_in=state)
+                    states_batch.append(state)
 
-            il_rew = np.sum(reward_model.eval(states_batch, states_batch, actions_batch))
-            il_rews.append(il_rew)
+                # Get the action batches for imitation model
+                for action in actions[key]:
+                    actions_batch.append(action)
 
-            moti_rew = np.sum(motivation.eval(states_batch))
-            moti_rews.append(moti_rew)
+                il_rew = np.sum(reward_model.eval(states_batch, states_batch, actions_batch))
+                il_rews.append(il_rew)
 
-        moti_mean = np.mean(moti_rews)
-        il_mean = np.mean(il_rews)
-        print(np.max(moti_rews))
-        print(np.max(il_rews))
-        print(np.median(il_rews))
-        print(np.median(moti_mean))
-        print(moti_mean)
-        print(il_mean)
-        print(np.min(il_rews))
+                moti_rew = np.sum(motivation.eval(states_batch))
+                moti_rews.append(moti_rew)
 
-        # Get those trajectories that have an high motivation reward AND a low imitation reward
-        moti_to_observe = np.where(moti_rews > np.asarray(15))
-        moti_to_observe = np.reshape(moti_to_observe, -1)
-        il_to_observe = np.where(il_rews < np.asarray(19.5))
-        il_to_observe = np.reshape(il_to_observe, -1)
-        idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
-        traj_to_observe = np.asarray(traj_to_observe)
+            moti_mean = np.mean(moti_rews)
+            il_mean = np.mean(il_rews)
+            print(np.max(moti_rews))
+            print(np.max(il_rews))
+            print(np.median(il_rews))
+            print(np.median(moti_mean))
+            print(moti_mean)
+            print(il_mean)
+            print(np.min(il_rews))
 
-        # Plot the trajectories
-        for traj in traj_to_observe[moti_to_observe]:
-            print_traj(traj)
+            # Get those trajectories that have an high motivation reward AND a low imitation reward
+            moti_to_observe = np.where(moti_rews > np.asarray(15))
+            moti_to_observe = np.reshape(moti_to_observe, -1)
+            il_to_observe = np.where(il_rews < np.asarray(19.5))
+            il_to_observe = np.reshape(il_to_observe, -1)
+            idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
+            traj_to_observe = np.asarray(traj_to_observe)
+
+            # Plot the trajectories
+            for traj in traj_to_observe[moti_to_observe]:
+                print_traj(traj)
 
     plt.show()
