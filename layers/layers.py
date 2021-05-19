@@ -10,7 +10,7 @@ def linear(inp, inner_size, name='linear', bias=True, activation=None, init=None
         return lin
 
 def transformer(input, n_head, hidden_size, mask_value=None, mlp_layer=1, pooling='None',
-                    residual=True, with_embeddings=False, with_ffn=False, post_norm=False,
+                    residual=True, with_embeddings=False, with_ffn=False, post_norm=False, mask=None,
                     pre_norm=False, name='transformer', reuse=False):
 
     with tf.compat.v1.variable_scope(name, reuse=reuse):
@@ -66,9 +66,10 @@ def transformer(input, n_head, hidden_size, mask_value=None, mlp_layer=1, poolin
         input = input[:, tf.newaxis, :, :]
 
         bs, T, NE, features = shape_list(input)
-        mask = None
-        if mask_value != None:
-            mask = create_mask(input, mask_value)
+
+        if mask != None or mask_value != None:
+            if mask == None:
+                mask = create_mask(input, mask_value)
             assert np.all(np.array(mask.get_shape().as_list()) == np.array(input.get_shape().as_list()[:3])), \
                 f"Mask and input should have the same first 3 dimensions. {shape_list(mask)} -- {shape_list(input)}"
             mask = tf.expand_dims(mask, -2)  # (BS, T, 1, NE)
@@ -109,7 +110,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, mlp_layer=1, poolin
             bs, T, features = shape_list(input)
             input = tf.reshape(input, (bs, features))
 
-    return input, att_weights
+    return input, att_weights, mask
 
 def layer_norm(input_tensor, axis):
   """Run layer normalization on the axis dimension of the tensor."""

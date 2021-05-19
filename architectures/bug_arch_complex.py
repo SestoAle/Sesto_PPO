@@ -99,14 +99,32 @@ def network_spec_rnd(states):
 
     global_state = agent
 
-    global_state = embedding(global_state, indices=41, size=32, name='embs')
-    global_state = tf.reshape(global_state, (-1, 2*32))
+    # global_state = embedding(global_state, indices=41, size=32, name='embs')
+    # global_state = tf.reshape(global_state, (-1, 2*32))
+    #
+    # inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
+    #
+    # global_state = tf.concat([global_state, inventory], axis=1)
+    #
+    # global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+    #                                                                       dtype=tf.dtypes.float32)
+    #                       )
+    # global_state = linear(global_state, 64, name='latent_2',
+    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+    #                                                                       dtype=tf.dtypes.float32)
+    #                       )
 
-    inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
+    global_state = embedding(global_state, indices=41, size=32, name='embs')
+    global_state = tf.reshape(global_state, (-1, 2 * 32))
+    global_state = linear(global_state, 64, name='global_embs', activation=tf.nn.relu)
+
+    inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
+    inventory = linear(inventory, 64, name='inventory_latent', activation=tf.nn.relu)
 
     global_state = tf.concat([global_state, inventory], axis=1)
 
-    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )

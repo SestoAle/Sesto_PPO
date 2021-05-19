@@ -24,7 +24,7 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_patrol')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/OpenWorldJump")
+parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
@@ -63,6 +63,7 @@ class OpenWorldEnv:
 
     def execute(self, actions):
         # actions = int(input(': '))
+        input('....')
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -89,7 +90,7 @@ class OpenWorldEnv:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
-        # print(-entr)
+        print(-entr)
         return -entr
 
     def set_config(self, config):
@@ -118,25 +119,7 @@ if __name__ == "__main__":
     reward_frequency = int(args.reward_frequency)
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
-    curriculum = {
-        'current_step': 0,
-        "thresholds": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000],
-        "parameters": {
-            "agent_spawn": [5, 6, 7, 8, 9, 10, 11, 12, 13, 15],
-            #"spawn_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"obstacles_already_touched": [6, 6, 5, 5, 4, 4, 3, 2, 1, 0],
-            "obstacles_already_touched": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            "obstacle_range": [9, 9, 10, 10, 11, 11, 12, 13, 14, 15],
-            #"obstacle_range": [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"coin_range":     [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"coin_range":         [15, 15, 15, 15, 15, 15, 15, 15, 15, 15],
-            #"max_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            #"min_num_coin":       [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-            #"max_num_coin":       [6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
-            #"min_num_coin":       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-
-        }
-    }
+    curriculum = None
 
     # Total episode of training
     total_episode = 1e10
@@ -156,7 +139,7 @@ if __name__ == "__main__":
                     action_type='discrete', action_size=9, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
                     v_num_itr=1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
-                    p_num_itr=10, input_length=52, with_circular=True)
+                    p_num_itr=10, input_length=68, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)
