@@ -16,10 +16,15 @@ name1 = "bug_detector_gail_schifo_3"
 name2 = "bug_detector_gail_schifo_moti"
 name3 = "bug_detector_gail_schifo_irl"
 
-reward_model_name = "bug_detector_gail_schifo_complex_irl_moti_4_3000"
+name4 = 'bug_detector_gail_schifo_complex'
+name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
+name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_complex_random'
+model_name = name6
 
+reward_model_name = None
+if model_name == name5:
+    reward_model_name = "bug_detector_gail_schifo_complex_irl_moti_2_21000"
 
 def plot_map(map):
     """
@@ -45,7 +50,17 @@ def print_traj(traj):
     ep_trajectory = np.asarray(traj)
     plt.xlim(0, 40)
     plt.ylim(0, 40)
-    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1])
+    color = 'g'
+
+    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
+        color = 'g'
+    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
+        color = 'b'
+    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
+        color = 'y'
+    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
+        color = 'm'
+    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 if __name__ == '__main__':
 
@@ -89,7 +104,7 @@ if __name__ == '__main__':
         heatmap[k_value[0], k_value[1]] += buffer[k]
         covmap[k_value[0], k_value[1]] = 1
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap) / 10)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap) / 5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -136,6 +151,7 @@ if __name__ == '__main__':
                 reward_sess.run(init)
                 reward_model.load_model(reward_model_name)
         except Exception as e:
+            reward_model = None
             print(e)
 
         if motivation is not None and reward_model is not None:
@@ -194,6 +210,11 @@ if __name__ == '__main__':
 
             moti_mean = np.mean(moti_rews)
             il_mean = np.mean(il_rews)
+            moti_max = np.max(moti_rews)
+            moti_min = np.min(moti_rews)
+            il_max = np.max(il_rews)
+            il_min = np.min(il_rews)
+            epsilon = 0.5
             print(np.max(moti_rews))
             print(np.max(il_rews))
             print(np.median(il_rews))
@@ -203,9 +224,9 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(15))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.8))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(19.5))
+            il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)

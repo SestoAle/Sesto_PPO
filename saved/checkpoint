@@ -1,2 +1,2 @@
-model_checkpoint_path: "bug_detector_gail_schifo_complex_irl_moti_4_rnd"
-all_model_checkpoint_paths: "bug_detector_gail_schifo_complex_irl_moti_4_rnd"
+model_checkpoint_path: "bug_detector_gail_schifo_complex_moti_3_rnd"
+all_model_checkpoint_paths: "bug_detector_gail_schifo_complex_moti_3_rnd"
