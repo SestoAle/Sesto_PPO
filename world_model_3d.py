@@ -103,7 +103,7 @@ if __name__ == '__main__':
         #     continue
         k_value = (((k_value + 1) / 2) * 39)
         k_value = k_value.astype(int)
-        
+
         heatmap[k_value[0], k_value[1]] += buffer[k]
         covmap[k_value[0], k_value[1]] = 1
 

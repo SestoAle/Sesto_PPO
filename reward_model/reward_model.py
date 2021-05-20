@@ -598,9 +598,9 @@ class GAIL(RewardModel):
                 #       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
                 if self.gradient_penalty_weight > 0.0:
-                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 71], name='exp_state')
+                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, 72], name='exp_state')
                     self.expert_acts = tf.compat.v1.placeholder(tf.int32, [None, 1], name='expert_acts')
-                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 71], name='exp_state_n')
+                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, 72], name='exp_state_n')
 
                     with tf.compat.v1.variable_scope('net', reuse=True):
                         logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
