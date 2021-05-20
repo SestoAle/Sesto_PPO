@@ -18,7 +18,9 @@ def network_spec(states):
     global_state = states[0]
     if input_length > 0:
         global_state, rays, coins, obstacles = tf.split(global_state, [7, 12, 28, 21], axis=1)
-        global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+        #global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+
+        agent = global_state
 
         rays = tf.cast(tf.reshape(rays, [-1, 5, 5]), tf.int32)
         rays = embedding(rays, indices=4, size=32, name='rays_embs')
@@ -26,15 +28,41 @@ def network_spec(states):
         rays = conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
         rays = tf.reshape(rays, [-1, 5 * 5 * 64])
 
-        BS, f = shape_list(coins)
-        my_mask = tf.concat([tf.ones((BS, 3)), tf.zeros((BS, 1))], axis = 1)
-        my_mask = my_mask[:, tf.newaxis, :]
+        # First list of entities
+        # The list of entity must have shape [batch_size, number_of_entities, features]
         coins = tf.reshape(coins, [-1, 14, 2])
-        coins, _, mask = transformer(coins, n_head=4, hidden_size=1024, mask_value=99, with_embeddings=True,
-                               name='transformer_coins', mask=my_mask)
-        mask = tf.compat.v1.Print(mask, [mask], 'mask ', summarize=1e5)
-        coins = entity_max_pooling_masked(coins, mask)
-        coins = tf.reshape(coins, [-1, 1024])
+        # Create mask manually (not inside the transformer)
+        # TODO: The mask will have shape [batch_size, 1, number of entities]
+        # TODO: The mask must be done BEFORE the embeddings
+        coins_mask = create_mask(coins, 99)
+        # Create an embedding of the first list of entities
+        coins = linear(coins, 1024, name='entities_obs_1', activation=tf.nn.tanh)
+
+        # Second list of entities
+        agent = tf.reshape(agent, [-1, 1, 7])
+        # Create mask manually (not inside the transformer)
+        # TODO: The mask will have shape [batch_size, 1, number of entities]
+        # TODO: The mask must be done BEFORE the embeddings
+        agent_mask = create_mask(agent, 99)
+        # Create an embedding of the second list of entities
+        agent = linear(agent, 1024, name='entities_obs_2', activation=tf.nn.tanh)
+
+        # Concatenate the embeddings
+        entity_embeddings = tf.concat([agent, coins], axis=1)
+        # Concatenate the mask
+        # TODO: the concatenations must be done in the same order
+        my_mask = tf.concat([agent_mask, coins_mask], axis=2)
+
+        # Apply the transformer. I will pass the concatenated entities and the mask to the layer, without internal
+        # embeddings (I already done the entity embeddings) and with max_pool at the end
+        entity_embeddings, _ = transformer(entity_embeddings, n_head=4, hidden_size=1024, mask_value=99,
+                                                 with_embeddings=False, name='transformer', mask=my_mask, pooling='max')
+        # The transformer (with max pooling) will output a tensor with shape [batch_size, 1, hidden_size]
+        # I reshape the tensor to be [batch_size, hidden_size]
+        entity_embeddings = tf.reshape(entity_embeddings, [-1, 1024])
+
+        # After this, I use the entity_embeddings in some ways...
+
 
         obstacles = tf.reshape(obstacles, [-1, 7, 3])
         obstacles = linear(obstacles, 1024, name='embs_obs', activation=tf.nn.relu)
@@ -45,7 +73,7 @@ def network_spec(states):
 
 
 
-        global_state = tf.concat([global_state, coins], axis=1)
+        global_state = tf.concat([entity_embeddings], axis=1)
 
     else:
         # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)

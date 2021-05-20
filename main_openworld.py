@@ -24,10 +24,10 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='openworld_patrol')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/cancellare")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=10)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
@@ -63,7 +63,6 @@ class OpenWorldEnv:
 
     def execute(self, actions):
         # actions = int(input(': '))
-        input('....')
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
@@ -126,9 +125,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 5
     # Memory of the agent (in episode)
-    memory = 10
+    memory = 5
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -147,7 +146,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = OpenWorldEnv(game_name=None, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
+        env = OpenWorldEnv(game_name=game_name, no_graphics=True, worker_id=0, max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environemnts
         envs = []

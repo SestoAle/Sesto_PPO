@@ -96,7 +96,7 @@ class RewardModel:
     # Create demonstrations manually or with a policy
     def create_demonstrations(self, env, save_demonstrations=True, inference=False, verbose=False,
                               with_policy=False, num_episode=3,
-                              model_name='model', random=False, dems_name='dems_100.pkl', sampled_env=None,
+                              model_name='model', random=False, dems_name='dems_acc.pkl', sampled_env=None,
                               ):
         end = False
 
@@ -234,7 +234,7 @@ class RewardModel:
 
     # Save demonstrations dict to file
     @staticmethod
-    def save_demonstrations(demonstrations, validations=None, name='dems.pkl'):
+    def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
         with open('reward_model/dems/' + name, 'wb') as f:
             pickle.dump(demonstrations, f, pickle.HIGHEST_PROTOCOL)
         if validations is not None:

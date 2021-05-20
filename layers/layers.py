@@ -110,7 +110,7 @@ def transformer(input, n_head, hidden_size, mask_value=None, mlp_layer=1, poolin
             bs, T, features = shape_list(input)
             input = tf.reshape(input, (bs, features))
 
-    return input, att_weights, mask
+    return input, att_weights
 
 def layer_norm(input_tensor, axis):
   """Run layer normalization on the axis dimension of the tensor."""
@@ -157,3 +157,13 @@ def embedding(input, indices, size, name='embs'):
             dtype=tf.float32, shape=shape
         )
         return tf.nn.tanh(tf.compat.v1.nn.embedding_lookup(params=W, ids=input, max_norm=None))
+
+def create_mask(input, value):
+    '''
+        Create mask from the input. If the first element is 99, then mask it.
+        The mask must be 1 for the input and 0 for the
+    '''
+    # x = bs, NE, feature
+    input = input[:, tf.newaxis, :, :]
+    mask = 1 - tf.cast(tf.equal(input[:,:,:,0], value), tf.float32)
+    return mask
