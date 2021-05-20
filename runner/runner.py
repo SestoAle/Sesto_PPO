@@ -288,6 +288,7 @@ class Runner:
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
+                    print('ASDJHAJKSHDKJSAHDKJASKDHJAKSHD')
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
