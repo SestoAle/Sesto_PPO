@@ -59,7 +59,6 @@ def network_spec_rnd(states):
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane, agent_jump], axis=1)
-    agent = tf.compat.v1.Print(agent, [agent], 'Agent: ', summarize=1e5)
 
     global_state = agent
 
