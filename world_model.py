@@ -224,7 +224,7 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(9.53))
+            moti_to_observe = np.where(moti_rews > np.asarray(9.5))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -238,6 +238,9 @@ if __name__ == '__main__':
             # Plot models values
             plt.figure()
             states_batch = []
+
+            key = episodes_to_observe[moti_to_observe[0]]
+
             for state in traj_to_observe[moti_to_observe][0]:
                 # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                 # TODO: correct form
@@ -251,7 +254,20 @@ if __name__ == '__main__':
                 # Create the states batch to feed the models
                 state = dict(global_in=state)
                 states_batch.append(state)
-            rew = reward_model.eval(states_batch)
-            plt.plot(range(len(rew)), rew)
+
+            actions_batch = []
+            for action in actions[key]:
+                actions_batch.append(action)
+
+            print(actions_batch)
+
+            irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+            im_rew = motivation.eval(states_batch)
+
+            irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
+            im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
+
+            plt.plot(range(len(irl_rew)), irl_rew)
+            plt.plot(range(len(im_rew)), im_rew)
 
     plt.show()

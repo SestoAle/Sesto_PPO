@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_complex_irl_moti_3')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_irl')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -47,7 +47,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=False)
+parser.set_defaults(recurrent=True)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)

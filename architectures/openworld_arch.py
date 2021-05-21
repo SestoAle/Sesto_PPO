@@ -28,6 +28,8 @@ def network_spec(states):
         rays = conv_layer_2d(rays, 64, [3, 3], name='conv_32', activation=tf.nn.relu)
         rays = tf.reshape(rays, [-1, 5 * 5 * 64])
 
+        # There are other things before this point...
+
         # First list of entities
         # The list of entity must have shape [batch_size, number_of_entities, features]
         coins = tf.reshape(coins, [-1, 14, 2])
@@ -45,12 +47,13 @@ def network_spec(states):
         # TODO: The mask must be done BEFORE the embeddings
         agent_mask = create_mask(agent, 99)
         # Create an embedding of the second list of entities
+        # Same size of the previous entity embedding
         agent = linear(agent, 1024, name='entities_obs_2', activation=tf.nn.tanh)
 
         # Concatenate the embeddings
         entity_embeddings = tf.concat([agent, coins], axis=1)
         # Concatenate the mask
-        # TODO: the concatenations must be done in the same order
+        # TODO: the concatenations must be done in the same order of the entity concatenation
         my_mask = tf.concat([agent_mask, coins_mask], axis=2)
 
         # Apply the transformer. I will pass the concatenated entities and the mask to the layer, without internal
