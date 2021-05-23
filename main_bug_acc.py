@@ -15,7 +15,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = BugEnvironment(game_name=game_name, no_graphics=False, worker_id=work_id,
+        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id,
                              max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environments
