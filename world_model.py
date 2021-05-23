@@ -20,7 +20,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = name5
+model_name = "bug_detector_gail_schifo_complex_random"
 
 reward_model_name = None
 if model_name == name5:

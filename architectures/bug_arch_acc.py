@@ -52,10 +52,10 @@ def network_spec_rnd(states):
     # Jump
     agent_plane, agent_jump, is_grounded, goal, grid, rays, inventory = tf.split(global_state, [2, 1, 1, 5, 49, 12, 2], axis=1)
 
-    agent_plane = ((agent_plane + 1) / 2) * 40
+    agent_plane = ((agent_plane + 1) / 2) * 60
     agent_plane = tf.cast(agent_plane, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 15
+    agent_jump = ((agent_jump + 1) / 2) * 30
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane, agent_jump], axis=1)
@@ -108,10 +108,10 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # Jump
     agent_plane, agent_jump, is_grounded, goal, grid, rays, inventory = tf.split(global_state, [2, 1, 1, 5, 49, 12, 2], axis=1)
 
-    agent_plane = ((agent_plane + 1) / 2) * 40
+    agent_plane = ((agent_plane + 1) / 2) * 60
     agent_plane = tf.cast(agent_plane, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 15
+    agent_jump = ((agent_jump + 1) / 2) * 30
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane, agent_jump], axis=1)

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_complex import *
+from architectures.bug_arch_acc import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -20,11 +20,11 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_irl'
+model_name = 'bug_detector_gail_schifo_acc_irl_im'
 
-reward_model_name = None
+reward_model_name = "bug_detector_gail_schifo_acc_irl_im_20000000"
 if model_name == name5:
-    reward_model_name = "bug_detector_gail_schifo_complex_irl_moti_2_21000"
+    reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
 def plot_map(map):
     """
@@ -60,6 +60,8 @@ def print_traj(traj):
         color = 'y'
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
+
+    ep_trajectory = ((np.asarray(ep_trajectory) + 1) / 2) * 40
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 if __name__ == '__main__':
@@ -162,7 +164,7 @@ if __name__ == '__main__':
             # Filler the state
             # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
             # TODO: it is probably better to save everything
-            filler = np.zeros((66))
+            filler = np.zeros((67))
             filler[-2] = 1.
             traj_to_observe = []
             episodes_to_observe = []
@@ -179,11 +181,20 @@ if __name__ == '__main__':
 
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
+                error = False
                 for point in traj:
-                    if np.abs(point[0] - desired_point_x) < threshold and np.abs(point[1] - desired_point_z) < threshold:
-                        traj_to_observe.append(traj)
-                        episodes_to_observe.append(keys)
+                    de_point = ((np.asarray(point[:2]) + 1) / 2) * 40
+                    de_point_up = ((np.asarray(point[2]) + 1) / 2) * 15
+                    if de_point_up >= 40:
+                        error = True
                         break
+                if not error:
+                    for point in traj:
+                        de_point = ((np.asarray(point) + 1) / 2) * 40
+                        if np.abs(de_point[0] - desired_point_x) < threshold and np.abs(de_point[1] - desired_point_z) < threshold:
+                            traj_to_observe.append(traj)
+                            episodes_to_observe.append(keys)
+                            break
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj in zip(episodes_to_observe, traj_to_observe):
@@ -193,7 +204,7 @@ if __name__ == '__main__':
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
-                    state[:3] = 2 * (state[:3]/40) - 1
+                    #state[:3] = 2 * (state[:3]/40) - 1
                     state = np.concatenate([state, filler])
                     state[-2:] = state[3:5]
 
@@ -227,17 +238,39 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.8))
+            moti_to_observe = np.where(moti_rews > np.asarray(2.5))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
+            states_batch = []
 
+            key = episodes_to_observe[moti_to_observe[0]]
+
+            for state in traj_to_observe[moti_to_observe][0]:
+                # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                # TODO: correct form
+                state = np.asarray(state)
+                state[:3] = 2 * (state[:3] / 40) - 1
+
+                state = np.concatenate([state, filler])
+
+                state[-2:] = state[3:5]
+
+                # Create the states batch to feed the models
+                state = dict(global_in=state)
+                states_batch.append(state)
+
+            actions_batch = []
+            for action in actions[key]:
+                actions_batch.append(action)
+
+            print(actions_batch)
 
             # Plot the trajectories
-            for traj in traj_to_observe[moti_to_observe]:
+            for traj in traj_to_observe[[moti_to_observe[0]]]:
                 print_traj(traj)
 
     plt.show()

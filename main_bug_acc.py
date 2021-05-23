@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_irl')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_irl_im')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -47,7 +47,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=True)
+parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
@@ -316,7 +316,7 @@ if __name__ == "__main__":
     # Open the environment with all the desired flags
     if not parallel:
         # Open the environment with all the desired flags
-        env = BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id,
+        env = BugEnvironment(game_name=game_name, no_graphics=False, worker_id=work_id,
                              max_episode_timesteps=max_episode_timestep)
     else:
         # If parallel, create more environments
