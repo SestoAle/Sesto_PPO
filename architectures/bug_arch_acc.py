@@ -62,7 +62,7 @@ def network_spec_rnd(states):
 
     global_state = agent
 
-    global_state = embedding(global_state, indices=41, size=32, name='embs')
+    global_state = embedding(global_state, indices=61, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     global_state = linear(global_state, 64, name='global_embs', activation=tf.nn.relu)
 
@@ -123,7 +123,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_n = tf.cast(agent_n, tf.int32)
     global_state_n = agent_n
 
-    global_state = embedding(global_state, indices=41, size=32, name='embs')
+    global_state = embedding(global_state, indices=61, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3*32))
     global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
