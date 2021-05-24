@@ -64,8 +64,6 @@ def network_spec_rnd(states):
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
-    agent= tf.compat.v1.Print(agent, [agent], 'Agent ', summarize=1e5)
-
     global_state = agent
 
     global_state = embedding(global_state, indices=61, size=32, name='embs')
