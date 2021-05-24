@@ -50,15 +50,21 @@ def network_spec_rnd(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane, agent_jump, is_grounded, goal, grid, rays, inventory = tf.split(global_state, [2, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
 
-    agent_plane = ((agent_plane + 1) / 2) * 60
-    agent_plane = tf.cast(agent_plane, tf.int32)
+    agent_plane_x = ((agent_plane_x + 1) / 2) * 40
+    agent_plane_x = tf.cast(agent_plane_x, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 30
+    agent_plane_z = ((agent_plane_z + 1) / 2) * 60
+    agent_plane_z = tf.cast(agent_plane_z, tf.int32)
+
+    agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
 
-    agent = tf.concat([agent_plane, agent_jump], axis=1)
+    agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+
+    agent= tf.compat.v1.Print(agent, [agent], 'Agent ', summarize=1e5)
 
     global_state = agent
 
@@ -106,15 +112,19 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     action_state = tf.cast(act, tf.int32)
 
     # Jump
-    agent_plane, agent_jump, is_grounded, goal, grid, rays, inventory = tf.split(global_state, [2, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
 
-    agent_plane = ((agent_plane + 1) / 2) * 60
-    agent_plane = tf.cast(agent_plane, tf.int32)
+    agent_plane_x = ((agent_plane_x + 1) / 2) * 40
+    agent_plane_x = tf.cast(agent_plane_x, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 30
+    agent_plane_z = ((agent_plane_z + 1) / 2) * 60
+    agent_plane_z = tf.cast(agent_plane_z, tf.int32)
+
+    agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
 
-    agent = tf.concat([agent_plane, agent_jump], axis=1)
+    agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
 
     agent_n, goal_n, grid_n, rays_n, inventory_n = tf.split(global_state_n, [3, 6, 49, 12, 2], axis=1)

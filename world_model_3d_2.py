@@ -1,8 +1,4 @@
-import numpy as np
-import json
-from PIL import Image
 import matplotlib.pyplot as plt
-import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from architectures.bug_arch_acc import *
@@ -20,7 +16,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl'
+model_name = 'bug_detector_gail_schifo_acc_irl_im'
 
 reward_model_name = "bug_detector_gail_schifo_acc_irl_im_24000"
 if model_name == name5:
@@ -95,15 +91,15 @@ if __name__ == '__main__':
         pass
 
     # Create Heatmap
-    heatmap = np.zeros((60, 60))
-    covmap = np.zeros((60, 60))
+    heatmap = np.zeros((40, 40))
+    covmap = np.zeros((40, 40))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
         k_value = np.asarray(k_value)
         # if k_value[2] != -1:
         #     continue
-        k_value = (((k_value + 1) / 2) * 59)
+        k_value = (((k_value + 1) / 2) * 39)
         k_value = k_value.astype(int)
 
         heatmap[k_value[0], k_value[1]] += buffer[k]
