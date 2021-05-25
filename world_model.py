@@ -20,7 +20,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = "bug_detector_gail_schifo_complex_random"
+model_name = name5
 
 reward_model_name = None
 if model_name == name5:
@@ -61,6 +61,32 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
+
+def print_traj_with_diff(traj, diff):
+    """
+    Method that will plot the trajectory
+    """
+    ep_trajectory = np.asarray(traj)
+    plt.xlim(0, 40)
+    plt.ylim(0, 40)
+    color = 'g'
+
+    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
+        color = 'g'
+    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
+        color = 'b'
+    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
+        color = 'y'
+    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
+        color = 'm'
+
+    ep_trajectory = ((np.asarray(ep_trajectory) + 1) / 2) * 40
+
+    for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
+        if d < 0.25:
+            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'red')
+        else:
+            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
 
 if __name__ == '__main__':
 
@@ -224,7 +250,7 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(9.5))
+            moti_to_observe = np.where(il_rews > np.asarray(200))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -232,42 +258,45 @@ if __name__ == '__main__':
             traj_to_observe = np.asarray(traj_to_observe)
 
             # Plot the trajectories
-            for traj in traj_to_observe[moti_to_observe]:
-                print_traj(traj)
+            for traj, idx in zip(traj_to_observe[moti_to_observe], moti_to_observe):
 
-            # Plot models values
-            plt.figure()
-            states_batch = []
+                # Plot models values
+                states_batch = []
 
-            key = episodes_to_observe[moti_to_observe[0]]
+                key = episodes_to_observe[idx]
 
-            for state in traj_to_observe[moti_to_observe][0]:
-                # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-                # TODO: correct form
-                state = np.asarray(state)
-                state[:3] = 2 * (state[:3] / 40) - 1
+                for state in traj:
+                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                    # TODO: correct form
+                    state = np.asarray(state)
+                    state[:3] = 2 * (state[:3] / 40) - 1
 
-                state = np.concatenate([state, filler])
+                    state = np.concatenate([state, filler])
 
-                state[-2:] = state[3:5]
+                    state[-2:] = state[3:5]
 
-                # Create the states batch to feed the models
-                state = dict(global_in=state)
-                states_batch.append(state)
+                    # Create the states batch to feed the models
+                    state = dict(global_in=state)
+                    states_batch.append(state)
 
-            actions_batch = []
-            for action in actions[key]:
-                actions_batch.append(action)
+                actions_batch = []
+                for action in actions[key]:
+                    actions_batch.append(action)
 
-            print(actions_batch)
+                irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                im_rew = motivation.eval(states_batch)
 
-            irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-            im_rew = motivation.eval(states_batch)
+                irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
+                im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
 
-            irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
-            im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
+                plt.figure()
+                plt.plot(range(len(irl_rew)), irl_rew)
+                plt.plot(range(len(im_rew)), im_rew)
 
-            plt.plot(range(len(irl_rew)), irl_rew)
-            plt.plot(range(len(im_rew)), im_rew)
+                plt.figure()
+                print_traj_with_diff(traj, irl_rew)
+
+                plt.show()
+                plt.waitforbuttonpress()
 
     plt.show()

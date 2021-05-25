@@ -245,30 +245,37 @@ if __name__ == '__main__':
             idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
-            # states_batch = []
-            # key = episodes_to_observe[moti_to_observe[0]]
-            # for state in traj_to_observe[moti_to_observe][0]:
-            #     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-            #     # TODO: correct form
-            #     state = np.asarray(state)
-            #     state[:3] = 2 * (state[:3] / 40) - 1
-            #
-            #     state = np.concatenate([state, filler])
-            #
-            #     state[-2:] = state[3:5]
-            #
-            #     # Create the states batch to feed the models
-            #     state = dict(global_in=state)
-            #     states_batch.append(state)
-            #
-            # actions_batch = []
-            # for action in actions[key]:
-            #     actions_batch.append(action)
-            #
-            # print(actions_batch)
-
             # Plot the trajectories
             for traj in traj_to_observe[moti_to_observe]:
                 print_traj(traj)
+
+            states_batch = []
+            key = episodes_to_observe[moti_to_observe[0]]
+            for state in traj_to_observe[moti_to_observe][0]:
+                # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                # TODO: correct form
+                state = np.asarray(state)
+                state[:3] = 2 * (state[:3] / 40) - 1
+
+                state = np.concatenate([state, filler])
+
+                state[-2:] = state[3:5]
+
+                # Create the states batch to feed the models
+                state = dict(global_in=state)
+                states_batch.append(state)
+
+            actions_batch = []
+            for action in actions[key]:
+                actions_batch.append(action)
+
+            irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+            im_rew = motivation.eval(states_batch)
+
+            irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
+            im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
+
+            plt.plot(range(len(irl_rew)), irl_rew)
+            plt.plot(range(len(im_rew)), im_rew)
 
     plt.show()
