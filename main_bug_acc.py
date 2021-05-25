@@ -15,7 +15,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl_im_2')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -36,7 +36,7 @@ parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_acc_com_irl_6000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_acc_com_irl_30000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems_acc_com.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -47,7 +47,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=False)
+parser.set_defaults(recurrent=True)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
@@ -103,7 +103,7 @@ class BugEnvironment:
         # reward = 0
 
         # print(state['global_in'][:2])
-        # print(np.flip(np.transpose(np.reshape(state['global_in'][8:8+49], [7, 7])), 0))
+        # print(np.flip(np.transpose(np.reshape(state['global_in'][9:9+49], [7, 7])), 0))
         # print(state['global_in'][-2:])
         # print(state['global_in'][7:7+12])
         # print(reward)

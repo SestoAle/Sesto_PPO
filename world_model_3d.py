@@ -20,7 +20,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_2'
 
 reward_model_name = "bug_detector_gail_schifo_acc_irl_im_24000"
 if model_name == name5:
@@ -61,7 +61,8 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory = ((np.asarray(ep_trajectory) + 1) / 2) * 40
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 if __name__ == '__main__':
@@ -103,7 +104,8 @@ if __name__ == '__main__':
         k_value = np.asarray(k_value)
         # if k_value[2] != -1:
         #     continue
-        k_value = (((k_value + 1) / 2) * 59)
+        k_value[0] = (((k_value[0] + 1) / 2) * 39)
+        k_value[1] = (((k_value[1] + 1) / 2) * 59)
         k_value = k_value.astype(int)
 
         heatmap[k_value[0], k_value[1]] += buffer[k]

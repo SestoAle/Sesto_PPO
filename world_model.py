@@ -2,6 +2,7 @@ import numpy as np
 import json
 from PIL import Image
 import matplotlib.pyplot as plt
+from math import factorial
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
@@ -42,6 +43,29 @@ def plot_map(map):
     ax.set_yticks(np.arange(heatmap.shape[0] + 1) - .5, minor=True)
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
+
+
+def savitzky_golay(y, window_size, order, deriv=0, rate=1):
+    try:
+        window_size = np.abs(np.int(window_size))
+        order = np.abs(np.int(order))
+    except ValueError as msg:
+        raise ValueError("window_size and order have to be of type int")
+    if window_size % 2 != 1 or window_size < 1:
+        raise TypeError("window_size size must be a positive odd number")
+    if window_size < order + 2:
+        raise TypeError("window_size is too small for the polynomials order")
+    order_range = range(order + 1)
+    half_window = (window_size - 1) // 2
+    # precompute coefficients
+    b = np.mat([[k ** i for i in order_range] for k in range(-half_window, half_window + 1)])
+    m = np.linalg.pinv(b).A[deriv] * rate ** deriv * factorial(deriv)
+    # pad the signal at the extremes with
+    # values taken from the signal itself
+    firstvals = y[0] - np.abs(y[1:half_window + 1][::-1] - y[0])
+    lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
+    y = np.concatenate((firstvals, y, lastvals))
+    return np.convolve(m[::-1], y, mode='valid')
 
 def print_traj(traj):
     """
@@ -250,7 +274,7 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(il_rews > np.asarray(200))
+            moti_to_observe = np.where(moti_rews > np.asarray(8))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -286,12 +310,16 @@ if __name__ == '__main__':
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
 
+                irl_rew = savitzky_golay(irl_rew, 51, 3)
+                im_rew = savitzky_golay(im_rew, 51, 3)
+
                 irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
                 im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
 
                 plt.figure()
                 plt.plot(range(len(irl_rew)), irl_rew)
                 plt.plot(range(len(im_rew)), im_rew)
+                plt.legend(['irl rew', 'il rew'])
 
                 plt.figure()
                 print_traj_with_diff(traj, irl_rew)

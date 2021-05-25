@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from architectures.bug_arch_acc_2 import *
+from math import factorial
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -85,6 +86,28 @@ def print_traj_with_diff(traj, diff):
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'red')
         else:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
+
+def savitzky_golay(y, window_size, order, deriv=0, rate=1):
+    try:
+        window_size = np.abs(np.int(window_size))
+        order = np.abs(np.int(order))
+    except ValueError as msg:
+        raise ValueError("window_size and order have to be of type int")
+    if window_size % 2 != 1 or window_size < 1:
+        raise TypeError("window_size size must be a positive odd number")
+    if window_size < order + 2:
+        raise TypeError("window_size is too small for the polynomials order")
+    order_range = range(order + 1)
+    half_window = (window_size - 1) // 2
+    # precompute coefficients
+    b = np.mat([[k ** i for i in order_range] for k in range(-half_window, half_window + 1)])
+    m = np.linalg.pinv(b).A[deriv] * rate ** deriv * factorial(deriv)
+    # pad the signal at the extremes with
+    # values taken from the signal itself
+    firstvals = y[0] - np.abs(y[1:half_window + 1][::-1] - y[0])
+    lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
+    y = np.concatenate((firstvals, y, lastvals))
+    return np.convolve(m[::-1], y, mode='valid')
 
 if __name__ == '__main__':
 
@@ -204,19 +227,14 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
                 error = False
-                for point in traj:
-                    de_point = ((np.asarray(point[:2]) + 1) / 2) * 40
-                    de_point_up = ((np.asarray(point[2]) + 1) / 2) * 15
-                    if de_point_up >= 40:
-                        error = True
-                        break
                 if not error:
                     for point in traj:
                         de_point = ((np.asarray(point) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and np.abs(de_point[1] - desired_point_z) < threshold:
-                            traj_to_observe.append(traj)
-                            episodes_to_observe.append(keys)
-                            break
+                            if point[3:5] == [1, 1]:
+                                traj_to_observe.append(traj)
+                                episodes_to_observe.append(keys)
+                                break
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj in zip(episodes_to_observe, traj_to_observe):
@@ -257,7 +275,7 @@ if __name__ == '__main__':
             print(np.min(il_rews))
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.75))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.6))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < il_min + epsilon)
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -296,12 +314,14 @@ if __name__ == '__main__':
 
                 irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
                 im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
-                diff = np.asarray(im_rew) - np.asarray(irl_rew)
+                irl_rew = savitzky_golay(irl_rew, 51, 3)
+                im_rew = savitzky_golay(im_rew, 51, 3)
+                #diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
                 plt.figure()
                 plt.plot(range(len(irl_rew)), irl_rew)
                 plt.plot(range(len(im_rew)), im_rew)
-                plt.plot(range(len(im_rew)), diff)
+                #plt.plot(range(len(im_rew)), diff)
                 plt.legend(['irl', 'im', 'diff'])
 
                 plt.figure()

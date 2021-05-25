@@ -19,7 +19,24 @@ def network_spec(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent, goal, grid, rays, inventory = tf.split(global_state, [4, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+
+    agent_plane_x = ((agent_plane_x + 1) / 2) * 40
+    agent_plane_x = tf.cast(agent_plane_x, tf.int32)
+
+    agent_plane_z = ((agent_plane_z + 1) / 2) * 60
+    agent_plane_z = tf.cast(agent_plane_z, tf.int32)
+
+    agent_jump = ((agent_jump + 1) / 2) * 25
+    agent_jump = tf.cast(agent_jump, tf.int32)
+
+    agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+
+    agent = embedding(agent, indices=61, size=32, name='agent_embs')
+    agent = tf.reshape(agent, (-1, 3 * 32))
+    agent = tf.concat([agent, is_grounded], axis=1)
+    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.relu)
 
     # points = tf.reshape(points, [-1, 1024])
     grid = tf.cast(tf.reshape(grid, [-1, 7, 7]), tf.int32)
@@ -27,8 +44,6 @@ def network_spec(states):
     grid = conv_layer_2d(grid, 32, [3, 3], name='conv_01', activation=tf.nn.relu)
     grid = conv_layer_2d(grid, 64, [3, 3], name='conv_02', activation=tf.nn.relu)
     grid = tf.reshape(grid, [-1, 7 * 7 * 64])
-
-    agent = linear(agent, 1024, name='agent_embs', activation=tf.nn.relu)
 
     inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.relu)
 
