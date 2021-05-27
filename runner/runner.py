@@ -27,7 +27,13 @@ class Runner:
         self.curriculum_mode = curriculum_mode
         self.evaluation = evaluation
 
+        # TODO: pass this as an argument
         self.motivation_frequency = 1
+
+        # For alternating between motivation and imitation reward
+        self.alternate_frequency = 0
+        self.alternate_count = 0
+        self.alternate_turn = 0
 
         # If we want to use intrinsic motivation
         # Right now only RND is available
@@ -155,18 +161,15 @@ class Runner:
 
                 # Evaluation - Execute step
                 if not self.recurrent:
-                    if self.evaluation:
-                        # If evaluating, take the most probable action
-                        action = self.agent.eval_max([state])
-                        probs = [[]]
-                        logprob = 0
-                    else:
-                        action, logprob, probs = self.agent.eval([state])
+                    action, logprob, probs = self.agent.eval([state])
 
                 else:
                     action, logprob, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal, v_internal)
-                    if self.evaluation:
-                        action = [np.argmax(probs)]
+
+                # If we want to test the agent, we take the highest probability action instead of the sampled
+                # one output by eval()
+                if self.evaluation:
+                    action = [np.argmax(probs)]
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
                     action = [np.random.randint(self.agent.action_size)]
@@ -233,15 +236,52 @@ class Runner:
                         if self.total_step > self.random_actions:
                             self.agent.train()
                     else:
-                        # If we use intrinsic motivation, we must normalize reward
+
                         if self.motivation is not None:
-                            self.agent.buffer['rewards'] -= self.motivation.r_norm.mean
-                            self.agent.buffer['rewards'] /= self.motivation.r_norm.std
-                            self.agent.buffer['rewards'] = list(self.agent.buffer['rewards'])
+                            # TODO: move this into a function
+                            # Normalize observation of the motivation buffer
+                            # self.motivation.normalize_buffer()
+                            # Compute intrinsic rewards
+                            intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
+
+                            # Normalize rewards
+                            intrinsic_rews -= np.mean(intrinsic_rews)
+                            intrinsic_rews /= np.std(intrinsic_rews)
+                            intrinsic_rews *= self.motivation.motivation_weight
+                            self.agent.buffer['rewards'] = list(
+                                intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+                        if self.reward_model is not None:
+                            # Compute intrinsic rewards
+                            intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'],
+                                                                    self.agent.buffer['states_n'],
+                                                                    self.agent.buffer['actions'])
+
+                            # Normalize rewards
+                            intrinsic_rews -= np.mean(intrinsic_rews)
+                            intrinsic_rews /= np.std(intrinsic_rews)
+                            intrinsic_rews *= self.reward_model.reward_model_weight
+                            self.agent.buffer['rewards'] = list(
+                                intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+                        # Train the agent
                         self.agent.train()
+
+                    # If frequency episodes are passed, update the policy
+                    if not self.evaluation and self.frequency_mode == 'timesteps' and \
+                            self.total_step > 0 and self.total_step % self.motivation_frequency == 0:
+
                         # If we use intrinsic motivation, update also intrinsic motivation
                         if self.motivation is not None:
                             self.update_motivation()
+
+                    # If frequency episodes are passed, update the policy
+                    if not self.evaluation and self.frequency_mode == 'timesteps' and \
+                            self.total_step > 0 and self.total_step % self.reward_frequency == 0:
+
+                        # If we use intrinsic motivation, update also intrinsic motivation
+                        if self.reward_model is not None and not self.fixed_reward_model:
+                            self.update_reward_model()
 
                 # If done, end the episode and save statistics
                 if done == 1:
@@ -290,7 +330,8 @@ class Runner:
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
-                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    if self.alternate_turn == 0:
+                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
 
@@ -306,9 +347,15 @@ class Runner:
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.reward_model.reward_model_weight
-                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    if self.alternate_turn == 1:
+                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 self.agent.train()
+                # For alternating between motivation and imitation learning
+                if self.alternate_frequency > 0:
+                    self.alternate_count += 1
+                    if self.alternate_count % self.alternate_frequency == 0:
+                        self.alternate_turn = (self.alternate_turn + 1) % 2
 
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \

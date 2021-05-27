@@ -21,9 +21,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_18000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_322222_18000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -313,7 +313,7 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(1.8))
+            moti_to_observe = np.where(moti_rews > np.asarray(1.5))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < np.asarray(15))
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -344,6 +344,19 @@ if __name__ == '__main__':
                 actions_batch = []
                 for action in actions[key]:
                     actions_batch.append(action)
+
+                # TODO: save actions and trajectories, temporarely
+                actions_to_save = dict(actions=actions[key])
+                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+                f = open("arrays/actions.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
+                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2])
+                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+                f = open("arrays/traj.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
 
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
