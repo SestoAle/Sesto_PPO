@@ -23,7 +23,7 @@ name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
 model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_15000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_18000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -64,7 +64,7 @@ def print_traj(traj):
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
-    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1])
+    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     try:
@@ -111,7 +111,7 @@ def print_traj_with_diff(traj, diff):
 
     for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
         if d < 0.25:
-            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'red')
+            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
         else:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
 
@@ -325,7 +325,7 @@ if __name__ == '__main__':
                 print_traj(traj)
 
             # Plot the trajectories
-            for traj, idx in zip(traj_to_observe[moti_to_observe], moti_to_observe):
+            for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
                 states_batch = []
                 key = episodes_to_observe[idx]
@@ -347,7 +347,6 @@ if __name__ == '__main__':
 
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
-                print(irl_rew)
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
 
