@@ -165,6 +165,8 @@ class Runner:
 
                 else:
                     action, logprob, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal, v_internal)
+                    if self.evaluation:
+                        action = [np.argmax(probs)]
 
                 if self.random_actions is not None and self.total_step < self.random_actions:
                     action = [np.random.randint(self.agent.action_size)]

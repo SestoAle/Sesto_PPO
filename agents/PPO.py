@@ -503,6 +503,24 @@ class PPO:
         # Return is equal to eval(), but with the new internal state
         return action, logprob, probs, internal, v_internal
 
+    # Eval with argmax, but with recurrent: it needs the internal hidden state
+    def eval_recurrent_max(self, state, internal, v_internal=None):
+        state = self.obs_to_state(state)
+        feed_dict = self.create_state_feed_dict(state)
+
+        # Pass the internal state
+        feed_dict[self.state_in] = internal
+        feed_dict[self.recurrent_train_length] = 1
+        feed_dict[self.sequence_lengths] = [1]
+        action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state],
+                                                         feed_dict=feed_dict)
+        if self.recurrent_baseline:
+            feed_dict[self.v_state_in] = v_internal
+            v_internal = self.sess.run([self.v_state_in], feed_dict=feed_dict)
+
+        # Return is equal to eval(), but with the new internal state
+        return [np.argmax(probs)], logprob, probs, internal, v_internal
+
     # Eval with argmax
     def eval_max(self, state):
 
