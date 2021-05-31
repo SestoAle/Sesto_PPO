@@ -124,6 +124,13 @@ class Runner:
                 self.ep = len(self.history['episode_timesteps'])
                 self.total_step = np.sum(self.history['episode_timesteps'])
 
+
+        # Decaying weight of the motivation/inverse reinforcement learning model
+        self.last_episode_for_decaying = 0
+        # if self.motivation is not None:
+        #     self.motivation.motivation_weight = 0.8
+        #     self.min_motivation_weight = 0.2
+
     def run(self):
 
         # Trainin loop
@@ -330,7 +337,10 @@ class Runner:
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
-                    if self.alternate_turn == 0:
+                    if self.alternate_frequency > 0:
+                        if self.alternate_turn == 0:
+                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    else:
                         self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
@@ -346,8 +356,15 @@ class Runner:
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
-                    intrinsic_rews *= self.reward_model.reward_model_weight
-                    if self.alternate_turn == 1:
+                    if self.last_episode_for_decaying > 0:
+                        intrinsic_rews *= (1 - self.motivation.motivation_weight)
+                    else:
+                        intrinsic_rews *= self.reward_model.reward_model_weight
+
+                    if self.alternate_frequency > 0:
+                        if self.alternate_turn == 1:
+                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    else:
                         self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 self.agent.train()
@@ -377,6 +394,11 @@ class Runner:
             # Save model and statistics
             if self.ep > 0 and self.ep % self.save_frequency == 0:
                 self.save_model(self.history, self.agent.model_name, self.curriculum, self.agent)
+
+            # Decaying the motivation weight
+            if self.last_episode_for_decaying > 0:
+                if self.ep < self.last_episode_for_decaying:
+                    self.motivation.motivation_weight -= ((0.8 - self.min_motivation_weight) / self.last_episode_for_decaying)
 
 
     def save_model(self, history, model_name, curriculum, agent):

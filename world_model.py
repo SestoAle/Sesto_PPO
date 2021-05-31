@@ -8,7 +8,7 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from architectures.bug_arch_complex import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
