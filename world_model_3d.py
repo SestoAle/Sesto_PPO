@@ -21,9 +21,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt_50'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_322222_18000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt_24000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -188,6 +188,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
+                model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -198,7 +199,7 @@ if __name__ == '__main__':
 
             # Load imitation model
             with graph.as_default():
-                model_name = "bug_detector_gail_schifo_acc_com_irl_im_3"
+                reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt_24000"
                 tf.compat.v1.disable_eager_execution()
                 reward_sess = tf.compat.v1.Session(graph=graph)
                 reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
@@ -313,9 +314,9 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(1.5))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.6))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(15))
+            il_to_observe = np.where(il_rews < np.asarray(-35))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
@@ -323,6 +324,8 @@ if __name__ == '__main__':
             # Plot the trajectories
             for traj in traj_to_observe[idxs_to_observe]:
                 print_traj(traj)
+
+            print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
@@ -354,7 +357,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2])
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("arrays/traj.json".format(model_name), "w")
+                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 

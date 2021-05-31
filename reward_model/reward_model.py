@@ -96,7 +96,7 @@ class RewardModel:
     # Create demonstrations manually or with a policy
     def create_demonstrations(self, env, save_demonstrations=True, inference=False, verbose=False,
                               with_policy=False, num_episode=3,
-                              model_name='model', random=False, dems_name='dems_acc_com.pkl', sampled_env=None,
+                              model_name='model', random=False, dems_name='dems_acc_com_no_key.pkl', sampled_env=None,
                               ):
         end = False
 
