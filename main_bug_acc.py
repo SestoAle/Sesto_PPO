@@ -23,12 +23,12 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl_3_no_key_3')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=80)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=70)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -280,9 +280,9 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
+                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-4, v_batch_fraction=1.,
                     v_num_itr=1, memory=memory,
-                    v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
+                    v_lr=7e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
@@ -294,7 +294,7 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
+            motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-4,
                              obs_to_state=obs_to_state_rnd)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
@@ -306,7 +306,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             reward_sess = tf.compat.v1.Session(graph=graph)
             reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
+                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-4,
                                 name=model_name, fixed_reward_model=False, with_action=True)
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)

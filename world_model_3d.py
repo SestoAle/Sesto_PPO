@@ -21,9 +21,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_3_no_key_3'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3_21000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3_27000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -109,8 +109,10 @@ def print_traj_with_diff(traj, diff):
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
 
+    mean_diff = np.mean(diff)
+
     for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
-        if d > 0.2:
+        if d > mean_diff:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'r')
         else:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
@@ -132,12 +134,14 @@ if __name__ == '__main__':
             trajectories = json.load(f)
 
     except Exception as e:
+        print("traj problem")
         print(e)
         pass
 
     # As well as the action made in the episode
     actions = None
     try:
+        print("act problem")
         with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
             actions = json.load(f)
 
@@ -188,7 +192,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_alt_2"
+                model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -223,8 +227,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 1
-            desired_point_z = 1
+            desired_point_x = 5
+            desired_point_z = 5
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -313,14 +317,12 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews < np.asarray(0.4))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < np.asarray(-35))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
-
-            idxs_to_observe = moti_to_observe[-10:]
 
             # Plot the trajectories
             for traj in traj_to_observe[idxs_to_observe]:
