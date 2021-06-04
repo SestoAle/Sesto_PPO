@@ -21,9 +21,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3_27000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_3000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -165,7 +165,7 @@ if __name__ == '__main__':
         heatmap[k_value[0], k_value[1]] += buffer[k]
         covmap[k_value[0], k_value[1]] = 1
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap) / 5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap))
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -227,8 +227,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 5
-            desired_point_z = 5
+            desired_point_x = 7
+            desired_point_z = 7
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -259,7 +259,7 @@ if __name__ == '__main__':
             for key, traj in zip(episodes_to_observe, traj_to_observe):
                 states_batch = []
                 actions_batch = []
-                for state in traj:
+                for state, action in zip(traj[:-1], actions[key]):
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
@@ -269,10 +269,13 @@ if __name__ == '__main__':
                     # Create the states batch to feed the models
                     state = dict(global_in=state)
                     states_batch.append(state)
-
-                # Get the action batches for imitation model
-                for action in actions[key]:
                     actions_batch.append(action)
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 if np.min(il_rew) < all_il_min:
@@ -317,7 +320,7 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.5))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.4))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < np.asarray(-90))
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -353,23 +356,8 @@ if __name__ == '__main__':
                 for action in actions[key]:
                     actions_batch.append(action)
 
-
-
-                # TODO: save actions and trajectories, temporarely
-                actions_to_save = dict(actions=actions[key])
-                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
-                f = open("arrays/actions.json".format(model_name), "w")
-                f.write(json_str)
-                f.close()
-
-                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2])
-                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
-                f.write(json_str)
-                f.close()
-
-                irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                im_rew = motivation.eval(states_batch)
+                irl_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                im_rew = motivation.eval(states_batch[1:])
                 title = np.sum(im_rew)
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
@@ -388,6 +376,19 @@ if __name__ == '__main__':
 
                 plt.figure()
                 print_traj_with_diff(traj, im_rew)
+
+                # TODO: save actions and trajectories, temporarely
+                actions_to_save = dict(actions=actions[key])
+                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+                f = open("arrays/actions.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
+                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
+                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
 
                 plt.show()
                 plt.waitforbuttonpress()

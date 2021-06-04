@@ -15,7 +15,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -90,6 +90,8 @@ class BugEnvironment:
         reward = env_info.rewards[0]
         done = env_info.local_done[0]
 
+        self.actions_for_episode[self.episode].append(actions)
+
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
@@ -97,10 +99,8 @@ class BugEnvironment:
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
-        self.actions_for_episode[self.episode].append(actions)
-
         # Get the counter of that position and compute reward
-        counter = self.insert_to_pos_table(position[:2])
+        # counter = self.insert_to_pos_table(position[:2])
         # reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 
@@ -125,6 +125,8 @@ class BugEnvironment:
 
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
+        position = state['global_in'][:3]
+        self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
         return state
 
