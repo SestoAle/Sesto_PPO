@@ -100,7 +100,7 @@ class BugEnvironment:
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # Get the counter of that position and compute reward
-        counter = self.insert_to_pos_table(position[:2])
+        # counter = self.insert_to_pos_table(position[:2])
         # reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 

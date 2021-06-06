@@ -1,6 +1,4 @@
-import numpy as np
-import json
-from PIL import Image
+import pickle
 import matplotlib.pyplot as plt
 from math import factorial
 import tensorflow as tf
@@ -21,7 +19,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'irl_prova'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
 
 reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
 if model_name == name5:
@@ -43,6 +41,54 @@ def plot_map(map):
     ax.set_yticks(np.arange(heatmap.shape[0] + 1) - .5, minor=True)
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
+
+def load_demonstrations(dems_name):
+    with open('reward_model/dems/' + dems_name, 'rb') as f:
+        expert_traj = pickle.load(f)
+
+    return expert_traj
+
+def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
+    with open('reward_model/dems/' + name, 'wb') as f:
+        pickle.dump(demonstrations, f, pickle.HIGHEST_PROTOCOL)
+    if validations is not None:
+        with open('reward_model/dems/vals_' + name, 'wb') as f:
+            pickle.dump(validations, f, pickle.HIGHEST_PROTOCOL)
+
+def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
+    '''
+    This method will take some trajectories saved from Intrinsic Motivation + Imitation Learning training
+    and transform it into a demonstrations that can be used with Imitation Learning.
+    TODO: This method is valid only with the current world_model_3d.py script
+    '''
+
+    filler = np.zeros(67)
+    for traj, acts in zip(trajectories, actions):
+        for idx in range(len(traj) - 1):
+            # Transform the state into the correct form
+            state = traj[idx]
+            state = np.asarray(state)
+            state = np.concatenate([state, filler])
+            state[-2:] = state[3:5]
+            # Create the states batch to feed the models
+            state = dict(global_in=state)
+
+            # Do the same thing for obs_n
+            state_n = traj[idx + 1]
+            state_n = np.asarray(state_n)
+            state_n = np.concatenate([state_n, filler])
+            state_n[-2:] = state_n[3:5]
+            # Create the states batch to feed the models
+            state_n = dict(global_in=state_n)
+
+            # Get the corresponfing action
+            action = acts[idx]
+
+            demonstrations['obs'].extend([state])
+            demonstrations['obs_n'].extend([state_n])
+            demonstrations['acts'].extend([action])
+
+    return demonstrations
 
 def print_traj(traj):
     """
@@ -192,7 +238,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2"
+                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -229,7 +275,7 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 7
             desired_point_z = 7
-            threshold = 10
+            threshold = 5
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
@@ -246,8 +292,6 @@ if __name__ == '__main__':
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             break
-
-
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             all_il_min = 9999
@@ -320,11 +364,11 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.28))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(-90))
+            il_to_observe = np.where(il_rews < np.asarray(2))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
+            idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
             #idxs_to_observe = idxs_to_observe[-10:]
@@ -334,6 +378,33 @@ if __name__ == '__main__':
                 print_traj(traj)
 
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
+
+
+            # Increase demonstartions with bugged trajectory
+            if True:
+
+                actions_to_save = []
+                for i in idxs_to_observe:
+                    key = episodes_to_observe[i]
+                    actions_to_save.append(actions[key])
+
+                expert_traj = load_demonstrations('dems_acc_com_no_key.pkl')
+                with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
+                    saved_trajectories = json.load(f)
+
+                with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
+                    saved_actions = json.load(f)
+
+                print('Demonstrations loaded! We have ' + str(
+                    len(expert_traj['obs'])) + " timesteps in these demonstrations")
+
+                expert_traj = saved_trajectories_to_demonstrations(traj_to_observe[idxs_to_observe], actions_to_save,
+                                                                   expert_traj)
+
+                save_demonstrations(expert_traj, name='dems_acc_com_no_key_muted.pkl')
+                print('Demonstrations loaded! We have ' + str(
+                    len(expert_traj['acts'])) + " timesteps in these demonstrations")
+
 
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
@@ -394,3 +465,4 @@ if __name__ == '__main__':
                 plt.waitforbuttonpress()
 
     plt.show()
+
