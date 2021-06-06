@@ -1,5 +1,5 @@
 from agents.PPO import PPO
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_acc_old import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
 from motivation.random_network_distillation import RND
@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl_3_no_key_3')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='irl_prova')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -100,7 +100,7 @@ class BugEnvironment:
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # Get the counter of that position and compute reward
-        # counter = self.insert_to_pos_table(position[:2])
+        counter = self.insert_to_pos_table(position[:2])
         # reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 

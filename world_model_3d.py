@@ -21,9 +21,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
+model_name = 'irl_prova'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_3000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -192,7 +192,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3"
+                model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -229,7 +229,7 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 7
             desired_point_z = 7
-            threshold = 5
+            threshold = 10
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
@@ -259,7 +259,7 @@ if __name__ == '__main__':
             for key, traj in zip(episodes_to_observe, traj_to_observe):
                 states_batch = []
                 actions_batch = []
-                for state, action in zip(traj[:-1], actions[key]):
+                for state, action in zip(traj, actions[key]):
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
@@ -320,7 +320,7 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.4))
+            moti_to_observe = np.where(moti_rews > np.asarray(0))
             moti_to_observe = np.reshape(moti_to_observe, -1)
             il_to_observe = np.where(il_rews < np.asarray(-90))
             il_to_observe = np.reshape(il_to_observe, -1)
@@ -357,8 +357,9 @@ if __name__ == '__main__':
                     actions_batch.append(action)
 
                 irl_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
-                im_rew = motivation.eval(states_batch[1:])
-                title = np.sum(im_rew)
+                im_rew = motivation.eval(states_batch)
+                plt.figure()
+                plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
 
@@ -367,15 +368,11 @@ if __name__ == '__main__':
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
-                plt.figure()
-                plt.title(title)
-                #plt.plot(range(len(irl_rew)), irl_rew)
+
+                plt.plot(range(len(irl_rew)), irl_rew)
                 plt.plot(range(len(im_rew)), im_rew)
                 #plt.plot(range(len(im_rew)), diff)
                 plt.legend(['irl', 'im', 'diff'])
-
-                plt.figure()
-                print_traj_with_diff(traj, im_rew)
 
                 # TODO: save actions and trajectories, temporarely
                 actions_to_save = dict(actions=actions[key])
@@ -386,9 +383,12 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
+
+                plt.figure()
+                print_traj_with_diff(traj, im_rew)
 
                 plt.show()
                 plt.waitforbuttonpress()
