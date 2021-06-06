@@ -1,5 +1,5 @@
 from agents.PPO import PPO
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_very_acc import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
 from motivation.random_network_distillation import RND
@@ -262,8 +262,8 @@ if __name__ == "__main__":
         'current_step': 0,
         "thresholds": [1000000000000000000000000000],
         "parameters": {
-            "agent_spawn_x": [14],
-            "agent_spawn_z": [14]
+            "agent_spawn_x": [0],
+            "agent_spawn_z": [0]
         }
     }
 

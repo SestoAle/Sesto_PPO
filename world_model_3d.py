@@ -19,7 +19,7 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
+model_name = 'irl_prova'
 
 reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
 if model_name == name5:
