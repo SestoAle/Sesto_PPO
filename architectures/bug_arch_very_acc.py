@@ -24,18 +24,16 @@ def network_spec(states):
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
-    agent_plane_x = embedding(agent_plane_x, indices=101, size=32, name='embs')
 
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
-    agent_plane_z = embedding(agent_plane_z, indices=131, size=32, name='embs')
 
     agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
-    agent_jump = embedding(agent_jump, indices=26, size=32, name='embs')
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
+    agent = embedding(agent, indices=131, size=32, name='agent_embs')
     agent = tf.reshape(agent, (-1, 3 * 32))
     agent = tf.concat([agent, is_grounded], axis=1)
     agent = linear(agent, 1024, name='global_embs', activation=tf.nn.relu)
@@ -72,19 +70,18 @@ def network_spec_rnd(states):
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
-    agent_plane_x = embedding(agent_plane_x, indices=101, size=32, name='embs')
 
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
-    agent_plane_z = embedding(agent_plane_z, indices=131, size=32, name='embs')
 
     agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
-    agent_jump = embedding(agent_jump, indices=26, size=32, name='embs')
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+
     global_state = agent
 
+    global_state = embedding(global_state, indices=131, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     global_state = linear(global_state, 64, name='global_embs', activation=tf.nn.relu)
 
@@ -133,15 +130,12 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
-    agent_plane_x = embedding(agent_plane_x, indices=101, size=32, name='embs')
 
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
-    agent_plane_z = embedding(agent_plane_z, indices=131, size=32, name='embs')
 
     agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
-    agent_jump = embedding(agent_jump, indices=26, size=32, name='embs')
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
@@ -152,6 +146,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_n = tf.cast(agent_n, tf.int32)
     global_state_n = agent_n
 
+    global_state = embedding(global_state, indices=131, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3*32))
     global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,

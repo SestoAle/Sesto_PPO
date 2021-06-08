@@ -4,7 +4,7 @@ from math import factorial
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_very_acc import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -19,9 +19,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'irl_prova'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_33000aas"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -95,8 +95,8 @@ def print_traj(traj):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 60)
-    plt.ylim(0, 60)
+    plt.xlim(0, 100)
+    plt.ylim(0, 130)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -139,8 +139,8 @@ def print_traj_with_diff(traj, diff):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 40)
-    plt.ylim(0, 60)
+    plt.xlim(0, 100)
+    plt.ylim(0, 130)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -152,8 +152,8 @@ def print_traj_with_diff(traj, diff):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
-    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
 
     mean_diff = np.mean(diff)
 
@@ -196,22 +196,26 @@ if __name__ == '__main__':
         pass
 
     # Create Heatmap
-    heatmap = np.zeros((60, 60))
-    covmap = np.zeros((60, 60))
+    heatmap = np.zeros((100, 130))
+    covmap = np.zeros((100, 130))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
         k_value = np.asarray(k_value)
         # if k_value[2] != -1:
         #     continue
-        k_value[0] = (((k_value[0] + 1) / 2) * 39)
-        k_value[1] = (((k_value[1] + 1) / 2) * 59)
-        k_value = k_value.astype(int)
+        try:
+            k_value[0] = (((k_value[0] + 1) / 2) * 100)
+            k_value[1] = (((k_value[1] + 1) / 2) * 130)
+            k_value = k_value.astype(int)
 
-        heatmap[k_value[0], k_value[1]] += buffer[k]
-        covmap[k_value[0], k_value[1]] = 1
+            heatmap[k_value[0], k_value[1]] += buffer[k]
+            covmap[k_value[0], k_value[1]] = 1
+        except:
+            print(k)
+            input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap))
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -285,8 +289,8 @@ if __name__ == '__main__':
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
                     for point in traj:
                         de_point = np.zeros(2)
-                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 40
-                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 60
+                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
+                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
                                 np.abs(de_point[1] - desired_point_z) < threshold:
                             traj_to_observe.append(traj)
@@ -315,8 +319,8 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
                     de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 1300
                     if np.abs(de_point[0] - desired_point_x) < threshold and \
                             np.abs(de_point[1] - desired_point_z) < threshold:
                         break
@@ -364,11 +368,11 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.28))
+            moti_to_observe = np.where(moti_rews > np.asarray(8.5))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(2))
+            il_to_observe = np.where(il_rews < np.asarray(-2))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
+            idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
             #idxs_to_observe = idxs_to_observe[-10:]
@@ -381,7 +385,7 @@ if __name__ == '__main__':
 
 
             # Increase demonstartions with bugged trajectory
-            if True:
+            if False:
 
                 actions_to_save = []
                 for i in idxs_to_observe:

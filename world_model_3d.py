@@ -4,7 +4,7 @@ from math import factorial
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_acc_old import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -19,9 +19,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'irl_prova'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_63000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3"
+                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -364,11 +364,11 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.28))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.1))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(2))
+            il_to_observe = np.where(il_rews < np.asarray(-3))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
+            idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
             #idxs_to_observe = idxs_to_observe[-10:]
@@ -381,7 +381,7 @@ if __name__ == '__main__':
 
 
             # Increase demonstartions with bugged trajectory
-            if True:
+            if False:
 
                 actions_to_save = []
                 for i in idxs_to_observe:
