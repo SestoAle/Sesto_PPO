@@ -1,5 +1,5 @@
 from agents.PPO import PPO
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_acc_old import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
 from motivation.random_network_distillation import RND
@@ -48,7 +48,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=True)
+parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
