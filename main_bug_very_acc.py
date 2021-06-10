@@ -23,7 +23,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='irl_prova')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='bug_detector_gail_schifo_acc_com_irl_im_very_little_rm_buffer')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -46,7 +46,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
+parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
@@ -100,7 +100,7 @@ class BugEnvironment:
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # Get the counter of that position and compute reward
-        counter = self.insert_to_pos_table(position[:2])
+        # counter = self.insert_to_pos_table(position[:2])
         # reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 

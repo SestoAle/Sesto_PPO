@@ -1,10 +1,12 @@
+import pickle
 import matplotlib.pyplot as plt
+from math import factorial
+import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc_2 import *
-from math import factorial
+from architectures.bug_arch_acc_old import *
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -17,9 +19,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_irl_im'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3'
 
-reward_model_name = "bug_detector_gail_schifo_acc_irl_im_24000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_18000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -40,13 +42,61 @@ def plot_map(map):
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
 
+def load_demonstrations(dems_name):
+    with open('reward_model/dems/' + dems_name, 'rb') as f:
+        expert_traj = pickle.load(f)
+
+    return expert_traj
+
+def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
+    with open('reward_model/dems/' + name, 'wb') as f:
+        pickle.dump(demonstrations, f, pickle.HIGHEST_PROTOCOL)
+    if validations is not None:
+        with open('reward_model/dems/vals_' + name, 'wb') as f:
+            pickle.dump(validations, f, pickle.HIGHEST_PROTOCOL)
+
+def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
+    '''
+    This method will take some trajectories saved from Intrinsic Motivation + Imitation Learning training
+    and transform it into a demonstrations that can be used with Imitation Learning.
+    TODO: This method is valid only with the current world_model_3d.py script
+    '''
+
+    filler = np.zeros(67)
+    for traj, acts in zip(trajectories, actions):
+        for idx in range(len(traj) - 1):
+            # Transform the state into the correct form
+            state = traj[idx]
+            state = np.asarray(state)
+            state = np.concatenate([state, filler])
+            state[-2:] = state[3:5]
+            # Create the states batch to feed the models
+            state = dict(global_in=state)
+
+            # Do the same thing for obs_n
+            state_n = traj[idx + 1]
+            state_n = np.asarray(state_n)
+            state_n = np.concatenate([state_n, filler])
+            state_n[-2:] = state_n[3:5]
+            # Create the states batch to feed the models
+            state_n = dict(global_in=state_n)
+
+            # Get the corresponding action
+            action = acts[idx]
+
+            demonstrations['obs'].extend([state])
+            demonstrations['obs_n'].extend([state_n])
+            demonstrations['acts'].extend([action])
+
+    return demonstrations
+
 def print_traj(traj):
     """
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 40)
-    plt.ylim(0, 40)
+    plt.xlim(0, 60)
+    plt.ylim(0, 60)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -58,34 +108,9 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory = ((np.asarray(ep_trajectory) + 1) / 2) * 40
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
-
-def print_traj_with_diff(traj, diff):
-    """
-    Method that will plot the trajectory
-    """
-    ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 40)
-    plt.ylim(0, 40)
-    color = 'g'
-
-    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
-        color = 'g'
-    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
-        color = 'b'
-    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
-        color = 'y'
-    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
-        color = 'm'
-
-    ep_trajectory = ((np.asarray(ep_trajectory) + 1) / 2) * 40
-
-    for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
-        if d < 0.25:
-            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'red')
-        else:
-            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     try:
@@ -109,6 +134,35 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     y = np.concatenate((firstvals, y, lastvals))
     return np.convolve(m[::-1], y, mode='valid')
 
+def print_traj_with_diff(traj, diff):
+    """
+    Method that will plot the trajectory
+    """
+    ep_trajectory = np.asarray(traj)
+    plt.xlim(0, 40)
+    plt.ylim(0, 60)
+    color = 'g'
+
+    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
+        color = 'g'
+    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
+        color = 'b'
+    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
+        color = 'y'
+    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
+        color = 'm'
+
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
+
+    mean_diff = np.mean(diff)
+
+    for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
+        if d > mean_diff:
+            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'r')
+        else:
+            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
+
 if __name__ == '__main__':
 
     # Open the position buffer file
@@ -126,12 +180,14 @@ if __name__ == '__main__':
             trajectories = json.load(f)
 
     except Exception as e:
+        print("traj problem")
         print(e)
         pass
 
     # As well as the action made in the episode
     actions = None
     try:
+        print("act problem")
         with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
             actions = json.load(f)
 
@@ -140,21 +196,22 @@ if __name__ == '__main__':
         pass
 
     # Create Heatmap
-    heatmap = np.zeros((40, 40))
-    covmap = np.zeros((40, 40))
+    heatmap = np.zeros((60, 60))
+    covmap = np.zeros((60, 60))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
         k_value = np.asarray(k_value)
         # if k_value[2] != -1:
         #     continue
-        k_value = (((k_value + 1) / 2) * 39)
+        k_value[0] = (((k_value[0] + 1) / 2) * 39)
+        k_value[1] = (((k_value[1] + 1) / 2) * 59)
         k_value = k_value.astype(int)
 
         heatmap[k_value[0], k_value[1]] += buffer[k]
         covmap[k_value[0], k_value[1]] = 1
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap) / 5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap))
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -181,6 +238,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
+                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -210,14 +268,13 @@ if __name__ == '__main__':
             # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
             # TODO: it is probably better to save everything
             filler = np.zeros((67))
-            filler[-2] = 1.
             traj_to_observe = []
             episodes_to_observe = []
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 35
-            desired_point_z = 5
+            desired_point_x = 7
+            desired_point_z = 7
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -226,37 +283,62 @@ if __name__ == '__main__':
 
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
-                error = False
-                if not error:
                     for point in traj:
-                        de_point = ((np.asarray(point) + 1) / 2) * 40
-                        if np.abs(de_point[0] - desired_point_x) < threshold and np.abs(de_point[1] - desired_point_z) < threshold:
-                            if point[3:5] == [1, 1]:
-                                traj_to_observe.append(traj)
-                                episodes_to_observe.append(keys)
-                                break
+                        de_point = np.zeros(2)
+                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 40
+                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 60
+                        if np.abs(de_point[0] - desired_point_x) < threshold and \
+                                np.abs(de_point[1] - desired_point_z) < threshold:
+                            traj_to_observe.append(traj)
+                            episodes_to_observe.append(keys)
+                            break
 
             # Get the value of the motivation and imitation models of the extracted trajectories
+            all_il_min = 9999
+            all_il_max = -9999
+
+            all_im_min = 9999
+            all_im_max = -9999
+
             for key, traj in zip(episodes_to_observe, traj_to_observe):
                 states_batch = []
                 actions_batch = []
-                for state in traj:
+                for state, action in zip(traj, actions[key]):
+                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                    # TODO: correct form
                     state = np.asarray(state)
+                    #state[:3] = 2 * (state[:3]/40) - 1
                     state = np.concatenate([state, filler])
                     state[-2:] = state[3:5]
-
                     # Create the states batch to feed the models
                     state = dict(global_in=state)
                     states_batch.append(state)
-
-                # Get the action batches for imitation model
-                for action in actions[key]:
                     actions_batch.append(action)
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
-                il_rew = np.sum(reward_model.eval(states_batch, states_batch, actions_batch))
+                il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                if np.min(il_rew) < all_il_min:
+                    all_il_min = np.min(il_rew)
+
+                if np.max(il_rew) > all_il_max:
+                    all_il_max = np.max(il_rew)
+
+                il_rew = np.sum(il_rew)
                 il_rews.append(il_rew)
 
-                moti_rew = np.sum(motivation.eval(states_batch))
+                moti_rew = motivation.eval(states_batch)
+                if np.min(moti_rew) < all_im_min:
+                    all_im_min = np.min(moti_rew)
+
+                if np.max(moti_rew) > all_im_max:
+                    all_im_max = np.max(moti_rew)
+
+                moti_rew = np.sum(moti_rew)
                 moti_rews.append(moti_rew)
 
             moti_mean = np.mean(moti_rews)
@@ -265,7 +347,7 @@ if __name__ == '__main__':
             moti_min = np.min(moti_rews)
             il_max = np.max(il_rews)
             il_min = np.min(il_rews)
-            epsilon = 0.5
+            epsilon = 0.05
             print(np.max(moti_rews))
             print(np.max(il_rews))
             print(np.median(il_rews))
@@ -273,21 +355,59 @@ if __name__ == '__main__':
             print(moti_mean)
             print(il_mean)
             print(np.min(il_rews))
+            print(np.min(moti_rews))
+            print(" ")
+            print(all_im_min)
+            print(all_il_min)
+            print(all_im_max)
+            print(all_il_max)
+            print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.6))
+            moti_to_observe = np.where(moti_rews > np.asarray(1.5))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < il_min + epsilon)
+            il_to_observe = np.where(il_rews < np.asarray(-3))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.intersect1d(il_to_observe, moti_to_observe)
+            idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
-            plt.figure()
-            for traj in traj_to_observe[moti_to_observe]:
-                print_traj(traj)
+            #idxs_to_observe = idxs_to_observe[-10:]
 
             # Plot the trajectories
-            for traj, idx in zip(traj_to_observe[moti_to_observe], moti_to_observe):
+            for traj in traj_to_observe[idxs_to_observe]:
+                print_traj(traj)
+
+            print("The bugged trajectories are {}".format(len(idxs_to_observe)))
+
+
+            # Increase demonstartions with bugged trajectory
+            if False:
+
+                actions_to_save = []
+                for i in idxs_to_observe:
+                    key = episodes_to_observe[i]
+                    actions_to_save.append(actions[key])
+
+                expert_traj = load_demonstrations('dems_acc_com_no_key.pkl')
+                with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
+                    saved_trajectories = json.load(f)
+
+                with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
+                    saved_actions = json.load(f)
+
+                print('Demonstrations loaded! We have ' + str(
+                    len(expert_traj['obs'])) + " timesteps in these demonstrations")
+
+                expert_traj = saved_trajectories_to_demonstrations(traj_to_observe[idxs_to_observe], actions_to_save,
+                                                                   expert_traj)
+
+                save_demonstrations(expert_traj, name='dems_acc_com_no_key_muted.pkl')
+                print('Demonstrations loaded! We have ' + str(
+                    len(expert_traj['acts'])) + " timesteps in these demonstrations")
+
+
+            # Plot the trajectories
+            for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
                 states_batch = []
                 key = episodes_to_observe[idx]
@@ -295,10 +415,8 @@ if __name__ == '__main__':
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
-                    #state[:3] = 2 * (state[:3] / 40) - 1
-
+                    # state[:3] = 2 * (state[:3] / 40) - 1
                     state = np.concatenate([state, filler])
-
                     state[-2:] = state[3:5]
 
                     # Create the states batch to feed the models
@@ -311,21 +429,40 @@ if __name__ == '__main__':
 
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
-
-                irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
-                im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
+                plt.figure()
+                plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
-                #diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
-                plt.figure()
+                #irl_rew = (irl_rew - all_il_min) / (all_il_max - all_il_min)
+                #im_rew = (im_rew - all_im_min) / (all_im_max - all_im_min)
+
+                # diff = np.asarray(im_rew) - np.asarray(irl_rew)
+
+
                 plt.plot(range(len(irl_rew)), irl_rew)
                 plt.plot(range(len(im_rew)), im_rew)
                 #plt.plot(range(len(im_rew)), diff)
                 plt.legend(['irl', 'im', 'diff'])
 
+                # TODO: save actions and trajectories, temporarely
+                actions_to_save = dict(actions=actions[key])
+                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+                f = open("arrays/actions.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
+                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
+                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
                 plt.figure()
-                print_traj_with_diff(traj, irl_rew)
+                print_traj_with_diff(traj, im_rew)
 
                 plt.show()
                 plt.waitforbuttonpress()
+
+    plt.show()
+

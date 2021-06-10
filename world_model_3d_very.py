@@ -21,7 +21,7 @@ name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
 model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_33000aas"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_little_rm_buffer_39000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -54,6 +54,30 @@ def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
     if validations is not None:
         with open('reward_model/dems/vals_' + name, 'wb') as f:
             pickle.dump(validations, f, pickle.HIGHEST_PROTOCOL)
+
+# Since saving the pos buffer is very expensive, but the trajectories are mandatory,
+# let's not save the pos_buffer but extract this from trajectories
+def trajectories_to_pos_buffer(trajectories, tau=1/40):
+    pos_buffer = dict()
+
+    for traj in trajectories.values():
+        for state in traj:
+            exist = False
+            position = np.asarray(state[:2])
+            for k in pos_buffer.keys():
+                k_value = list(map(float, k.split(" ")))
+                k_value = np.asarray(k_value)
+                distance = np.linalg.norm(k_value - position)
+                if distance < tau:
+                    exist = True
+                    pos_buffer[k] += 1
+                    break
+            if not exist:
+                pos_key = ' '.join(map(str, position))
+                pos_buffer[pos_key] = 1
+
+    return pos_buffer
+
 
 def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
     '''
@@ -187,13 +211,16 @@ if __name__ == '__main__':
     # As well as the action made in the episode
     actions = None
     try:
-        print("act problem")
         with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
             actions = json.load(f)
 
     except Exception as e:
+        print("act problem")
         print(e)
         pass
+
+    # Create pos_buffer from trajectories
+    buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
     heatmap = np.zeros((100, 130))
@@ -215,7 +242,7 @@ if __name__ == '__main__':
             print(k)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap))
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -277,8 +304,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 7
-            desired_point_z = 7
+            desired_point_x = 1
+            desired_point_z = 1
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -320,7 +347,7 @@ if __name__ == '__main__':
                     actions_batch.append(action)
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 1300
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
                     if np.abs(de_point[0] - desired_point_x) < threshold and \
                             np.abs(de_point[1] - desired_point_z) < threshold:
                         break
@@ -368,9 +395,9 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(8.5))
+            moti_to_observe = np.where(moti_rews > np.asarray(0))
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            il_to_observe = np.where(il_rews < np.asarray(-2))
+            il_to_observe = np.where(il_rews < np.asarray(-13))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
@@ -458,7 +485,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 
