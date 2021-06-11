@@ -17,7 +17,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/BugEnv_Acc_3_no_key_2")
+parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=80)
 

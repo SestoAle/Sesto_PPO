@@ -225,7 +225,7 @@ class RewardModel:
         if save_demonstrations and not inference:
             print('Saving the demonstrations...')
             self.save_demonstrations(expert_traj, val_traj, name=dems_name)
-            print('Demonstrations saved!')
+            print('Demonstrations saved with name {}!'.format(dems_name))
 
         if not inference:
             self.set_demonstrations(expert_traj, val_traj)

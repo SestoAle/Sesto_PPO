@@ -19,9 +19,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very_2'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_2_21000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_21000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 

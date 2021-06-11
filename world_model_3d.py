@@ -11,6 +11,8 @@ physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+pre_load = True
+
 name1 = "bug_detector_gail_schifo_3"
 name2 = "bug_detector_gail_schifo_moti"
 name3 = "bug_detector_gail_schifo_irl"
@@ -20,12 +22,12 @@ name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
 name7 = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
-rw_name7 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000saaasas"
+rw_name7 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
 
 name8 = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted'
-rw_name8 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_63000assaasas"
+rw_name8 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_63000"
 
-model_name = name8
+model_name = name7
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -225,7 +227,25 @@ if __name__ == '__main__':
         print(e)
         pass
 
-    buffer = trajectories_to_pos_buffer(trajectories)
+    try:
+        with open("demo_presaved/{}_{}.json".format(model_name, 'buffer')) as f:
+            buffer = json.load(f)['buffer']
+        pre_load = True
+    except Exception as e:
+        print("Not pre-saved")
+        pre_load = False
+
+    if not pre_load:
+        buffer = trajectories_to_pos_buffer(trajectories)
+    else:
+        with open("demo_presaved/{}_{}.json".format(model_name, 'buffer')) as f:
+            buffer = json.load(f)['buffer']
+
+    actions_to_save = dict(buffer=buffer)
+    json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+    f = open("demo_presaved/{}_{}.json".format(model_name, 'buffer'), "w")
+    f.write(json_str)
+    f.close()
 
     # Create Heatmap
     heatmap = np.zeros((60, 60))
@@ -252,9 +272,9 @@ if __name__ == '__main__':
     plt.figure()
     plot_map(heatmap)
 
-    # Plot coverage map
-    plt.figure()
-    plot_map(covmap)
+    # # Plot coverage map
+    # plt.figure()
+    # plot_map(covmap)
 
     # Show coverage during time
     fig = plt.figure()
@@ -313,17 +333,37 @@ if __name__ == '__main__':
             moti_rews = []
             il_rews = []
 
-            # Get only those trajectories that touch the desired points
-            for keys, traj in zip(trajectories.keys(), trajectories.values()):
-                    for point in traj:
-                        de_point = np.zeros(2)
-                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 40
-                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 60
-                        if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold:
-                            traj_to_observe.append(traj)
-                            episodes_to_observe.append(keys)
-                            break
+            if not pre_load:
+                # Get only those trajectories that touch the desired points
+                for keys, traj in zip(trajectories.keys(), trajectories.values()):
+                        for point in traj:
+                            de_point = np.zeros(2)
+                            de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 40
+                            de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 60
+                            if np.abs(de_point[0] - desired_point_x) < threshold and \
+                                    np.abs(de_point[1] - desired_point_z) < threshold:
+                                traj_to_observe.append(traj)
+                                episodes_to_observe.append(keys)
+                                break
+            else:
+                with open("demo_presaved/{}_{}.json".format(model_name, 'traj_to_observe')) as f:
+                    traj_to_observe = json.load(f)['traj_to_observe']
+
+                with open("demo_presaved/{}_{}.json".format(model_name, 'episodes_to_observe')) as f:
+                    episodes_to_observe = json.load(f)['episodes_to_observe']
+
+            # TODO: for the demo, save traj_to_observe and episodes_to_observe
+            actions_to_save = dict(traj_to_observe=traj_to_observe)
+            json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+            f = open("demo_presaved/{}_{}.json".format(model_name, 'traj_to_observe'), "w")
+            f.write(json_str)
+            f.close()
+
+            actions_to_save = dict(episodes_to_observe=episodes_to_observe)
+            json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+            f = open("demo_presaved/{}_{}.json".format(model_name, 'episodes_to_observe'), "w")
+            f.write(json_str)
+            f.close()
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             all_il_min = 9999
@@ -332,46 +372,62 @@ if __name__ == '__main__':
             all_im_min = 9999
             all_im_max = -9999
 
-            for key, traj in zip(episodes_to_observe, traj_to_observe):
-                states_batch = []
-                actions_batch = []
-                for state, action in zip(traj, actions[key]):
-                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-                    # TODO: correct form
-                    state = np.asarray(state)
-                    #state[:3] = 2 * (state[:3]/40) - 1
-                    state = np.concatenate([state, filler])
-                    state[-2:] = state[3:5]
-                    # Create the states batch to feed the models
-                    state = dict(global_in=state)
-                    states_batch.append(state)
-                    actions_batch.append(action)
-                    de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
-                    if np.abs(de_point[0] - desired_point_x) < threshold and \
-                            np.abs(de_point[1] - desired_point_z) < threshold:
-                        break
+            if not pre_load:
+                for key, traj in zip(episodes_to_observe, traj_to_observe):
+                    states_batch = []
+                    actions_batch = []
+                    for state, action in zip(traj, actions[key]):
+                        state = np.asarray(state)
+                        state = np.concatenate([state, filler])
+                        state[-2:] = state[3:5]
+                        # Create the states batch to feed the models
+                        state = dict(global_in=state)
+                        states_batch.append(state)
+                        actions_batch.append(action)
+                        de_point = np.zeros(2)
+                        de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
+                        de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
+                        if np.abs(de_point[0] - desired_point_x) < threshold and \
+                                np.abs(de_point[1] - desired_point_z) < threshold:
+                            break
 
-                il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                if np.min(il_rew) < all_il_min:
-                    all_il_min = np.min(il_rew)
+                    il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                    if np.min(il_rew) < all_il_min:
+                        all_il_min = np.min(il_rew)
 
-                if np.max(il_rew) > all_il_max:
-                    all_il_max = np.max(il_rew)
+                    if np.max(il_rew) > all_il_max:
+                        all_il_max = np.max(il_rew)
 
-                il_rew = np.sum(il_rew)
-                il_rews.append(il_rew)
+                    il_rew = np.sum(il_rew)
+                    il_rews.append(il_rew)
 
-                moti_rew = motivation.eval(states_batch)
-                if np.min(moti_rew) < all_im_min:
-                    all_im_min = np.min(moti_rew)
+                    moti_rew = motivation.eval(states_batch)
+                    if np.min(moti_rew) < all_im_min:
+                        all_im_min = np.min(moti_rew)
 
-                if np.max(moti_rew) > all_im_max:
-                    all_im_max = np.max(moti_rew)
+                    if np.max(moti_rew) > all_im_max:
+                        all_im_max = np.max(moti_rew)
 
-                moti_rew = np.sum(moti_rew)
-                moti_rews.append(moti_rew)
+                    moti_rew = np.sum(moti_rew)
+                    moti_rews.append(moti_rew)
+            else:
+                with open("demo_presaved/{}_{}.json".format(model_name, 'il_rews')) as f:
+                    il_rews = json.load(f)['il_rews']
+                with open("demo_presaved/{}_{}.json".format(model_name, 'moti_rews')) as f:
+                    moti_rews = json.load(f)['moti_rews']
+
+            # TODO: for the demo, save traj_to_observe and episodes_to_observe
+            actions_to_save = dict(il_rews=il_rews)
+            json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+            f = open("demo_presaved/{}_{}.json".format(model_name, 'il_rews'), "w")
+            f.write(json_str)
+            f.close()
+
+            actions_to_save = dict(moti_rews=moti_rews)
+            json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+            f = open("demo_presaved/{}_{}.json".format(model_name, 'moti_rews'), "w")
+            f.write(json_str)
+            f.close()
 
             moti_mean = np.mean(moti_rews)
             il_mean = np.mean(il_rews)
@@ -408,6 +464,9 @@ if __name__ == '__main__':
             # Plot the trajectories
             for traj in traj_to_observe[idxs_to_observe]:
                 print_traj(traj)
+
+            plt.show()
+            plt.waitforbuttonpress()
 
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
@@ -466,11 +525,10 @@ if __name__ == '__main__':
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
 
-                #irl_rew = (irl_rew - all_il_min) / (all_il_max - all_il_min)
-                #im_rew = (im_rew - all_im_min) / (all_im_max - all_im_min)
+                irl_rew = (irl_rew - np.min(irl_rew)) / (np.max(irl_rew) - np.min(irl_rew))
+                im_rew = (im_rew - np.min(im_rew)) / (np.max(im_rew) - np.min(im_rew))
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
-
 
                 plt.plot(range(len(irl_rew)), irl_rew)
                 plt.plot(range(len(im_rew)), im_rew)
