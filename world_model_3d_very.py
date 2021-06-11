@@ -19,9 +19,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very_2'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_little_rm_buffer_39000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_2_21000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -59,23 +59,19 @@ def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
 # let's not save the pos_buffer but extract this from trajectories
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
-
+    count = 0
     for traj in trajectories.values():
+        count += 1
         for state in traj:
-            exist = False
             position = np.asarray(state[:2])
-            for k in pos_buffer.keys():
-                k_value = list(map(float, k.split(" ")))
-                k_value = np.asarray(k_value)
-                distance = np.linalg.norm(k_value - position)
-                if distance < tau:
-                    exist = True
-                    pos_buffer[k] += 1
-                    break
-            if not exist:
-                pos_key = ' '.join(map(str, position))
+            position[0] = (((position[0] + 1) / 2) * 100)
+            position[1] = (((position[1] + 1) / 2) * 130)
+            position = position.astype(int)
+            pos_key = ' '.join(map(str, position))
+            if pos_key in pos_buffer.keys():
+                pos_buffer[pos_key] += 1
+            else:
                 pos_buffer[pos_key] = 1
-
     return pos_buffer
 
 
@@ -228,21 +224,16 @@ if __name__ == '__main__':
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
-        k_value = np.asarray(k_value)
-        # if k_value[2] != -1:
-        #     continue
+        k_value = np.asarray(k_value).astype(int)
         try:
-            k_value[0] = (((k_value[0] + 1) / 2) * 100)
-            k_value[1] = (((k_value[1] + 1) / 2) * 130)
-            k_value = k_value.astype(int)
-
             heatmap[k_value[0], k_value[1]] += buffer[k]
             covmap[k_value[0], k_value[1]] = 1
-        except:
+        except Exception as e:
             print(k)
+            print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap))
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -310,6 +301,7 @@ if __name__ == '__main__':
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
+            moti_rews_dict = dict()
             il_rews = []
 
             # Get only those trajectories that touch the desired points
@@ -331,7 +323,7 @@ if __name__ == '__main__':
             all_im_min = 9999
             all_im_max = -9999
 
-            for key, traj in zip(episodes_to_observe, traj_to_observe):
+            for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
                 states_batch = []
                 actions_batch = []
                 for state, action in zip(traj, actions[key]):
@@ -371,6 +363,7 @@ if __name__ == '__main__':
 
                 moti_rew = np.sum(moti_rew)
                 moti_rews.append(moti_rew)
+                moti_rews_dict[idx_traj] = moti_rew
 
             moti_mean = np.mean(moti_rews)
             il_mean = np.mean(il_rews)
@@ -395,21 +388,24 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0))
+            moti_to_observe = np.where(moti_rews > np.asarray(0.30))
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
+            print(moti_to_observe)
+
             il_to_observe = np.where(il_rews < np.asarray(-13))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
-            #idxs_to_observe = idxs_to_observe[-10:]
+            idxs_to_observe = moti_to_observe
 
             # Plot the trajectories
             for traj in traj_to_observe[idxs_to_observe]:
                 print_traj(traj)
 
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
-
 
             # Increase demonstartions with bugged trajectory
             if False:

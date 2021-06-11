@@ -20,10 +20,10 @@ name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
 name7 = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
-rw_name7 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000"
+rw_name7 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_102000saaasas"
 
 name8 = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted'
-rw_name8 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_63000"
+rw_name8 = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_63000assaasas"
 
 model_name = name8
 if model_name == name5:
@@ -58,6 +58,25 @@ def load_demonstrations(dems_name):
         expert_traj = pickle.load(f)
 
     return expert_traj
+
+# Since saving the pos buffer is very expensive, but the trajectories are mandatory,
+# let's not save the pos_buffer but extract this from trajectories
+def trajectories_to_pos_buffer(trajectories, tau=1/40):
+    pos_buffer = dict()
+    count = 0
+    for traj in trajectories.values():
+        count += 1
+        for state in traj:
+            position = np.asarray(state[:2])
+            position[0] = (((position[0] + 1) / 2) * 39)
+            position[1] = (((position[1] + 1) / 2) * 59)
+            position = position.astype(int)
+            pos_key = ' '.join(map(str, position))
+            if pos_key in pos_buffer.keys():
+                pos_buffer[pos_key] += 1
+            else:
+                pos_buffer[pos_key] = 1
+    return pos_buffer
 
 def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
     with open('reward_model/dems/' + name, 'wb') as f:
@@ -206,23 +225,25 @@ if __name__ == '__main__':
         print(e)
         pass
 
+    buffer = trajectories_to_pos_buffer(trajectories)
+
     # Create Heatmap
     heatmap = np.zeros((60, 60))
     covmap = np.zeros((60, 60))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
-        k_value = np.asarray(k_value)
-        # if k_value[2] != -1:
-        #     continue
-        k_value[0] = (((k_value[0] + 1) / 2) * 39)
-        k_value[1] = (((k_value[1] + 1) / 2) * 59)
-        k_value = k_value.astype(int)
+        k_value = np.asarray(k_value).astype(int)
+        # # if k_value[2] != -1:
+        # #     continue
+        # k_value[0] = (((k_value[0] + 1) / 2) * 39)
+        # k_value[1] = (((k_value[1] + 1) / 2) * 59)
+        # k_value = k_value.astype(int)
 
         heatmap[k_value[0], k_value[1]] += buffer[k]
         covmap[k_value[0], k_value[1]] = 1
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap))
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
