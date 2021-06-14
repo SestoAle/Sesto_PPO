@@ -11,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=10000000, gradient_penalty_weight=10.0, reward_model_weight=1.,
+                 sess=None, buffer_size=1000000, gradient_penalty_weight=10.0, reward_model_weight=1.,
                  with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -279,10 +279,12 @@ class RewardModel:
         return policy_traj
 
     # Add ot policy buffer a new transitions
-    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='prob'):
+    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='none'):
 
         if len(self.policy_traj['obs']) >= self.buffer_size:
-            if del_mode=="rand":
+            if del_mode=="none":
+                pass
+            elif del_mode=="rand":
                 del self.policy_traj['obs'][0]
                 del self.policy_traj['obs_n'][0]
                 del self.policy_traj['acts'][0]
@@ -307,6 +309,23 @@ class RewardModel:
         self.policy_traj['obs_n'].append(obs_n)
         self.policy_traj['acts'].append(acts)
 
+    # Method that clean the buffer if we want an efficent del_mode='probs'
+    def clean_buffer(self):
+
+        overflow = len(self.policy_traj['obs']) - self.buffer_size
+
+        while overflow > 0:
+            # self.buffer = self.buffer[overflow:]
+            N = len(self.policy_traj['obs'])
+            probs = np.arange(N) + 1
+            probs = probs / float(np.sum(probs))
+            pidx = np.random.choice(np.arange(N), p=probs)
+
+            self.policy_traj['obs'] = list(np.delete(self.policy_traj['obs'], pidx))
+            self.policy_traj['obs_n'] = list(np.delete(self.policy_traj['obs_n'], pidx))
+            self.policy_traj['acts'] = list(np.delete(self.policy_traj['acts'], pidx))
+
+            overflow -= 1
 
 
 # AIRL model, can be state-only or state-action, with or without value function \phi
@@ -620,6 +639,8 @@ class GAIL(RewardModel):
 
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
+
+        self.clean_buffer()
 
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
