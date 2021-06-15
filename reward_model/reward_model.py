@@ -11,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=1000000, gradient_penalty_weight=10.0, reward_model_weight=1.,
+                 sess=None, buffer_size=100000, gradient_penalty_weight=10.0, reward_model_weight=1.,
                  with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -279,17 +279,15 @@ class RewardModel:
         return policy_traj
 
     # Add ot policy buffer a new transitions
-    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='none'):
+    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='random'):
 
         if len(self.policy_traj['obs']) >= self.buffer_size:
-            if del_mode=="none":
-                pass
-            elif del_mode=="rand":
+            if del_mode == "latest":
                 del self.policy_traj['obs'][0]
                 del self.policy_traj['obs_n'][0]
                 del self.policy_traj['acts'][0]
 
-            elif del_mode=="prob":
+            elif del_mode == "prob":
                 N = len(self.policy_traj['obs'])
                 probs = np.arange(N) + 1
                 probs = probs / float(np.sum(probs))
@@ -298,7 +296,7 @@ class RewardModel:
                 del self.policy_traj['obs_n'][pidx]
                 del self.policy_traj['acts'][pidx]
 
-            else:
+            elif del_mode == "random":
                 index = np.random.randint(0, len(self.policy_traj['obs']))
 
                 del self.policy_traj['obs'][index]
@@ -319,11 +317,13 @@ class RewardModel:
             N = len(self.policy_traj['obs'])
             probs = np.arange(N) + 1
             probs = probs / float(np.sum(probs))
-            pidx = np.random.choice(np.arange(N), p=probs)
+            #pidx = multidimensional_shifting(1, 1, np.arange(len(probs)), probs)[0][0]
+            #pidx = np.random.choice(np.arange(N), p=probs)
+            pidx = random.choices(range(N), weights=probs, k=1)[0]
 
-            self.policy_traj['obs'] = list(np.delete(self.policy_traj['obs'], pidx))
-            self.policy_traj['obs_n'] = list(np.delete(self.policy_traj['obs_n'], pidx))
-            self.policy_traj['acts'] = list(np.delete(self.policy_traj['acts'], pidx))
+            del self.policy_traj['obs'][pidx]
+            del self.policy_traj['obs_n'][pidx]
+            del self.policy_traj['acts'][pidx]
 
             overflow -= 1
 
@@ -640,7 +640,7 @@ class GAIL(RewardModel):
         expert_traj = self.expert_traj
         policy_traj = self.policy_traj
 
-        self.clean_buffer()
+        #self.clean_buffer()
 
         # Update reward model for num_itr mini-batch steps
         for it in range(self.num_itr):
