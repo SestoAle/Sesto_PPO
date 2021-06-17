@@ -60,13 +60,6 @@ class Runner:
             self.agent.save_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
             self.double_agent.load_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
 
-        # Statistics for IRL
-        # TODO: they are really necessary?
-        self._reset = True
-        self.initial_states = []
-        self._rewards = {}
-        self._discs = {}
-
         # Global runner statistics
         # total episode
         self.ep = 0
@@ -491,11 +484,13 @@ class Runner:
         return config
 
     # Update intrinsic motivation
-    # Update its statistics AND train the model. We print also tje model loss
+    # Update its statistics AND train the model. We print also the model loss
     def update_motivation(self):
         loss = self.motivation.train()
         #print('Mean motivation loss = {}'.format(loss))
 
+    # Update reward model
+    # Update its statistics AND train the model. We print also the model loss
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
         #print('Mean reward loss = {}'.format(loss))

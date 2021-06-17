@@ -56,7 +56,8 @@ class ActThreaded(Thread):
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
-    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False):
+    def __init__(self, env, parallel_buffer, agent, index, config, num_episode=1, recurrent=False, motivation=False,
+                 reward_model=False):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.agent = agent
@@ -64,6 +65,8 @@ class EpisodeThreaded(Thread):
         self.num_episode = num_episode
         self.recurrent = recurrent
         self.env.set_config(config)
+        self.motivation = motivation
+        self.reward_model = reward_model
         super().__init__()
 
     def run(self) -> None:
@@ -117,6 +120,14 @@ class EpisodeThreaded(Thread):
                     internal = internal_n
                     v_internal = v_internal_n
 
+                if self.motivation:
+                    self.parallel_buffer['motivation'][self.index]['state_n'].append(state_n)
+
+                if self.reward_model:
+                    self.parallel_buffer['reward_model'][self.index]['state'].append(state)
+                    self.parallel_buffer['reward_model'][self.index]['state_n'].append(state_n)
+                    self.parallel_buffer['reward_model'][self.index]['action'].append(actions)
+
                 state = state_n
                 step += 1
 
@@ -129,7 +140,8 @@ class EpisodeThreaded(Thread):
 
 class Runner:
     def __init__(self, agent, frequency, envs, save_frequency=3000, logging=100, total_episode=1e10, curriculum=None,
-                 frequency_mode='episodes', random_actions=None, curriculum_mode='steps',
+                 frequency_mode='episodes', random_actions=None, curriculum_mode='steps', evaluation=False,
+                 callback_function=None, motivation=None,
                  # IRL
                  reward_model=None, fixed_reward_model=False, dems_name='', reward_frequency=30,
                  # Adversarial Play
@@ -147,6 +159,23 @@ class Runner:
         self.save_frequency = save_frequency
         self.envs = envs
         self.curriculum_mode = curriculum_mode
+        self.evaluation = evaluation
+
+        # TODO: pass this as an argument
+        self.motivation_frequency = 5
+
+        # For alternating between motivation and imitation reward
+        self.alternate_frequency = 0
+        self.alternate_count = 0
+        self.alternate_turn = 0
+
+        # If we want to use intrinsic motivation
+        # Right now only RND is available
+        self.motivation = motivation
+
+        # Function to call at the end of each episode.
+        # It takes the agent, the runner and the env as input arguments
+        self.callback_function = callback_function
 
         # Recurrent
         self.recurrent = self.agent.recurrent
@@ -164,28 +193,6 @@ class Runner:
         if self.adversarial_play:
             self.agent.save_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
             self.double_agent.load_model(name=self.agent.model_name + '_0', folder='saved/adversarial')
-
-        # Initialize reward model
-        if self.reward_model is not None:
-            if not self.fixed_reward_model:
-                # Ask for demonstrations
-                answer = None
-                while answer != 'y' and answer != 'n':
-                    answer = input('Do you want to create new demonstrations? [y/n] ')
-                if answer == 'y':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0])
-                elif answer == 'p':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0], with_policy=True)
-                else:
-                    print('Loading demonstrations...')
-                    dems, vals = self.reward_model.load_demonstrations(self.dems_name)
-
-                print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
-                print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
-
-                # Getting initial experience from the environment to do the first training epoch of the reward model
-                self.get_experience(self.envs[0], self.reward_frequency, random=True)
-                self.reward_model.train()
 
         # Global runner statistics
         # total episode
@@ -207,6 +214,31 @@ class Runner:
         self.parallel_buffer = None
         self.parallel_buffer = self.clear_parallel_buffer()
 
+        # Initialize reward model
+        if self.reward_model is not None:
+            if not self.fixed_reward_model:
+                # Ask for demonstrations
+                answer = None
+                while answer != 'y' and answer != 'n':
+                    answer = input('Do you want to create new demonstrations? [y/n] ')
+                # Before asking for demonstrations, set the curriculum of the environment
+                config = self.set_curriculum(self.curriculum, self.history, self.curriculum_mode)
+                self.envs[0].set_config(config)
+                if answer == 'y':
+                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0])
+                elif answer == 'p':
+                    dems, vals = self.reward_model.create_demonstrations(env=self.envs[0], with_policy=True)
+                else:
+                    print('Loading demonstrations...')
+                    dems, vals = self.reward_model.load_demonstrations(self.dems_name)
+
+                print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
+                # print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
+
+                # Getting initial experience from the environment to do the first training epoch of the reward model
+                self.get_experience(self.envs[0], self.reward_frequency, random=True)
+                self.reward_model.train()
+
         # For curriculum training
         self.start_training = 0
         self.current_curriculum_step = 0
@@ -223,6 +255,12 @@ class Runner:
                 self.ep = len(self.history['episode_timesteps'])
                 self.total_step = np.sum(self.history['episode_timesteps'])
 
+        # Decaying weight of the motivation/inverse reinforcement learning model
+        self.last_episode_for_decaying = 0
+        # if self.motivation is not None:
+        #     self.motivation.motivation_weight = 0.8
+        #     self.min_motivation_weight = 0.2
+
     # Return a list of thread, that will save the experience in the shared buffer
     # The thread will run for 1 episode
     def create_episode_threads(self, parallel_buffer, agent, config):
@@ -231,7 +269,8 @@ class Runner:
         for i, e in enumerate(self.envs):
             # Create a thread
             threads.append(EpisodeThreaded(env=e, index=i, agent=agent, parallel_buffer=parallel_buffer, config=config,
-                                           recurrent=self.recurrent))
+                                           recurrent=self.recurrent, motivation=(self.motivation is not None),
+                                           reward_model=(self.reward_model is not None)))
 
         # Return threads
         return threads
@@ -264,12 +303,15 @@ class Runner:
             'logprob': [],
             'internal': [],
             'v_internal': [],
+            # Motivation
+            'motivation': [],
+            # Reward model
+            'reward_model': [],
             # History
             'episode_rewards': [],
             'episode_timesteps': [],
             'mean_entropies': [],
             'std_entropies': [],
-
         }
 
         for i in range(len(self.envs)):
@@ -281,6 +323,15 @@ class Runner:
             parallel_buffer['logprob'].append([])
             parallel_buffer['internal'].append([])
             parallel_buffer['v_internal'].append([])
+            # Motivation
+            parallel_buffer['motivation'].append(
+                dict(state_n=[])
+            )
+            # Reward Model
+            parallel_buffer['reward_model'].append(
+                dict(state=[], state_n=[], action=[])
+            )
+
             # History
             parallel_buffer['episode_rewards'].append([])
             parallel_buffer['episode_timesteps'].append([])
@@ -340,8 +391,6 @@ class Runner:
                 self.ep = np.sum(np.asarray(self.parallel_buffer['done'][:]) == 1)
                 self.total_step = len(threads) * self.frequency
 
-
-
             # Add the overall experience to the buffer
             # Update the history
             for i in range(len(self.envs)):
@@ -377,6 +426,16 @@ class Runner:
                             self.agent.add_to_buffer(state, state_n, action, reward, logprob, done,
                                                      zero_state, zero_state, zero_state, zero_state)
 
+                # For motivation, add the agents experience to the motivation buffer
+                for state_n in self.parallel_buffer['motivation'][i]['state_n']:
+                    self.motivation.add_to_buffer(state_n)
+
+                # For reward model, add the agents experience to the reward model buffer
+                for state, state_n, action in zip(self.parallel_buffer['reward_model'][i]['state'],
+                                                  self.parallel_buffer['reward_model'][i]['state_n'],
+                                                  self.parallel_buffer['reward_model'][i]['action']):
+                    self.reward_model.add_to_policy_buffer(state, state_n, action)
+
                 # Upadte the hisotry in order of execution
                 for episode_reward, step, mean_entropies, std_entropies in zip(
                         self.parallel_buffer['episode_rewards'][i],
@@ -406,24 +465,88 @@ class Runner:
 
                 print('The agent made a total of {} steps'.format(np.sum(self.history['episode_timesteps'])))
 
+                if self.callback_function is not None:
+                    self.callback_function(self.agent, self.envs, self)
+
                 self.timer(start_time, time.time())
 
             # If frequency episodes are passed, update the policy
-            if self.frequency_mode == 'episodes' and self.ep > 0 and self.ep % self.frequency == 0:
-                self.agent.train()
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.frequency == 0:
 
-            # If IRL, update the reward model after reward_frequency episode
-            if self.reward_model is not None:
-                if not self.fixed_reward_model and self.ep > 0 and self.ep % self.reward_frequency == 0:
-                    self.reward_model.train()
+                if self.random_actions is not None:
+                    if self.total_step <= self.random_actions:
+                        self.motivation.clear_buffer()
+                        continue
+
+                if self.motivation is not None:
+                    # Normalize observation of the motivation buffer
+                    # self.motivation.normalize_buffer()
+                    # Compute intrinsic rewards
+                    intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
+
+                    # Normalize rewards
+                    # intrinsic_rews -= self.motivation.r_norm.mean
+                    # intrinsic_rews /= self.motivation.r_norm.std
+                    intrinsic_rews -= np.mean(intrinsic_rews)
+                    intrinsic_rews /= np.std(intrinsic_rews)
+                    intrinsic_rews *= self.motivation.motivation_weight
+                    if self.alternate_frequency > 0:
+                        if self.alternate_turn == 0:
+                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    else:
+                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+                if self.reward_model is not None:
+
+                    # Compute intrinsic rewards
+                    intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+                                                            self.agent.buffer['actions'])
+
+                    # Normalize rewards
+                    # intrinsic_rews -= self.reward_model.r_norm.mean
+                    # intrinsic_rews /= self.reward_model.r_norm.std
+
+                    #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
+                    intrinsic_rews -= np.mean(intrinsic_rews)
+                    intrinsic_rews /= np.std(intrinsic_rews)
+                    if self.last_episode_for_decaying > 0:
+                        intrinsic_rews *= (1 - self.motivation.motivation_weight)
+                    else:
+                        intrinsic_rews *= self.reward_model.reward_model_weight
+
+                    if self.alternate_frequency > 0:
+                        if self.alternate_turn == 1:
+                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    else:
+                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+                self.agent.train()
+                # For alternating between motivation and imitation learning
+                if self.alternate_frequency > 0:
+                    self.alternate_count += 1
+                    if self.alternate_count % self.alternate_frequency == 0:
+                        self.alternate_turn = (self.alternate_turn + 1) % 2
+
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.motivation_frequency == 0:
+
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.motivation is not None:
+                    self.update_motivation()
+
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.reward_frequency == 0:
+
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.reward_model is not None and not self.fixed_reward_model:
+                    self.update_reward_model()
 
             # Save model and statistics
             if self.ep > 0 and self.ep % self.save_frequency == 0:
                 self.save_model(self.history, self.agent.model_name, self.curriculum, self.agent)
-                if self.reward_model is not None:
-                    if not self.fixed_reward_model:
-                        self.reward_model.save_model('{}_{}'.format(self.agent.model_name, self.ep))
-
 
     def save_model(self, history, model_name, curriculum, agent):
 
@@ -441,10 +564,28 @@ class Runner:
 
         # Save the tf model
         agent.save_model(name=model_name, folder='saved')
+
+        # If we use intrinsic motivation, save the motivation model
+        if self.motivation is not None:
+            self.motivation.save_model(name=model_name, folder='saved')
+
+        # If we use IRL, save the reward model
+        if self.reward_model is not None and not self.fixed_reward_model:
+            self.reward_model.save_model('{}_{}'.format(model_name, self.ep))
+
         print('Model saved with name: {}'.format(model_name))
 
     def load_model(self, model_name, agent):
         agent.load_model(name=model_name, folder='saved')
+
+        # Load intrinsic motivation for testing
+        if self.motivation is not None:
+            self.motivation.load_model(name=model_name, folder='saved')
+
+        # # Load reward motivation for testing
+        # if self.reward_model is not None:
+        #     self.reward_model.load_model(name=model_name, folder='saved')
+
         with open("arrays/{}.json".format(model_name)) as f:
             history = json.load(f)
 
@@ -513,12 +654,13 @@ class Runner:
             reward = 0
             while True:
                 step += 1
-                action, _, c_probs = self.agent.eval([state])
                 if random:
-                    num_actions = env.actions()['num_values']
+                    num_actions = self.agent.action_size
                     action = np.random.randint(0, num_actions)
+                else:
+                    action, _, c_probs = self.agent.eval([state])
                 state_n, terminal, step_reward = env.execute(actions=action)
-                self.reward_model.add_to_buffer(state, state_n, action)
+                self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 state = state_n
                 reward += step_reward
@@ -527,6 +669,18 @@ class Runner:
 
             if verbose:
                 print("Reward at the end of episode " + str(ep + 1) + ": " + str(reward))
+
+    # Update intrinsic motivation
+    # Update its statistics AND train the model. We print also the model loss
+    def update_motivation(self):
+        loss = self.motivation.train()
+        # print('Mean motivation loss = {}'.format(loss))
+
+    # Update reward model
+    # Update its statistics AND train the model. We print also the model loss
+    def update_reward_model(self):
+        loss, _ = self.reward_model.train()
+        # print('Mean reward loss = {}'.format(loss))
 
     # Method for count time after each episode
     def timer(self, start, end):

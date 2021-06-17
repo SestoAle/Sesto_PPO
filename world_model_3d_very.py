@@ -1,6 +1,7 @@
 import pickle
 import matplotlib.pyplot as plt
 from math import factorial
+import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
@@ -19,9 +20,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very'
+model_name = 'test_parallel_2'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_21000"
+reward_model_name = "test_parallel_2_12000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -185,14 +186,6 @@ def print_traj_with_diff(traj, diff):
 
 if __name__ == '__main__':
 
-    # Open the position buffer file
-    with open("arrays/{}.json".format("{}_pos_buffer".format(model_name))) as f:
-        buffer = json.load(f)
-
-    # Open the coverage during time file
-    with open("arrays/{}.json".format("{}_coverage".format(model_name))) as f:
-        coverage = json.load(f)
-
     # Open the trajectories file, if exists. A trajectory is a list of points (& inventory) encountered during training
     trajectories = None
     try:
@@ -203,6 +196,15 @@ if __name__ == '__main__':
         print("traj problem")
         print(e)
         pass
+
+    if trajectories == None:
+        try:
+            with open("arrays/{}.pickle".format("{}_trajectories".format(model_name)), 'rb') as f:
+                trajectories = pickle.load(f)
+        except Exception as e:
+            print("traj problem")
+            print(e)
+            pass
 
     # As well as the action made in the episode
     actions = None
@@ -219,8 +221,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((100, 130))
-    covmap = np.zeros((100, 130))
+    heatmap = np.zeros((200, 130))
+    covmap = np.zeros((200, 130))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -233,7 +235,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap))
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -246,12 +248,7 @@ if __name__ == '__main__':
     plt.figure()
     plot_map(covmap)
 
-    # Show coverage during time
-    fig = plt.figure()
-    plt.plot(range(len(coverage)), coverage)
-
     # Compute the cumulative reward of the learnt RND and GAIL to compare trajectories
-
     if trajectories is not None and actions is not None:
 
         graph = tf.compat.v1.Graph()
@@ -260,7 +257,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_3"
+                #model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_corrected_random"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -388,8 +385,8 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)
@@ -402,6 +399,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe
 
             # Plot the trajectories
+            plt.figure()
             for traj in traj_to_observe[idxs_to_observe]:
                 print_traj(traj)
 
@@ -454,15 +452,15 @@ if __name__ == '__main__':
                 for action in actions[key]:
                     actions_batch.append(action)
 
-                irl_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                irl_rew, latent = reward_model.eval_latent(states_batch[:-1], states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
 
-                #irl_rew = (irl_rew - all_il_min) / (all_il_max - all_il_min)
-                #im_rew = (im_rew - all_im_min) / (all_im_max - all_im_min)
+                irl_rew = (irl_rew - all_il_min) / (all_il_max - all_il_min)
+                im_rew = (im_rew - all_im_min) / (all_im_max - all_im_min)
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
 

@@ -699,7 +699,6 @@ class GAIL(RewardModel):
 
     # Return the - log( 1 - D(s,a))
     def eval_discriminator(self, obs, obs_n, probs, acts=None):
-
         states = self.obs_to_state(obs)
         states_n = self.obs_to_state(obs_n)
 
@@ -730,3 +729,31 @@ class GAIL(RewardModel):
     def eval(self, obs, obs_n, acts=None, probs=None):
 
         return self.eval_discriminator(obs, obs_n, probs, acts)
+
+    def eval_latent(self, obs, obs_n, acts=None, probs=None):
+        states = self.obs_to_state(obs)
+        states_n = self.obs_to_state(obs_n)
+
+        feed_dict = {}
+        for i in range(len(states)):
+            feed_dict[self.states[i]] = states[i]
+            feed_dict[self.states_n[i]] = states_n[i]
+
+        if self.with_action and acts is not None:
+            acts = np.expand_dims(acts, axis=1)
+            feed_dict[self.act] = acts
+
+        rew, latent = self.sess.run([self.discriminator, self.latent], feed_dict=feed_dict)
+        rew = np.reshape(rew, (-1))
+
+        # Reward from original GAIL
+        rew = - np.log(1 - rew + eps)
+        # Reward from AMP
+        # rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
+
+        # Add the rewards to the normalization statistics
+        if not isinstance(self.r_norm, DynamicRunningStat):
+            for r in rew:
+                self.r_norm.push(r)
+
+        return rew, latent
