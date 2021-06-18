@@ -271,6 +271,11 @@ if __name__ == "__main__":
     dems_name = args.dems_name
     reward_frequency = int(args.reward_frequency)
 
+    # Central buffer for parallel execution
+    if parallel:
+        trajectories_for_episode = dict()
+        actions_for_episode = dict()
+
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
