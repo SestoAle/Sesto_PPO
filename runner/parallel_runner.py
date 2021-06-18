@@ -472,6 +472,14 @@ class Runner:
 
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
+                    self.ep > 0 and self.ep % self.motivation_frequency == 0:
+
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.motivation is not None:
+                    self.update_motivation()
+
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'episodes' and \
                     self.ep > 0 and self.ep % self.frequency == 0:
 
                 if self.random_actions is not None:
@@ -527,14 +535,6 @@ class Runner:
                     self.alternate_count += 1
                     if self.alternate_count % self.alternate_frequency == 0:
                         self.alternate_turn = (self.alternate_turn + 1) % 2
-
-            # If frequency episodes are passed, update the policy
-            if not self.evaluation and self.frequency_mode == 'episodes' and \
-                    self.ep > 0 and self.ep % self.motivation_frequency == 0:
-
-                # If we use intrinsic motivation, update also intrinsic motivation
-                if self.motivation is not None:
-                    self.update_motivation()
 
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \

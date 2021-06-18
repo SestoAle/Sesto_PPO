@@ -20,9 +20,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'test_parallel_moti_lr'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very_2'
 
-reward_model_name = "test_parallel_moti_lr_150000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_2_99000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)
