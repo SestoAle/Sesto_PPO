@@ -117,7 +117,7 @@ class BugEnvironment:
 
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
-        self.coverage_of_points.append(len(env.pos_buffer.keys()))
+        self.coverage_of_points.append(len(self.pos_buffer.keys()))
         self.episode += 1
         self.trajectories_for_episode[self.episode] = []
         self.actions_for_episode[self.episode] = []
@@ -205,37 +205,51 @@ class BugEnvironment:
         self.pos_buffer[pos_key] = 1
         return self.pos_buffer[pos_key]
 
+    def clear_buffers(self):
+        self.trajectories_for_episode = dict()
+        self.actions_for_episode = dict()
+
     # Compute the intrinsic reward based on the counter
     def compute_intrinsic_reward(self, counter):
         return self.r_max * (1 - (counter / self.max_counter))
 
 def callback(agent, env, runner):
-    positions = len(env.pos_buffer.keys())
-    print('Coverage of points: {}'.format(positions))
+    global save_frequency
 
-    # Save position buffer as json
-    json_str = json.dumps(env.pos_buffer, cls=NumpyEncoder)
-    f = open("arrays/{}_pos_buffer.json".format(model_name), "w")
-    f.write(json_str)
-    f.close()
+    if runner.ep % save_frequency == 0:
+        if isinstance(env, list):
+            global trajectories_for_episode
+            global actions_for_episode
+            if len(trajectories_for_episode.keys()) == 0:
+                last_key = 0
+            else:
+                last_key = list(trajectories_for_episode.keys())[-1] + 1
 
-    # Save position coverage during time as json
-    json_str = json.dumps(env.coverage_of_points, cls=NumpyEncoder)
-    f = open("arrays/{}_coverage.json".format(model_name), "w")
-    f.write(json_str)
-    f.close()
+            for e in env:
+                for traj, acts in zip(e.trajectories_for_episode.values(), e.actions_for_episode.values()):
+                    trajectories_for_episode[last_key] = traj
+                    actions_for_episode[last_key] = acts
+                    last_key += 1
+                e.clear_buffers()
+            positions = 0
+        else:
+            positions = len(env.pos_buffer.keys())
+            trajectories_for_episode = env.trajectories_for_episode
+            actions_for_episode = env.actions_for_episode
 
-    # Save the trajectories
-    json_str = json.dumps(env.trajectories_for_episode, cls=NumpyEncoder)
-    f = open("arrays/{}_trajectories.json".format(model_name), "w")
-    f.write(json_str)
-    f.close()
+        print('Coverage of points: {}'.format(positions))
 
-    # Save the actions
-    json_str = json.dumps(env.actions_for_episode, cls=NumpyEncoder)
-    f = open("arrays/{}_actions.json".format(model_name), "w")
-    f.write(json_str)
-    f.close()
+        # Save the trajectories
+        json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
+        f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        f.write(json_str)
+        f.close()
+
+        # Save the actions
+        json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
+        f = open("arrays/{}_actions.json".format(model_name), "w")
+        f.write(json_str)
+        f.close()
 
 
 if __name__ == "__main__":
@@ -339,10 +353,10 @@ if __name__ == "__main__":
                         fixed_reward_model=fixed_reward_model, motivation=motivation, evaluation=evaluation)
     else:
         runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
-                        logging=logging, total_episode=total_episode, curriculum=curriculum,
-                        frequency_mode=frequency_mode, curriculum_mode='episodes', callback_function=callback,
-                        reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
-                        fixed_reward_model=fixed_reward_model, evaluation=evaluation)
+                                logging=logging, total_episode=total_episode, curriculum=curriculum,
+                                frequency_mode=frequency_mode, curriculum_mode='episodes', callback_function=callback,
+                                reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
+                                fixed_reward_model=fixed_reward_model, motivation=motivation, evaluation=evaluation)
 
     try:
         runner.run()

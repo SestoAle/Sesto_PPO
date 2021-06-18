@@ -20,9 +20,9 @@ name4 = 'bug_detector_gail_schifo_complex'
 name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
 name6 = 'bug_detector_gail_schifo_complex_moti_3'
 
-model_name = 'test_parallel_2'
+model_name = 'test_parallel_moti_lr'
 
-reward_model_name = "test_parallel_2_12000"
+reward_model_name = "test_parallel_moti_lr_150000"
 if model_name == name5:
     reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
 
@@ -221,8 +221,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((200, 130))
-    covmap = np.zeros((200, 130))
+    heatmap = np.zeros((200, 230))
+    covmap = np.zeros((200, 230))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -337,9 +337,9 @@ if __name__ == '__main__':
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
-                    if np.abs(de_point[0] - desired_point_x) < threshold and \
-                            np.abs(de_point[1] - desired_point_z) < threshold:
-                        break
+                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
+                    #         np.abs(de_point[1] - desired_point_z) < threshold:
+                    #     break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 if np.min(il_rew) < all_il_min:
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)
@@ -479,7 +479,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 
