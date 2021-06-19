@@ -12,9 +12,9 @@ physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_pl'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_pl_162000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_21000"
 
 def plot_map(map):
     """
@@ -282,8 +282,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 1
-            desired_point_z = 1
+            desired_point_x = 7
+            desired_point_z = 7
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards

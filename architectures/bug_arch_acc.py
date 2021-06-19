@@ -32,7 +32,7 @@ def network_spec(states):
 
     agent_jump = ((agent_jump + 1) / 2) * 25
     agent_jump = tf.cast(agent_jump, tf.int32)
-    agent_jump = embedding(agent_jump, indices=61, size=32, name='embs')
+    agent_jump = embedding(agent_jump, indices=26, size=32, name='embs')
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
