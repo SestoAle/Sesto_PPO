@@ -5,26 +5,16 @@ import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_very_acc import *
+from architectures.bug_arch_acc_old import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-name1 = "bug_detector_gail_schifo_3"
-name2 = "bug_detector_gail_schifo_moti"
-name3 = "bug_detector_gail_schifo_irl"
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_pl'
 
-name4 = 'bug_detector_gail_schifo_complex'
-name5 = 'bug_detector_gail_schifo_complex_irl_moti_2'
-name6 = 'bug_detector_gail_schifo_complex_moti_3'
-
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_very_2'
-
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_very_2_99000"
-if model_name == name5:
-    reward_model_name = "bug_detector_gail_schifo_acc_irl_im_21000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_pl_162000"
 
 def plot_map(map):
     """
@@ -235,7 +225,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap))
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)

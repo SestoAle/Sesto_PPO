@@ -316,7 +316,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd)
+                             obs_to_state=obs_to_state_rnd, num_itr=20)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 
