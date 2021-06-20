@@ -34,7 +34,7 @@ class RND:
         self.motivation_weight = motivation_weight
 
         # Buffer of experience
-        # self.buffer = []
+        self.buffer = []
 
         with tf.compat.v1.variable_scope(name) as vs:
             # Input placeholders, they depend on DeepCrawl
@@ -98,7 +98,7 @@ class RND:
         if isinstance(self.r_norm, DynamicRunningStat):
             self.r_norm.reset()
 
-        self.buffer = []
+        # self.buffer = []
 
         # Return the mean losses of all the iterations
         return np.mean(losses)
