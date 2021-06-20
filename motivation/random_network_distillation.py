@@ -10,7 +10,7 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e4, batch_size=32,
+    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e6, batch_size=32,
                  motivation_weight=1.,
                  num_itr=3, name='rnd', **kwargs):
 
@@ -34,7 +34,7 @@ class RND:
         self.motivation_weight = motivation_weight
 
         # Buffer of experience
-        self.buffer = []
+        # self.buffer = []
 
         with tf.compat.v1.variable_scope(name) as vs:
             # Input placeholders, they depend on DeepCrawl

@@ -5,7 +5,7 @@ import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc_old import *
+from architectures.bug_arch_acc import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -376,7 +376,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)

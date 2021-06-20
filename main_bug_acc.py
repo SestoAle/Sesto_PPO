@@ -1,5 +1,5 @@
 from agents.PPO import PPO
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_acc_old import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
 from motivation.random_network_distillation import RND
