@@ -5,16 +5,16 @@ import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_very_acc import *
+from architectures.bug_arch_acc_old import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-model_name = 'test_parallel_moti_order'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_2'
 
-reward_model_name = "test_parallel_moti_order_126000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_2_24000"
 
 def plot_map(map):
     """
@@ -282,8 +282,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 1
-            desired_point_z = 1
+            desired_point_x = 7
+            desired_point_z = 7
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -376,7 +376,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)
