@@ -10,7 +10,7 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e6, batch_size=1024,
+    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e6, batch_size=400,
                  motivation_weight=1.,
                  num_itr=3, name='rnd', **kwargs):
 
