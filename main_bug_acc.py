@@ -302,7 +302,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
                     action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
-                    v_num_itr=1, memory=memory, 
+                    v_num_itr=1, memory=memory, c2=0.1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models
@@ -316,7 +316,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd, num_itr=20)
+                             obs_to_state=obs_to_state_rnd, num_itr=3)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 
