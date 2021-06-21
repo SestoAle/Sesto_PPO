@@ -142,12 +142,12 @@ class RND:
     # Add observation to buffer
     def add_to_buffer(self, obs, mode='random'):
 
-        if mode == 'random':
-            index = np.random.randint(0, len(self.buffer))
+        if len(self.buffer) >= self.buffer_size:
+            if mode == 'random':
+                index = np.random.randint(0, len(self.buffer))
 
-            del self.buffer[index]
-        else:
-            if len(self.buffer) >= self.buffer_size:
+                del self.buffer[index]
+            else:
                 del self.buffer[0]
 
         self.obs_norm.push(obs['global_in'])
