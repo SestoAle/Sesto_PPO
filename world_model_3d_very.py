@@ -5,16 +5,16 @@ import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_acc_old import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_3'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_2'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_3_18000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_2_24000"
 
 def plot_map(map):
     """
