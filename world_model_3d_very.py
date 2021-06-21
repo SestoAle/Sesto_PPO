@@ -5,16 +5,16 @@ import pickle
 import tensorflow as tf
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from architectures.bug_arch_acc import *
+from architectures.bug_arch_very_acc import *
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl'
+model_name = 'test_parallel_moti_order'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_21000"
+reward_model_name = "test_parallel_moti_order_126000"
 
 def plot_map(map):
     """
@@ -282,8 +282,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 7
-            desired_point_z = 7
+            desired_point_x = 1
+            desired_point_z = 1
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -469,7 +469,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 
