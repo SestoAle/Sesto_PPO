@@ -6,7 +6,7 @@ from math import factorial
 
 import matplotlib.pyplot as plt
 
-from architectures.bug_arch_very_acc import *
+from architectures.bug_arch_acc_old import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 
@@ -17,9 +17,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'test_parallel_moti_order'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_2'
 
-reward_model_name = "test_parallel_moti_order_2_90000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_2_3000"
 
 def plot_map(map):
     """
@@ -60,8 +60,8 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
         count += 1
         for state in traj:
             position = np.asarray(state[:2])
-            position[0] = (((position[0] + 1) / 2) * 100)
-            position[1] = (((position[1] + 1) / 2) * 130)
+            position[0] = (((position[0] + 1) / 2) * 40)
+            position[1] = (((position[1] + 1) / 2) * 60)
             position = position.astype(int)
             pos_key = ' '.join(map(str, position))
             if pos_key in pos_buffer.keys():
@@ -111,8 +111,8 @@ def print_traj(traj):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 100)
-    plt.ylim(0, 130)
+    plt.xlim(0, 40)
+    plt.ylim(0, 60)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -124,8 +124,8 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
-    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
@@ -155,8 +155,8 @@ def print_traj_with_diff(traj, diff):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 100)
-    plt.ylim(0, 130)
+    plt.xlim(0, 40)
+    plt.ylim(0, 60)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -168,8 +168,8 @@ def print_traj_with_diff(traj, diff):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
-    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 40
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 60
 
     mean_diff = np.mean(diff)
 
@@ -216,8 +216,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((200, 230))
-    covmap = np.zeros((200, 230))
+    heatmap = np.zeros((40, 60))
+    covmap = np.zeros((40, 60))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -288,9 +288,9 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 1
-            desired_point_z = 1
-            threshold = 10
+            desired_point_x = 7
+            desired_point_z = 7
+            threshold = 5
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
@@ -301,8 +301,8 @@ if __name__ == '__main__':
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
                     for point in traj:
                         de_point = np.zeros(2)
-                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
-                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
+                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 40
+                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 60
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
                                 np.abs(de_point[1] - desired_point_z) < threshold:
                             traj_to_observe.append(traj)
@@ -331,11 +331,11 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
                     de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
-                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
-                    #         np.abs(de_point[1] - desired_point_z) < threshold:
-                    #     break
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 40
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 60
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 if np.min(il_rew) < all_il_min:
@@ -357,8 +357,6 @@ if __name__ == '__main__':
                 moti_rew = np.sum(moti_rew)
                 moti_rews.append(moti_rew)
                 moti_rews_dict[idx_traj] = moti_rew
-
-            print(traj_to_observe)
 
             moti_mean = np.mean(moti_rews)
             il_mean = np.mean(il_rews)
