@@ -5,6 +5,7 @@ import pickle
 from math import factorial
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
@@ -19,7 +20,7 @@ name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_repl
 
 model_name = 'test_parallel_moti_order'
 
-reward_model_name = "test_parallel_moti_order_2_90000"
+reward_model_name = "test_parallel_moti_order_18000"
 
 def plot_map(map):
     """
@@ -290,7 +291,7 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 1
             desired_point_z = 1
-            threshold = 10
+            threshold = 5
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
@@ -333,9 +334,9 @@ if __name__ == '__main__':
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
-                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
-                    #         np.abs(de_point[1] - desired_point_z) < threshold:
-                    #     break
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 if np.min(il_rew) < all_il_min:
@@ -387,14 +388,14 @@ if __name__ == '__main__':
             moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
-            print(moti_to_observe)
 
-            il_to_observe = np.where(il_rews < np.asarray(-13))
+            il_to_observe = np.where(il_rews < np.asarray(174))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.union1d(il_to_observe, moti_to_observe)
+            idxs_to_observe = np.intersect1d(moti_to_observe, il_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = moti_to_observe
+            idxs_to_observe = il_to_observe
+            print(idxs_to_observe)
 
             # Plot the trajectories
             plt.figure()
