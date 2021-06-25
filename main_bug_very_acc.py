@@ -47,7 +47,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
+parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)

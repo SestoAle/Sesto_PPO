@@ -28,7 +28,7 @@ def network_spec(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 25
+    agent_jump = ((agent_jump + 1) / 2) * 40
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -58,7 +58,7 @@ def obs_to_state_rnd(obs):
     return [global_batch]
 
 def network_spec_rnd(states):
-    input_length = 72
+    input_length = 73
     with_circular = False
 
     global_state = states[0]
@@ -74,7 +74,7 @@ def network_spec_rnd(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 25
+    agent_jump = ((agent_jump + 1) / 2) * 40
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -134,7 +134,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 130
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 25
+    agent_jump = ((agent_jump + 1) / 2) * 40
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
