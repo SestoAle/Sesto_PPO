@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_4'
+model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_5'
 
-reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_4_90000"
+reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_5_90000"
 
 def plot_map(map):
     """
@@ -388,7 +388,7 @@ if __name__ == '__main__':
             moti_to_observe = np.reshape(moti_to_observe, -1)
             print(moti_to_observe)
 
-            il_to_observe = np.where(il_rews < np.asarray(40))
+            il_to_observe = np.where(il_rews < np.asarray(-15))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe = np.intersect1d(moti_to_observe, il_to_observe)
             traj_to_observe = np.asarray(traj_to_observe)

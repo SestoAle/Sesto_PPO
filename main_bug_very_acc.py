@@ -29,7 +29,7 @@ parser.add_argument('-gn', '--game-name', help="The name of the game", default=N
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=70)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=80)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -39,7 +39,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
 parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_acc_com_irl_30000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dems_acc_com.pkl')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_impossibru.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
@@ -209,6 +209,22 @@ class BugEnvironment:
     def clear_buffers(self):
         self.trajectories_for_episode = dict()
         self.actions_for_episode = dict()
+
+    def command_to_action(self, command):
+
+        if command == 'w':
+            return 3
+        if command == 'a':
+            return 2
+        if command == 's':
+            return 4
+        if command == 'd':
+            return 1
+
+        if command == ' ':
+            return 9
+
+        return 99
 
     # Compute the intrinsic reward based on the counter
     def compute_intrinsic_reward(self, counter):

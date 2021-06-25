@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'test_parallel_moti_order'
+model_name = 'test_parallel_moti_order_3'
 
-reward_model_name = "test_parallel_moti_order_18000"
+reward_model_name = "test_parallel_moti_order_90000"
 
 def plot_map(map):
     """
@@ -359,8 +359,6 @@ if __name__ == '__main__':
                 moti_rews.append(moti_rew)
                 moti_rews_dict[idx_traj] = moti_rew
 
-            print(traj_to_observe)
-
             moti_mean = np.mean(moti_rews)
             il_mean = np.mean(il_rews)
             moti_max = np.max(moti_rews)
@@ -389,12 +387,14 @@ if __name__ == '__main__':
             moti_to_observe = [k for k in moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(il_rews < np.asarray(174))
+            il_to_observe = np.where(il_rews < np.asarray(40))
             il_to_observe = np.reshape(il_to_observe, -1)
-            idxs_to_observe = np.intersect1d(moti_to_observe, il_to_observe)
+            idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
+            idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = il_to_observe
+            idxs_to_observe = idxs_to_observe
+            print(moti_to_observe)
             print(idxs_to_observe)
 
             # Plot the trajectories

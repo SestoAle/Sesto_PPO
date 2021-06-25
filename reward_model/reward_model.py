@@ -143,8 +143,9 @@ class RewardModel:
                         if action == "f":
                             done = True
                             continue
-                        # while env.command_to_action(action) >= 99:
-                        #     action = input('action: ')
+                        while env.command_to_action(action) >= 99:
+                            action = input('action: ')
+                        action = env.command_to_action(action)
                     else:
                         if random:
                             action = np.random.randint(0, self.actions_size)

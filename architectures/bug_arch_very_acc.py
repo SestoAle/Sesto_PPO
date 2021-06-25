@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 72
+    input_length = 73
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -19,8 +19,8 @@ def network_spec(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -35,21 +35,21 @@ def network_spec(states):
 
     agent = embedding(agent, indices=131, size=32, name='agent_embs')
     agent = tf.reshape(agent, (-1, 3 * 32))
-    agent = tf.concat([agent, is_grounded], axis=1)
-    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.relu)
+    agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
+    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.tanh)
 
     # points = tf.reshape(points, [-1, 1024])
     grid = tf.cast(tf.reshape(grid, [-1, 7, 7]), tf.int32)
     grid = embedding(grid, indices=7, size=32, name='global_embs')
-    grid = conv_layer_2d(grid, 32, [3, 3], name='conv_01', activation=tf.nn.relu)
-    grid = conv_layer_2d(grid, 64, [3, 3], name='conv_02', activation=tf.nn.relu)
+    grid = conv_layer_2d(grid, 32, [3, 3], name='conv_01', activation=tf.nn.tanh)
+    grid = conv_layer_2d(grid, 64, [3, 3], name='conv_02', activation=tf.nn.tanh)
     grid = tf.reshape(grid, [-1, 7 * 7 * 64])
 
-    inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.relu)
+    inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
 
     global_state = tf.concat([agent, inventory, grid], axis=1)
 
-    global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
+    global_state = linear(global_state, 1024, name='embs', activation=tf.nn.tanh)
 
     return global_state
 

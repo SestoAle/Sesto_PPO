@@ -87,7 +87,7 @@ class Runner:
                 config = self.set_curriculum(self.curriculum, self.history, self.curriculum_mode)
                 self.env.set_config(config)
                 if answer == 'y':
-                    dems, vals = self.reward_model.create_demonstrations(env=self.env)
+                    dems, vals = self.reward_model.create_demonstrations(env=self.env, dems_name=dems_name)
                 elif answer == 'p':
                     dems, vals = self.reward_model.create_demonstrations(env=self.env, with_policy=True)
                 else:
