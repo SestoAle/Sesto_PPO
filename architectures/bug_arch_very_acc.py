@@ -65,8 +65,8 @@ def network_spec_rnd(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -105,7 +105,7 @@ def network_spec_rnd(states):
 
 
 def input_spec_irl():
-    input_length = 72
+    input_length = 73
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -125,8 +125,8 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     action_state = tf.cast(act, tf.int32)
 
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 100
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
