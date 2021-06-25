@@ -140,7 +140,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
 
-    agent_n, goal_n, grid_n, rays_n, inventory_n = tf.split(global_state_n, [3, 6, 49, 12, 2], axis=1)
+    agent_n, goal_n, grid_n, rays_n, inventory_n = tf.split(global_state_n, [4, 6, 49, 12, 2], axis=1)
 
 
     agent_n = tf.cast(agent_n, tf.int32)
