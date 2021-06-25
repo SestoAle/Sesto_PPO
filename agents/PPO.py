@@ -116,6 +116,8 @@ class PPO:
                         sequence_length=self.sequence_lengths
                     )
 
+                    self.rnn_batch = tf.reshape(self.rnn, [-1, self.recurrent_size])
+
                     # Take only the last state of the sequence
                     self.p_network = self.rnn_state.h
 
@@ -230,7 +232,7 @@ class PPO:
                     self.v_rnn_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(num_units=self.recurrent_size,
                                                                              state_is_tuple=True, activation=tf.nn.tanh)
                     # Define state_in for the cell
-                    self.v_state_in = self.rnn_cell.zero_state(bs, tf.float32)
+                    self.v_state_in = self.v_rnn_cell.zero_state(bs, tf.float32)
 
                     # Apply rnn
                     self.v_rnn, self.v_rnn_state = tf.compat.v1.nn.dynamic_rnn(

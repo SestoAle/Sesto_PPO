@@ -49,7 +49,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=False)
+parser.set_defaults(recurrent=True)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
