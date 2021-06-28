@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_impossibru'
+model_name = 'double_jump_impossibru_3'
 
-reward_model_name = "test_parallel_moti_order_90000"
+reward_model_name = "double_jump_impossibru_2_42000"
 
 def plot_map(map):
     """
@@ -79,7 +79,7 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
     TODO: This method is valid only with the current world_model_3d.py script
     '''
 
-    filler = np.zeros(67)
+    filler = np.zeros(68)
     for traj, acts in zip(trajectories, actions):
         for idx in range(len(traj) - 1):
             # Transform the state into the correct form
@@ -283,14 +283,14 @@ if __name__ == '__main__':
             # Filler the state
             # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
             # TODO: it is probably better to save everything
-            filler = np.zeros((67))
+            filler = np.zeros((68))
             traj_to_observe = []
             episodes_to_observe = []
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 1
-            desired_point_z = 1
+            desired_point_x = 90
+            desired_point_z = 120
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -300,6 +300,18 @@ if __name__ == '__main__':
 
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
+
+                # to_observe = False
+                # for point in traj:
+                #     de_point = np.zeros(2)
+                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
+                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
+                #     if np.abs(de_point[0] - 55) < threshold and \
+                #             np.abs(de_point[1] - 116) < threshold:
+                #         to_observe = True
+                #         break
+                #
+                # if to_observe:
                     for point in traj:
                         de_point = np.zeros(2)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
@@ -393,7 +405,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = idxs_to_observe
+            idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
@@ -477,7 +489,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 
