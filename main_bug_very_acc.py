@@ -49,7 +49,7 @@ parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_t
 
 parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
-parser.set_defaults(recurrent=True)
+parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
@@ -85,7 +85,7 @@ class BugEnvironment:
         self.episode = -1
 
     def execute(self, actions):
-        #actions = int(input(': '))
+        # actions = int(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
@@ -106,7 +106,7 @@ class BugEnvironment:
         # reward = 0
 
         # print(state['global_in'][:2])
-        # print(np.flip(np.transpose(np.reshape(state['global_in'][9:9+49], [7, 7])), 0))
+        # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+49], [7, 7])), 0))
         # print(state['global_in'][-2:])
         # print(state['global_in'][7:7+12])
         # print(reward)

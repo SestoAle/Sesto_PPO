@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_impossibru_3'
+model_name = 'double_jump_impossibru_5'
 
-reward_model_name = "double_jump_impossibru_2_42000"
+reward_model_name = "double_jump_impossibru_5_9000"
 
 def plot_map(map):
     """
@@ -291,6 +291,8 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 90
             desired_point_z = 120
+            desired_point_y = 27
+
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
@@ -313,11 +315,13 @@ if __name__ == '__main__':
                 #
                 # if to_observe:
                     for point in traj:
-                        de_point = np.zeros(2)
+                        de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
+                        de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
                                 np.abs(de_point[1] - desired_point_z) < threshold:
+                                # and np.abs(de_point[2] - desired_point_y) < threshold:
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             break
@@ -489,7 +493,7 @@ if __name__ == '__main__':
 
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
                 f.write(json_str)
                 f.close()
 

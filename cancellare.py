@@ -1,6 +1,7 @@
 import pickle
 import json
 import numpy as np
+from utils import NumpyEncoder
 
 def load_demonstrations(dems_name):
     with open('reward_model/dems/' + dems_name, 'rb') as f:
@@ -54,7 +55,7 @@ if __name__ == '__main__':
 
     model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
 
-    expert_traj = load_demonstrations('dems_acc_com_no_key_muted.pkl')
+    expert_traj = load_demonstrations('dem_acc_impossibru.pkl')
     with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
         saved_trajectories = json.load(f)
 
@@ -62,9 +63,19 @@ if __name__ == '__main__':
         saved_actions = json.load(f)
 
     print('Demonstrations loaded! We have ' + str(len(expert_traj['obs'])) + " timesteps in these demonstrations")
+    for i in range(8):
+        traj = []
+        for j in range(i * 80, (i * 80 + 80)):
+            traj.append(expert_traj['obs'][j]['global_in'][:3])
 
-    input('...')
-    expert_traj = saved_trajectories_to_demonstrations([saved_trajectories['0']], [saved_actions['0']], expert_traj)
+        traj = np.asarray(traj)
+        traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=np.zeros(80), il_values=np.zeros(80))
+        json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+        f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+        f.write(json_str)
+        f.close()
+        input('...')
+    # expert_traj = saved_trajectories_to_demonstrations([saved_trajectories['0']], [saved_actions['0']], expert_traj)
 
-    save_demonstrations(expert_traj, name='dems_acc_com_no_key_muted.pkl')
-    print('Demonstrations loaded! We have ' + str(len(expert_traj['obs'])) + " timesteps in these demonstrations")
+    # save_demonstrations(expert_traj, name='dems_acc_com_no_key_muted.pkl')
+    # print('Demonstrations loaded! We have ' + str(len(expert_traj['obs'])) + " timesteps in these demonstrations")

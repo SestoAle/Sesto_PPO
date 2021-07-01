@@ -187,7 +187,7 @@ if __name__ == "__main__":
                          max_episode_timesteps=max_episode_timestep)
 
     # Set starting position
-    env.set_config(dict(agent_spawn_x=14, agent_spawn_z=14))
+    env.set_config(dict(agent_spawn_x=0, agent_spawn_z=0))
 
     # Load the actions to execute
     with open('arrays/actions.json', 'rb') as f:
