@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_impossibru_5'
+model_name = 'double_jump_impossibru_5_irl'
 
-reward_model_name = "double_jump_impossibru_5_9000"
+reward_model_name = "double_jump_impossibru_5_90000"
 
 def plot_map(map):
     """
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted"
+                model_name = "double_jump_impossibru_5"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -264,7 +264,7 @@ if __name__ == '__main__':
 
             # Load imitation model
             with graph.as_default():
-                # reward_model_name = "bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_muted_24000"
+                reward_model_name = "double_jump_impossibru_5_90000"
                 tf.compat.v1.disable_eager_execution()
                 reward_sess = tf.compat.v1.Session(graph=graph)
                 reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
@@ -293,7 +293,7 @@ if __name__ == '__main__':
             desired_point_z = 120
             desired_point_y = 27
 
-            threshold = 5
+            threshold = 7
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
