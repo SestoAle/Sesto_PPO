@@ -18,9 +18,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_impossibru_5_irl'
+model_name = 'double_jump_impossibru_both'
 
-reward_model_name = "double_jump_impossibru_5_90000"
+reward_model_name = "double_jump_impossibru_both_36000"
 
 def plot_map(map):
     """
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                model_name = "double_jump_impossibru_5"
+                #model_name = "double_jump_impossibru_5"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
@@ -264,7 +264,7 @@ if __name__ == '__main__':
 
             # Load imitation model
             with graph.as_default():
-                reward_model_name = "double_jump_impossibru_5_90000"
+                #reward_model_name = "double_jump_impossibru_5_90000"
                 tf.compat.v1.disable_eager_execution()
                 reward_sess = tf.compat.v1.Session(graph=graph)
                 reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
@@ -289,11 +289,11 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 90
-            desired_point_z = 120
+            desired_point_x = 5
+            desired_point_z = 5
             desired_point_y = 27
 
-            threshold = 7
+            threshold = 5
 
             # Save the motivation rewards and the imitation rewards
             moti_rews = []
@@ -350,9 +350,9 @@ if __name__ == '__main__':
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
-                    if np.abs(de_point[0] - desired_point_x) < threshold and \
-                            np.abs(de_point[1] - desired_point_z) < threshold:
-                        break
+                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
+                    #         np.abs(de_point[1] - desired_point_z) < threshold:
+                    #     break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 if np.min(il_rew) < all_il_min:

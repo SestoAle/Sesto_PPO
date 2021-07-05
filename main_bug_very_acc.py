@@ -39,7 +39,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
 parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='bug_detector_gail_schifo_acc_com_irl_30000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_impossibru.pkl')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_impossibru_to_add.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
