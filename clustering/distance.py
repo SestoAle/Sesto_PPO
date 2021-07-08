@@ -2,9 +2,6 @@ import numpy as np
 import math
 
 from typing import Callable, Dict
-from numba import jit, types, prange, int32, int64
-from numba import typed
-
 
 class DiscreteFrechet(object):
     """
