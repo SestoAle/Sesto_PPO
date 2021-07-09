@@ -682,7 +682,6 @@ class PPO:
         gae = 0
 
         # The gae rewards can be computed in reverse
-        # The discounted reward can be computed in reverse
         for (terminal, reward, i) in zip(reversed(self.buffer['terminals']), reversed(self.buffer['rewards']),
                                          reversed(range(len(self.buffer['rewards'])))):
             m = 1

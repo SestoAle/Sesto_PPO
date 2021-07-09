@@ -10,6 +10,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
+from clustering.example import cluster_trajectories
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -18,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_impossibru_both'
+model_name = 'double_jump_labyrinth'
 
-reward_model_name = "double_jump_impossibru_both_36000"
+reward_model_name = "double_jump_labyrinth_3000"
 
 def plot_map(map):
     """
@@ -151,7 +152,7 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     y = np.concatenate((firstvals, y, lastvals))
     return np.convolve(m[::-1], y, mode='valid')
 
-def print_traj_with_diff(traj, diff):
+def print_traj_with_diff(traj, diff, thr=None):
     """
     Method that will plot the trajectory
     """
@@ -172,10 +173,11 @@ def print_traj_with_diff(traj, diff):
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
 
-    mean_diff = np.mean(diff)
+    if thr == None:
+        thr = np.mean(diff)
 
     for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
-        if d > mean_diff:
+        if d > thr:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'r')
         else:
             plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
@@ -289,16 +291,20 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 5
-            desired_point_z = 5
+            desired_point_x = 10
+            desired_point_z = 115
             desired_point_y = 27
 
             threshold = 5
 
             # Save the motivation rewards and the imitation rewards
+            sum_moti_rews = []
+            sum_moti_rews_dict = dict()
+            sum_il_rews = []
             moti_rews = []
-            moti_rews_dict = dict()
-            il_rews = []
+
+            step_moti_rews = []
+            step_il_rews = []
 
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
@@ -326,13 +332,14 @@ if __name__ == '__main__':
                             episodes_to_observe.append(keys)
                             break
 
+            # Cluster trajectories to reduce the number of trajectories to observe
+            indexes = cluster_trajectories(traj_to_observe)
+            traj_to_observe = traj_to_observe[indexes]
+
+            print(np.shape(traj_to_observe))
+            input('....')
+
             # Get the value of the motivation and imitation models of the extracted trajectories
-            all_il_min = 9999
-            all_il_max = -9999
-
-            all_im_min = 9999
-            all_im_max = -9999
-
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
                 states_batch = []
                 actions_batch = []
@@ -355,55 +362,50 @@ if __name__ == '__main__':
                     #     break
 
                 il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                if np.min(il_rew) < all_il_min:
-                    all_il_min = np.min(il_rew)
-
-                if np.max(il_rew) > all_il_max:
-                    all_il_max = np.max(il_rew)
+                step_il_rews.extend(il_rew)
 
                 il_rew = np.sum(il_rew)
-                il_rews.append(il_rew)
+                sum_il_rews.append(il_rew)
 
                 moti_rew = motivation.eval(states_batch)
-                if np.min(moti_rew) < all_im_min:
-                    all_im_min = np.min(moti_rew)
-
-                if np.max(moti_rew) > all_im_max:
-                    all_im_max = np.max(moti_rew)
+                moti_rews.append(moti_rew)
+                step_moti_rews.extend(moti_rew)
 
                 moti_rew = np.sum(moti_rew)
-                moti_rews.append(moti_rew)
-                moti_rews_dict[idx_traj] = moti_rew
+                sum_moti_rews.append(moti_rew)
+                sum_moti_rews_dict[idx_traj] = moti_rew
 
-            moti_mean = np.mean(moti_rews)
-            il_mean = np.mean(il_rews)
-            moti_max = np.max(moti_rews)
-            moti_min = np.min(moti_rews)
-            il_max = np.max(il_rews)
-            il_min = np.min(il_rews)
+            moti_mean = np.mean(sum_moti_rews)
+            il_mean = np.mean(sum_il_rews)
+            moti_max = np.max(sum_moti_rews)
+            moti_min = np.min(sum_moti_rews)
+            il_max = np.max(sum_il_rews)
+            il_min = np.min(sum_il_rews)
             epsilon = 0.05
-            print(np.max(moti_rews))
-            print(np.max(il_rews))
-            print(np.median(il_rews))
+            print(np.max(sum_moti_rews))
+            print(np.max(sum_il_rews))
+            print(np.median(sum_il_rews))
             print(np.median(moti_mean))
             print(moti_mean)
             print(il_mean)
-            print(np.min(il_rews))
-            print(np.min(moti_rews))
+            print(np.min(sum_il_rews))
+            print(np.min(sum_moti_rews))
             print(" ")
-            print(all_im_min)
-            print(all_il_min)
-            print(all_im_max)
-            print(all_il_max)
+            print("Min step moti: {}".format(np.min(step_moti_rews)))
+            print("Min step IL: {}".format(np.min(step_il_rews)))
+            print("Max step moti: {}".format(np.max(step_moti_rews)))
+            print("Max step IL: {}".format(np.max(step_il_rews)))
+            print("Mean step moti: {}".format(np.mean(step_moti_rews)))
+            print("Mean step IL: {}".format(np.mean(step_il_rews)))
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            moti_rews_dict = {k: v for k, v in sorted(moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            moti_to_observe = [k for k in moti_rews_dict.keys()]
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(il_rews < np.asarray(40))
+            il_to_observe = np.where(sum_il_rews < np.asarray(40))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
@@ -415,7 +417,8 @@ if __name__ == '__main__':
 
             # Plot the trajectories
             plt.figure()
-            for traj in traj_to_observe[idxs_to_observe]:
+            thr = np.mean(step_moti_rews)
+            for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
                 print_traj(traj)
 
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
@@ -446,6 +449,7 @@ if __name__ == '__main__':
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
 
+
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
@@ -471,11 +475,11 @@ if __name__ == '__main__':
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
-                irl_rew = savitzky_golay(irl_rew, 51, 3)
-                im_rew = savitzky_golay(im_rew, 51, 3)
+                # irl_rew = savitzky_golay(irl_rew, 51, 3)
+                # im_rew = savitzky_golay(im_rew, 51, 3)
 
-                irl_rew = (irl_rew - all_il_min) / (all_il_max - all_il_min)
-                im_rew = (im_rew - all_im_min) / (all_im_max - all_im_min)
+                # irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
+                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
@@ -498,7 +502,7 @@ if __name__ == '__main__':
                 f.close()
 
                 plt.figure()
-                print_traj_with_diff(traj, im_rew)
+                print_traj_with_diff(traj, im_rew, thr)
 
                 plt.show()
                 plt.waitforbuttonpress()

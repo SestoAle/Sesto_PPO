@@ -1,11 +1,10 @@
 import numpy as np
 #from clustering.distance import FastDiscreteFrechetMatrix, euclidean, haversine, earth_haversine
 import hdbscan
-from rdp import *
+from clustering.rdp import *
 import json
 import matplotlib.pyplot as plt
 from math import *
-from world_model_3d_very import print_traj
 
 import similaritymeasures
 
@@ -27,14 +26,14 @@ def compute_distance_matrix(trajectories, method="Frechet"):
     return dist_m
 
 def cluster_trajectories(trajectories):
-    trajectories_to_cluster = []
-    for traj in list(trajectories.values())[-100:]:
+    reduced_trajectories = []
+    for traj in trajectories:
         traj = np.asarray(traj)
         traj = traj[:, :3]
         new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.01)
-        trajectories_to_cluster.append(new_traj)
+        reduced_trajectories.append(new_traj)
 
-    dist_matrix = compute_distance_matrix(trajectories_to_cluster)
+    dist_matrix = compute_distance_matrix(reduced_trajectories)
     clusterer = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=2, min_samples=1,
                                 cluster_selection_methos='leaf')
 
@@ -48,6 +47,7 @@ def cluster_trajectories(trajectories):
 
 if __name__ == '__main__':
 
+    from world_model_3d_very import print_traj
     # Load trajectories
     trajectories = None
     model_name = 'double_jump_impossibru_both'
