@@ -10,7 +10,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from clustering.example import cluster_trajectories
+from clustering.clustering import cluster_trajectories
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -333,11 +333,8 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            indexes = cluster_trajectories(traj_to_observe)
-            traj_to_observe = traj_to_observe[indexes]
-
-            print(np.shape(traj_to_observe))
-            input('....')
+            indexes = np.asarray(cluster_trajectories(traj_to_observe), np.int)
+            traj_to_observe = np.asarray(traj_to_observe)[indexes]
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
