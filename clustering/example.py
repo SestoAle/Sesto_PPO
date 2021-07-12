@@ -1,4 +1,5 @@
 import numpy as np
+import sklearn as sk
 #from clustering.distance import FastDiscreteFrechetMatrix, euclidean, haversine, earth_haversine
 import hdbscan
 from clustering.rdp import *
@@ -15,7 +16,9 @@ def compute_distance_matrix(trajectories, method="Frechet"):
     n = len(trajectories)
     dist_m = np.zeros((n, n))
     for i in range(n - 1):
+        print(i)
         p = trajectories[i]
+        print(len(p))
         for j in range(i + 1, n):
             q = trajectories[j]
             if method == "Frechet":
@@ -25,15 +28,23 @@ def compute_distance_matrix(trajectories, method="Frechet"):
             dist_m[j, i] = dist_m[i, j]
     return dist_m
 
+def parallel_compute_distance_matrix(trajectories):
+
+    dist_m = sk.metrics.pairwise_distances(trajectories, metric=similaritymeasures.frechet_dist, n_jobs=-1)
+
+
 def cluster_trajectories(trajectories):
+
     reduced_trajectories = []
     for traj in trajectories:
         traj = np.asarray(traj)
         traj = traj[:, :3]
         new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.01)
         reduced_trajectories.append(new_traj)
-
-    dist_matrix = compute_distance_matrix(reduced_trajectories)
+    reduced_trajectories = np.asarray(reduced_trajectories)
+    print(np.shape(reduced_trajectories))
+    print("alksdjadl")
+    dist_matrix = parallel_compute_distance_matrix(reduced_trajectories)
     clusterer = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=2, min_samples=1,
                                 cluster_selection_methos='leaf')
 
