@@ -3,7 +3,6 @@ from math import factorial
 import os
 import pickle
 from math import factorial
-from similaritymeasures import frechet_dist
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +10,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from clustering.clustering import cluster_trajectories
+#from clustering.clustering import cluster_trajectories
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -20,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_labyrinth'
+model_name = 'really_big'
 
-reward_model_name = "double_jump_labyrinth_3000"
+reward_model_name = "really_big_3000asd"
 
 def plot_map(map):
     """
@@ -63,8 +62,8 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
         count += 1
         for state in traj:
             position = np.asarray(state[:2])
-            position[0] = (((position[0] + 1) / 2) * 100)
-            position[1] = (((position[1] + 1) / 2) * 130)
+            position[0] = (((position[0] + 1) / 2) * 220)
+            position[1] = (((position[1] + 1) / 2) * 280)
             position = position.astype(int)
             pos_key = ' '.join(map(str, position))
             if pos_key in pos_buffer.keys():
@@ -114,8 +113,8 @@ def print_traj(traj):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 100)
-    plt.ylim(0, 130)
+    plt.xlim(0, 220)
+    plt.ylim(0, 280)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -127,8 +126,8 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
-    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 220
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 280
     plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
@@ -158,8 +157,8 @@ def print_traj_with_diff(traj, diff, thr=None):
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
-    plt.xlim(0, 100)
-    plt.ylim(0, 130)
+    plt.xlim(0, 220)
+    plt.ylim(0, 280)
     color = 'g'
 
     if (ep_trajectory[-1, 3:5] == [0, 0]).all():
@@ -171,8 +170,8 @@ def print_traj_with_diff(traj, diff, thr=None):
     elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
         color = 'm'
 
-    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 100
-    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 130
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 220
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 280
 
     if thr == None:
         thr = np.mean(diff)
@@ -220,8 +219,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((200, 230))
-    covmap = np.zeros((200, 230))
+    heatmap = np.zeros((320, 380))
+    covmap = np.zeros((320, 380))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -292,8 +291,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 10
-            desired_point_z = 115
+            desired_point_x = 100
+            desired_point_z = 2
             desired_point_y = 27
 
             threshold = 5
@@ -323,8 +322,8 @@ if __name__ == '__main__':
                 # if to_observe:
                     for point in traj:
                         de_point = np.zeros(3)
-                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
-                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
+                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
+                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
                                 np.abs(de_point[1] - desired_point_z) < threshold:
@@ -334,7 +333,7 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            traj_to_observe = np.asarray(traj_to_observe)[:1000]
+            # traj_to_observe = np.asarray(traj_to_observe)[:1500]
             # indexes = np.asarray(cluster_trajectories(traj_to_observe), np.int)
             # traj_to_observe = traj_to_observe[indexes]
 
@@ -354,8 +353,8 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
                     de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 100
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 130
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
                     # if np.abs(de_point[0] - desired_point_x) < threshold and \
                     #         np.abs(de_point[1] - desired_point_z) < threshold:
                     #     break
@@ -448,20 +447,10 @@ if __name__ == '__main__':
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
 
-            prev_trajs = []
+
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
-                print(idx)
-                if len(prev_trajs) > 0:
-                    count = 0
-                    for prev_traj in prev_trajs:
-                        if frechet_dist(traj, prev_traj) > 120:
-                            count += 1
 
-                    if count >= len(prev_trajs):
-                        continue
-
-                prev_trajs.append(traj)
                 states_batch = []
                 key = episodes_to_observe[idx]
                 for state in traj:
