@@ -334,12 +334,12 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            traj_to_observe = np.asarray(traj_to_observe)[:1000]
+            traj_to_observe = np.asarray(traj_to_observe)[:2000]
             from copy import deepcopy
             traj_to_cluster = deepcopy(traj_to_observe)
-            traj_to_cluster[:, 0] = ((np.asarray(traj[:, 0]) + 1) / 2) * 100
-            traj_to_cluster[:, 1] = ((np.asarray(traj[:, 1]) + 1) / 2) * 130
-            traj_to_cluster[:, 2] = ((np.asarray(traj[:, 1]) + 1) / 2) * 40
+            traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
+            traj_to_cluster[:, 1] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 130
+            traj_to_cluster[:, 2] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 40
             indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
             traj_to_observe = traj_to_observe[indexes]
 

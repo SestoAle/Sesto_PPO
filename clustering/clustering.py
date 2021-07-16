@@ -23,14 +23,14 @@ def compute_distance_matrix(trajectories, method="Frechet"):
             dist_m[j, i] = dist_m[i, j]
     return dist_m
 
-def thread_compute_distance(index, trajectory, trajectories):
+def thread_compute_distance(index, trajectory, trajectories, dist_matrix):
     n = len(trajectories)
     p = trajectory
-    distances = np.zeros((n, n))
+    #distances = np.zeros((n, n))
     for j in range(index + 1, n):
         q = trajectories[j]
-        distances[index, j] = distances[j, index] = similaritymeasures.frechet_dist(p, q)
-    return distances
+        dist_matrix[index, j] = dist_matrix[j, index] = similaritymeasures.frechet_dist(p, q)
+
 
 def my_frechet_dist(p, q):
     dists = np.zeros(len(p))
@@ -43,15 +43,17 @@ def cluster_trajectories(trajectories):
 
     all_reduced_trajectories = []
     max_length = 0
+    mean_length = 0
     for traj in trajectories:
         traj = np.asarray(traj)
         traj = traj[:, :3]
-        new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.01)
-        print(len(new_traj))
-        input('...')
+        new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.5)
         if len(new_traj) > max_length:
             max_length = len(new_traj)
+        mean_length += len(new_traj)
         all_reduced_trajectories.append(new_traj)
+
+    print("mean_length: {}".format(mean_length/len(trajectories)))
 
     num_chunk = 1
     chunk_size = int(len(trajectories) / num_chunk)
@@ -61,18 +63,20 @@ def cluster_trajectories(trajectories):
         num_cores = multiprocessing.cpu_count()
         import time
         start = time.time()
-        dist_matrices = Parallel(n_jobs=num_cores)(delayed(thread_compute_distance)(i, traj, reduced_trajectories)
-                                                   for i, traj in enumerate(reduced_trajectories))
         dist_matrix = np.zeros((len(reduced_trajectories), len(reduced_trajectories)))
+        dist_matrices = Parallel(n_jobs=num_cores, require='sharedmem')(
+            delayed(thread_compute_distance)(i, traj, reduced_trajectories, dist_matrix)
+           for i, traj in enumerate(reduced_trajectories))
         end = time.time()
         print(end - start)
+        print(dist_matrix)
         # dist_matrices = [thread_compute_distance(i, traj, reduced_trajectories) for i, traj in enumerate(reduced_trajectories)]
-        for m in dist_matrices:
-            dist_matrix += m
+        # for m in dist_matrices:
+        #     dist_matrix += m
 
         # dist_matrix = compute_distance_matrix(reduced_trajectories)
         # dist_matrix = parallel_compute_distance_matrix(reduced_trajectories)
-        clusterer = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=2, min_samples=1,
+        clusterer = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=15, min_samples=1,
                                     cluster_extraction_method="leaf")
 
         clusterer.fit(dist_matrix)
@@ -81,9 +85,9 @@ def cluster_trajectories(trajectories):
         for i in range(num_cluster + 1):
             index = np.where(clusterer.labels_ == i)[0][0]
             indexes.append(j * chunk_size + index)
-        try:
-            index = np.where(clusterer.labels_ == -1)[0][0]
-            indexes.append(j * chunk_size + index)
-        except Exception as e:
-            pass
+        # try:
+        #     index = np.where(clusterer.labels_ == -1)[0][0]
+        #     indexes.append(j * chunk_size + index)
+        # except Exception as e:
+        #     pass
     return indexes
