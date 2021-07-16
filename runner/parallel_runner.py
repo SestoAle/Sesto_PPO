@@ -8,7 +8,8 @@ from threading import Thread
 # Act thread
 # Act thread
 class ActThreaded(Thread):
-    def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states):
+    def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states, recurrent=False, internals=None,
+                 v_internals=None):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.index = index
@@ -16,24 +17,32 @@ class ActThreaded(Thread):
         self.num_steps = num_steps
         self.agent = agent
         self.states = states
+        self.internals = internals
+        self.v_internals = v_internals
+        self.recurrent = recurrent
         super().__init__()
 
 
     def run(self) -> None:
         state = self.states[self.index]
+        if self.recurrent:
+            internal = self.internals[self.index]
+            v_internal = self.v_internals[self.index]
         total_reward = 0
         step = 0
         entropies = []
         for i in range(self.num_steps):
             # Execute the environment with the action
-            actions, logprobs, probs = self.agent.eval([state])
+            if not self.recurrent:
+                actions, logprobs, probs = self.agent.eval([state])
+            else:
+                actions, logprobs, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal,
+                                                                                               v_internal)
             entropies.append(self.env.entropy(probs[0]))
             actions = actions[0]
             state_n, done, reward = self.env.execute(actions)
             step += 1
             total_reward += reward
-            if i == self.num_steps - 1:
-                done = 2
 
             self.parallel_buffer['states'][self.index].append(state)
             self.parallel_buffer['states_n'][self.index].append(state_n)
@@ -41,9 +50,19 @@ class ActThreaded(Thread):
             self.parallel_buffer['reward'][self.index].append(reward)
             self.parallel_buffer['action'][self.index].append(actions)
             self.parallel_buffer['logprob'][self.index].append(logprobs)
+            if self.recurrent:
+                self.parallel_buffer['internal'][self.index].append(internal)
+                self.parallel_buffer['v_internal'][self.index].append(v_internal)
+                internal = internal_n
+                v_internal = v_internal_n
+
+
             state = state_n
-            if done == 1:
+            if done:
                 state = self.env.reset()
+                if self.recurrent:
+                    internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+                    v_internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
 
         if not done:
             self.parallel_buffer['done'][self.index][-1] = 2
@@ -53,6 +72,9 @@ class ActThreaded(Thread):
         self.parallel_buffer['mean_entropies'][self.index].append(0)
         self.parallel_buffer['std_entropies'][self.index].append(0)
         self.states[self.index] = state
+        if self.recurrent:
+            self.internals[self.index] = internal
+            self.v_internals[self.index] = v_internal
 
 # Epsiode thread
 class EpisodeThreaded(Thread):
@@ -277,13 +299,14 @@ class Runner:
 
     # Return a list of thread, that will save the experience in the shared buffer
     # The thread will run for 1 step of the environment
-    def create_act_threds(self, agent, parallel_buffer, config, states, num_steps):
+    def create_act_threds(self, agent, parallel_buffer, config, states, num_steps, internals=None, v_internals=None):
         # The number of thread will be equal to the number of environments
         threads = []
         for i, e in enumerate(self.envs):
             # Create a thread
             threads.append(ActThreaded(agent=agent, env=e, index=i, parallel_buffer=parallel_buffer, config=config,
-                                       states=states, num_steps=num_steps))
+                                       states=states, num_steps=num_steps, recurrent=self.recurrent,
+                                       internals=internals, v_internals=v_internals))
 
         # Return threads
         return threads
@@ -349,8 +372,18 @@ class Runner:
 
         if self.frequency_mode == 'timesteps':
             states = []
+            if self.recurrent:
+                internals = []
+                v_internals = []
             for env in self.envs:
+                config = self.set_curriculum(self.curriculum, self.history, self.curriculum_mode)
+                env.set_config(config)
                 states.append(env.reset())
+                if self.recurrent:
+                    internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+                    v_internal = (np.zeros([1, self.agent.recurrent_size]), np.zeros([1, self.agent.recurrent_size]))
+                    internals.append(internal)
+                    v_internals.append(v_internal)
 
         while self.ep <= self.total_episode:
             # Reset the episode
@@ -378,7 +411,11 @@ class Runner:
             else:
             # If frequency is timesteps, run only the 'execute' in parallel for horizon steps
                 # Create threads
-                threads = self.create_act_threds(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config,
+                if self.recurrent:
+                    threads = self.create_act_threds(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config,
+                                                 states=states, num_steps=self.frequency, internals=internals, v_internals=v_internals)
+                else:
+                    threads = self.create_act_threds(agent=self.agent, parallel_buffer=self.parallel_buffer, config=config,
                                                  states=states, num_steps=self.frequency)
 
                 for t in threads:
@@ -387,8 +424,11 @@ class Runner:
                 for t in threads:
                     t.join()
 
+                # Delete threads from memory
+                del threads[:]
+
                 # Get how many episodes and steps are passed within threads
-                self.ep = np.sum(np.asarray(self.parallel_buffer['done'][:]) == 1)
+                self.ep += np.sum(np.asarray(self.parallel_buffer['done'][:]) == 1)
                 self.total_step = len(threads) * self.frequency
 
             # Add the overall experience to the buffer

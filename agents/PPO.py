@@ -88,12 +88,12 @@ class PPO:
                 self.main_net = self.network_spec(self.inputs)
 
                 # Final p_layers
-                self.p_network = self.linear(self.main_net, 256, name='p_fc1', activation=tf.nn.relu)
+                self.p_network = self.linear(self.main_net, 256, name='p_fc1', activation=tf.nn.tanh)
                 if self.previous_act:
                     self.p_network = tf.concat([self.p_network, self.inputs[-1]], axis=1)
 
                 if not self.recurrent:
-                    self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
+                    self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.tanh)
                 else:
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables
@@ -219,7 +219,7 @@ class PPO:
 
                 # Final p_layers
                 if not self.recurrent_baseline:
-                    self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.relu)
+                    self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.tanh)
                 else:
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables
@@ -243,7 +243,7 @@ class PPO:
                     # Take only the last state of the sequence
                     self.v_network = self.v_rnn_state.h
 
-                self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.relu)
+                self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.tanh)
 
                 # Value function
                 self.value = tf.squeeze(self.linear(self.v_network, 1))
@@ -622,7 +622,6 @@ class PPO:
                 del self.buffer['states_n'][0]
                 del self.buffer['rewards'][0]
                 del self.buffer['terminals'][0]
-                self.buffer['episode_lengths'] = []
                 if self.recurrent:
                     del self.buffer['internal_states_c'][0]
                     del self.buffer['internal_states_h'][0]
@@ -643,9 +642,16 @@ class PPO:
             self.buffer['v_internal_states_c'].append(v_internal_states_c)
             self.buffer['v_internal_states_h'].append(v_internal_states_h)
         # If its terminal, update the episode length count (all states - sum(previous episode lengths)
-        if terminals == 1:
-            self.buffer['episode_lengths'].append(
-                int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+        if self.frequency_mode=='episodes':
+            if terminals == 1 or terminals == 2:
+                self.buffer['episode_lengths'].append(
+                    int(len(self.buffer['states']) - np.sum(self.buffer['episode_lengths'])))
+        else:
+            self.buffer['episode_lengths'] = []
+            for i, t in enumerate(self.buffer['terminals']):
+                if t == 1 or t == 2:
+                    self.buffer['episode_lengths'].append(
+                        int(i + 1 - np.sum(self.buffer['episode_lengths'])))
 
     # Change rewards in buffer to discounted rewards
     def compute_discounted_reward(self):

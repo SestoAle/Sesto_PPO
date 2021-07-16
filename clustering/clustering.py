@@ -43,10 +43,12 @@ def cluster_trajectories(trajectories):
 
     all_reduced_trajectories = []
     max_length = 0
-    for traj in trajectories[:1000]:
+    for traj in trajectories:
         traj = np.asarray(traj)
         traj = traj[:, :3]
         new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.01)
+        print(len(new_traj))
+        input('...')
         if len(new_traj) > max_length:
             max_length = len(new_traj)
         all_reduced_trajectories.append(new_traj)

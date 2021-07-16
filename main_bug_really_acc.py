@@ -16,7 +16,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -29,7 +29,7 @@ parser.add_argument('-gn', '--game-name', help="The name of the game", default=N
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=110)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=120)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')

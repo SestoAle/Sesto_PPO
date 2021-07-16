@@ -335,8 +335,13 @@ if __name__ == '__main__':
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)[:1000]
-            # indexes = np.asarray(cluster_trajectories(traj_to_observe), np.int)
-            # traj_to_observe = traj_to_observe[indexes]
+            from copy import deepcopy
+            traj_to_cluster = deepcopy(traj_to_observe)
+            traj_to_cluster[:, 0] = ((np.asarray(traj[:, 0]) + 1) / 2) * 100
+            traj_to_cluster[:, 1] = ((np.asarray(traj[:, 1]) + 1) / 2) * 130
+            traj_to_cluster[:, 2] = ((np.asarray(traj[:, 1]) + 1) / 2) * 40
+            indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
+            traj_to_observe = traj_to_observe[indexes]
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -447,19 +452,29 @@ if __name__ == '__main__':
                 print('Demonstrations loaded! We have ' + str(
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
-
             prev_trajs = []
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
-                print(idx)
-                if len(prev_trajs) > 0:
-                    count = 0
-                    for prev_traj in prev_trajs:
-                        if frechet_dist(traj, prev_traj) > 120:
-                            count += 1
-
-                    if count >= len(prev_trajs):
-                        continue
+            #     print(idx)
+            #     if len(prev_trajs) > 0:
+            #         count = 0
+            #         for prev_traj in prev_trajs:
+            #             from copy import deepcopy
+            #             de_traj = deepcopy(traj)
+            #             de_prev_traj = deepcopy(prev_traj)
+            #             de_traj[:, 0] = ((np.asarray(traj[:, 0]) + 1) / 2) * 100
+            #             de_traj[:, 1] = ((np.asarray(traj[:, 1]) + 1) / 2) * 130
+            #             de_traj[:, 2] = ((np.asarray(traj[:, 1]) + 1) / 2) * 40
+            #
+            #             de_prev_traj[:, 0] = ((np.asarray(prev_traj[:, 0]) + 1) / 2) * 100
+            #             de_prev_traj[:, 1] = ((np.asarray(prev_traj[:, 1]) + 1) / 2) * 130
+            #             de_prev_traj[:, 2] = ((np.asarray(prev_traj[:, 1]) + 1) / 2) * 40
+            #             print(frechet_dist(de_traj, de_prev_traj))
+            #             if frechet_dist(traj, prev_traj) < 111.8:
+            #                 count += 1
+            #
+            #         if count >= len(prev_trajs):
+            #             continue
 
                 prev_trajs.append(traj)
                 states_batch = []
