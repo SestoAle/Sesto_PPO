@@ -10,5 +10,5 @@ if __name__ == '__main__':
         trajectories = json.load(f)
 
     print('Clustering')
-    cluster_trajectories(list(trajectories.values()))
+    print(cluster_trajectories(list(trajectories.values())))
 

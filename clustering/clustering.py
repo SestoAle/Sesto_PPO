@@ -23,14 +23,16 @@ def compute_distance_matrix(trajectories, method="Frechet"):
             dist_m[j, i] = dist_m[i, j]
     return dist_m
 
-def thread_compute_distance(index, trajectory, trajectories, dist_matrix):
+def thread_compute_distance(index, trajectory, trajectories):
     n = len(trajectories)
     p = trajectory
     #distances = np.zeros((n, n))
+    distances = dict()
     for j in range(index + 1, n):
         q = trajectories[j]
-        dist_matrix[index, j] = dist_matrix[j, index] = similaritymeasures.frechet_dist(p, q)
-
+        distances['{},{}'.format(index,j)] = distances['{},{}'.format(j,index)] = similaritymeasures.frechet_dist(p, q)
+        # dist_matrix[index, j] = dist_matrix[j, index] = similaritymeasures.frechet_dist(p, q)
+    return distances
 
 def my_frechet_dist(p, q):
     dists = np.zeros(len(p))
@@ -64,15 +66,16 @@ def cluster_trajectories(trajectories):
         import time
         start = time.time()
         dist_matrix = np.zeros((len(reduced_trajectories), len(reduced_trajectories)))
-        dist_matrices = Parallel(n_jobs=num_cores, require='sharedmem')(
-            delayed(thread_compute_distance)(i, traj, reduced_trajectories, dist_matrix)
+        dist_matrices = Parallel(n_jobs=num_cores)(
+            delayed(thread_compute_distance)(i, traj, reduced_trajectories)
            for i, traj in enumerate(reduced_trajectories))
+
+        for dist in dist_matrices:
+            for key in dist.keys():
+                indeces = [int(k) for k in key.split(',')]
+                dist_matrix[indeces[0], indeces[1]] += dist[key]
         end = time.time()
         print(end - start)
-        print(dist_matrix)
-        # dist_matrices = [thread_compute_distance(i, traj, reduced_trajectories) for i, traj in enumerate(reduced_trajectories)]
-        # for m in dist_matrices:
-        #     dist_matrix += m
 
         # dist_matrix = compute_distance_matrix(reduced_trajectories)
         # dist_matrix = parallel_compute_distance_matrix(reduced_trajectories)
@@ -81,7 +84,6 @@ def cluster_trajectories(trajectories):
 
         clusterer.fit(dist_matrix)
         num_cluster = np.max(clusterer.labels_)
-        print(clusterer.labels_)
         for i in range(num_cluster + 1):
             index = np.where(clusterer.labels_ == i)[0][0]
             indexes.append(j * chunk_size + index)

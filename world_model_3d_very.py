@@ -334,15 +334,19 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            traj_to_observe = np.asarray(traj_to_observe)[:1000]
-            from copy import deepcopy
-            traj_to_cluster = deepcopy(traj_to_observe)
-            traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
-            traj_to_cluster[:, 1] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 130
-            traj_to_cluster[:, 2] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 40
-            indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
-            indexes = [ 7,  8,  9,  0,  3, 10, 13,  4,  2,  5, 15,  1,  6, 14, 11, 12, 16]
-            traj_to_observe = traj_to_observe[indexes]
+            traj_to_observe = np.asarray(traj_to_observe)[5000:]
+            # from copy import deepcopy
+            # traj_to_cluster = deepcopy(traj_to_observe)
+            # traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
+            # traj_to_cluster[:, 1] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 130
+            # traj_to_cluster[:, 2] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 40
+            # indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
+            # print(indexes)
+            # traj_to_observe = traj_to_observe[indexes]
+            # new_episode_to_observe = []
+            # for id in indexes:
+            #     new_episode_to_observe.append(episodes_to_observe[id])
+            # episodes_to_observe = new_episode_to_observe
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -417,8 +421,8 @@ if __name__ == '__main__':
             traj_to_observe = np.asarray(traj_to_observe)
 
             idxs_to_observe = moti_to_observe
-            print(moti_to_observe)
-            print(idxs_to_observe)
+            # print(moti_to_observe)
+            # print(idxs_to_observe)
 
             # Plot the trajectories
             plt.figure()
