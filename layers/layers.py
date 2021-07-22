@@ -147,6 +147,14 @@ def conv_layer_2d(input, filters, kernel_size, strides=(1, 1), padding="SAME", n
                                           activation=activation, use_bias=bias)
         return conv
 
+def conv_layer_3d(input, filters, kernel_size, strides=(1, 1, 1), padding="SAME", name='conv',
+                  activation=None, bias=True):
+
+    with tf.compat.v1.variable_scope(name):
+        conv = tf.compat.v1.layers.conv3d(input, filters, kernel_size, strides, padding=padding, name=name,
+                                          activation=activation, use_bias=bias)
+        return conv
+
 def embedding(input, indices, size, name='embs'):
     with tf.compat.v1.variable_scope(name):
         shape = (indices, size)

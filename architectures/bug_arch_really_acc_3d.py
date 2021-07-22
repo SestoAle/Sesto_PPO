@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 478
+    input_length = 1359
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -19,9 +19,9 @@ def network_spec(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, grid, vertical_grid, rotation, rays, \
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 225, 225, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -36,28 +36,21 @@ def network_spec(states):
 
     agent = embedding(agent, indices=280, size=32, name='agent_embs')
     agent = tf.reshape(agent, (-1, 3 * 32))
-    rotation = linear(rotation, 32, name='rotation_embs', activation=tf.nn.tanh)
-    agent = tf.concat([agent, is_grounded, can_double_jump, rotation], axis=1)
+    agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
     agent = linear(agent, 1024, name='global_embs', activation=tf.nn.tanh)
 
-    # points = tf.reshape(points, [-1, 1024])
-    grid = tf.cast(tf.reshape(grid, [-1, 15, 15]), tf.int32)
-    grid = embedding(grid, indices=7, size=32, name='global_embs')
-    grid = conv_layer_2d(grid, 32, [3, 3], strides=(2, 2), name='conv_01', activation=tf.nn.tanh)
-    grid = conv_layer_2d(grid, 64, [3, 3], strides=(2, 2), name='conv_02', activation=tf.nn.tanh)
-    grid = tf.reshape(grid, [-1, 4 * 4 * 64])
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
+    threedgrid = embedding(threedgrid, indices=7, size=8, name='global_embs')
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.tanh)
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.tanh)
+    threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
 
-    vertical_grid = tf.cast(tf.reshape(vertical_grid, [-1, 15, 15]), tf.int32)
-    vertical_grid = embedding(vertical_grid, indices=7, size=32, name='vertical_embs')
-    vertical_grid = conv_layer_2d(vertical_grid, 32, [3, 3], strides=(2, 2), name='vertical_conv_01', activation=tf.nn.tanh)
-    vertical_grid = conv_layer_2d(vertical_grid, 64, [3, 3], strides=(2, 2), name='vertical_conv_02', activation=tf.nn.tanh)
-    vertical_grid = tf.reshape(vertical_grid, [-1, 4 * 4 * 64])
 
     # target_distances = linear(target_distances, 1024, name='target_distances_emb', activation=tf.nn.tanh)
 
     # inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
 
-    global_state = tf.concat([agent, grid, vertical_grid], axis=1)
+    global_state = tf.concat([agent, threedgrid], axis=1)
 
     global_state = linear(global_state, 1024, name='embs', activation=tf.nn.tanh)
 
@@ -68,15 +61,16 @@ def obs_to_state_rnd(obs):
     return [global_batch]
 
 def network_spec_rnd(states):
-    input_length = 73
+    input_length = 1359
     with_circular = False
 
     global_state = states[0]
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, vertical_grid, rotation, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 5, 225, 225, 4, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
+    inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -115,7 +109,7 @@ def network_spec_rnd(states):
 
 
 def input_spec_irl():
-    input_length = 478
+    input_length = 1359
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -135,8 +129,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     action_state = tf.cast(act, tf.int32)
 
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, vertical_grid, rotation, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 5, 225, 225, 4, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
+    inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)

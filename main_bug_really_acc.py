@@ -12,11 +12,12 @@ import math
 import gym
 # Load UnityEnvironment and my wrapper
 from mlagents.envs import UnityEnvironment
+import matplotlib.pyplot as plt
 import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -29,7 +30,7 @@ parser.add_argument('-gn', '--game-name', help="The name of the game", default=N
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=120)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=220)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -38,8 +39,8 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='really_big_48000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump.pkl')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='really_big_51000')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
@@ -108,8 +109,18 @@ class BugEnvironment:
         # reward = 0
 
         # print(state['global_in'][:2])
-        # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+49], [7, 7])), 0))
-        # print(np.flip(np.transpose(np.reshape(state['global_in'][59:59 + 81], [9, 9])), 0))
+        # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
+        # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
+        # Visualize 3D boxcast
+        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+1331], [11, 11, 11]), 1, (1,2))
+        # fig = plt.figure()
+        # ax = fig.gca(projection='3d')
+        # filled = (1 - (threedgrid == 5))
+        # cmap = plt.get_cmap("viridis")
+        # norm = plt.Normalize(threedgrid.min(), threedgrid.max())
+        # ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")
+        # plt.show()
+
         # print(state['global_in'][-2:])
         # print(state['global_in'][7:7+12])
         # print(reward)
@@ -321,7 +332,7 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=.5,
+                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
                     v_num_itr=1, memory=memory, c2=0.5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)

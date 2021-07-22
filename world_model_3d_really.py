@@ -12,16 +12,16 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 #from clustering.clustering import cluster_trajectories
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'really_big_drop'
+model_name = 'really_big'
 
-reward_model_name = "really_big_3000_asdas"
+reward_model_name = "really_big_im_3000"
 
 def plot_map(map):
     """
@@ -233,7 +233,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap))
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -403,13 +403,13 @@ if __name__ == '__main__':
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews < np.asarray(40))
+            il_to_observe = np.where(sum_il_rews < np.asarray(50))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = moti_to_observe
+            # idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
@@ -473,11 +473,11 @@ if __name__ == '__main__':
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
-                # irl_rew = savitzky_golay(irl_rew, 51, 3)
-                # im_rew = savitzky_golay(im_rew, 51, 3)
+                irl_rew = savitzky_golay(irl_rew, 51, 3)
+                im_rew = savitzky_golay(im_rew, 51, 3)
 
-                # irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
-                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
+                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
