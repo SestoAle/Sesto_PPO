@@ -10,7 +10,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-#from clustering.clustering import cluster_trajectories
+from clustering.clustering import cluster_trajectories
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -19,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'really_big_im'
+model_name = 'really_big_3d'
 
-reward_model_name = "really_big_im_24000"
+reward_model_name = "really_big_im_60000"
 
 def plot_map(map):
     """
@@ -219,8 +219,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((320, 380))
-    covmap = np.zeros((320, 380))
+    heatmap = np.zeros((320, 480))
+    covmap = np.zeros((320, 480))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -293,9 +293,9 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 100
             desired_point_z = 2
-            desired_point_y = 27
+            desired_point_y = 1
 
-            threshold = 5
+            threshold = 2
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
@@ -326,16 +326,26 @@ if __name__ == '__main__':
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold:
-                                # and np.abs(de_point[2] - desired_point_y) < threshold:
+                                np.abs(de_point[1] - desired_point_z) < threshold \
+                                and np.abs(de_point[2] - desired_point_y) < threshold:
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            # traj_to_observe = np.asarray(traj_to_observe)[:1500]
-            # indexes = np.asarray(cluster_trajectories(traj_to_observe), np.int)
+            # traj_to_observe = np.asarray(traj_to_observe)
+            # from copy import deepcopy
+            # traj_to_cluster = deepcopy(traj_to_observe)
+            # traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
+            # traj_to_cluster[:, 1] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 130
+            # traj_to_cluster[:, 2] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 40
+            # indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
+            # print(indexes)
             # traj_to_observe = traj_to_observe[indexes]
+            # new_episode_to_observe = []
+            # for id in indexes:
+            #     new_episode_to_observe.append(episodes_to_observe[id])
+            # episodes_to_observe = new_episode_to_observe
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -399,17 +409,17 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews < np.asarray(1))
+            il_to_observe = np.where(sum_il_rews < np.asarray(1.5))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            # idxs_to_observe = moti_to_observe
+            #idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
