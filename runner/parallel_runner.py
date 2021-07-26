@@ -565,9 +565,9 @@ class Runner:
 
                     if self.alternate_frequency > 0:
                         if self.alternate_turn == 1:
-                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                            self.agent.buffer['rewards'] = list(intrinsic_rews)
                     else:
-                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                        self.agent.buffer['rewards'] = list(intrinsic_rews)
 
                 self.agent.train()
                 # For alternating between motivation and imitation learning

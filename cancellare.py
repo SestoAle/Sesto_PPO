@@ -53,18 +53,18 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
 
 if __name__ == '__main__':
 
-    model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
-
-    expert_traj = load_demonstrations('dem_acc_impossibru.pkl')
-    second_expert_traj = load_demonstrations('dem_acc_impossibru_to_add.pkl')
-
-    expert_traj['obs'].extend(second_expert_traj['obs'])
-    expert_traj['obs_n'].extend(second_expert_traj['obs_n'])
-    expert_traj['acts'].extend(second_expert_traj['acts'])
-
-    save_demonstrations(expert_traj, name='dem_acc_impossibru_both.pkl')
-
-    input('...')
+    # model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
+    #
+    # expert_traj = load_demonstrations('dem_acc_impossibru.pkl')
+    # second_expert_traj = load_demonstrations('dem_acc_impossibru_to_add.pkl')
+    #
+    # expert_traj['obs'].extend(second_expert_traj['obs'])
+    # expert_traj['obs_n'].extend(second_expert_traj['obs_n'])
+    # expert_traj['acts'].extend(second_expert_traj['acts'])
+    #
+    # save_demonstrations(expert_traj, name='dem_acc_impossibru_both.pkl')
+    #
+    # input('...')
 
     # with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
     #     saved_trajectories = json.load(f)

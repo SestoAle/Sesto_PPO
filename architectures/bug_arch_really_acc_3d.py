@@ -164,19 +164,19 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
 
-    # global_state_n = embedding(global_state_n, indices=41, size=32, name='embs_n')
-    # global_state_n = tf.reshape(global_state_n, (-1, 2 * 32))
-    # global_state_n = linear(global_state_n, 64, name='latent_1_n', activation=tf.nn.relu,
-    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-    #                                                                       dtype=tf.dtypes.float32)
-    #                      )
-
-    action_state = embedding(action_state, indices=10, size=32, name='action_embs')
-    action_state = tf.reshape(action_state, [-1, 32])
-    action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
+    global_state_n = embedding(global_state_n, indices=280, size=32, name='embs')
+    global_state_n = tf.reshape(global_state_n, (-1, 2 * 32))
+    global_state_n = linear(global_state_n, 64, name='latent_1_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
+
+    # action_state = embedding(action_state, indices=10, size=32, name='action_embs')
+    # action_state = tf.reshape(action_state, [-1, 32])
+    # action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
+    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+    #                                                                       dtype=tf.dtypes.float32)
+    #                      )
     # action_state = tf.compat.v1.layers.dropout(action_state, rate=0.2)
 
     # inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
@@ -185,7 +185,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([global_state, action_state], axis=1)
+    encoded = tf.concat([global_state, global_state_n], axis=1)
 
     global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
