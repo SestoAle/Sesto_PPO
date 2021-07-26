@@ -146,7 +146,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     global_state = agent
 
     agent_n_plane_x, agent_n_plane_z, agent_n_jump, _, _, _, _, _, _, _, _ = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
+        tf.split(global_state_n, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
 
     agent_n_plane_x = ((agent_n_plane_x + 1) / 2) * 220
     agent_n_plane_x = tf.cast(agent_n_plane_x, tf.int32)
