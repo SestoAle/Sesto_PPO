@@ -174,7 +174,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
 
     global_state_n = embedding(global_state_n, indices=280, size=32, name='embs')
-    global_state_n = tf.reshape(global_state_n, (-1, 2 * 32))
+    global_state_n = tf.reshape(global_state_n, (-1, 3 * 32))
     global_state_n = linear(global_state_n, 64, name='latent_1_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
