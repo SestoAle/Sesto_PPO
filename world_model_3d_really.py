@@ -21,7 +21,7 @@ name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_repl
 
 model_name = 'really_big_3d'
 
-reward_model_name = "really_big_im_60000"
+reward_model_name = "really_big_3d_54000"
 
 def plot_map(map):
     """
@@ -419,7 +419,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            #idxs_to_observe = moti_to_observe
+            idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
