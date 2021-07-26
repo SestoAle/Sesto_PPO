@@ -157,11 +157,11 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
-    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
-    threedgrid = embedding(threedgrid, indices=7, size=8, name='global_embs')
-    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.tanh)
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.tanh)
-    threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
+    # threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
+    # threedgrid = embedding(threedgrid, indices=7, size=8, name='global_embs')
+    # threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.tanh)
+    # threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.tanh)
+    # threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
 
     # global_state_n = embedding(global_state_n, indices=41, size=32, name='embs_n')
@@ -185,7 +185,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([global_state, action_state, threedgrid], axis=1)
+    encoded = tf.concat([global_state, action_state], axis=1)
 
     global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,

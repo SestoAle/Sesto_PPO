@@ -21,7 +21,7 @@ name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_repl
 
 model_name = 'really_big_3d'
 
-reward_model_name = "really_big_3d_54000"
+reward_model_name = "really_big_3d_540asdsa00"
 
 def plot_map(map):
     """
@@ -295,7 +295,7 @@ if __name__ == '__main__':
             desired_point_z = 2
             desired_point_y = 1
 
-            threshold = 2
+            threshold = 5
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
