@@ -347,7 +347,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd, num_itr=15)
+                             obs_to_state=obs_to_state_rnd, num_itr=15, motivation_weight=1)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 
@@ -359,7 +359,7 @@ if __name__ == "__main__":
             reward_sess = tf.compat.v1.Session(graph=graph)
             reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
                                 obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
-                                name=model_name, fixed_reward_model=False, with_action=True)
+                                name=model_name, fixed_reward_model=False, with_action=True, reward_model_weight=2)
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)
             # If we want, we can use an already trained reward model
