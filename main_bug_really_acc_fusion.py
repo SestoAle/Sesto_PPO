@@ -1,7 +1,7 @@
 from agents.PPO import PPO
 from architectures.bug_arch_really_acc_3d import *
 from runner.runner import Runner
-from runner.parallel_runner import Runner as ParallelRunner
+from runner.parallel_runner_fusion import Runner as ParallelRunner
 from motivation.random_network_distillation import RND
 import os
 import tensorflow as tf
@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big_3d_irl')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -40,7 +40,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
 parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='really_big_51000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d_v2.pkl')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
@@ -112,7 +112,7 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+2197], [13, 13, 13]), 1, (1,2))
+        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+1331], [11, 11, 11]), 1, (1,2))
         # fig = plt.figure()
         # ax = fig.gca(projection='3d')
         # filled = (1 - (threedgrid == 5))
@@ -244,7 +244,7 @@ class BugEnvironment:
     def compute_intrinsic_reward(self, counter):
         return self.r_max * (1 - (counter / self.max_counter))
 
-def callback(agent, env, runner):
+def callback(env, runner):
     global save_frequency
 
     if runner.ep % save_frequency == 0:
@@ -326,13 +326,27 @@ if __name__ == "__main__":
     # Memory of the agent (in episode)
     memory = 5
 
-    # Create agent
+    # Create agent FOR GAIL
     graph = tf.compat.v1.Graph()
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
+        agent_gail = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
+                    action_type='discrete', action_size=10, model_name=model_name + '_gail', p_lr=7e-5, v_batch_fraction=1.,
+                    v_num_itr=1, memory=memory, c2=0.5,
+                    v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
+                    p_num_itr=10, with_circular=True)
+        # Initialize variables of models
+        init = tf.compat.v1.global_variables_initializer()
+        sess.run(init)
+
+    # Create agent FOR RND
+    graph = tf.compat.v1.Graph()
+    with graph.as_default():
+        tf.compat.v1.disable_eager_execution()
+        sess = tf.compat.v1.Session(graph=graph)
+        agent_rnd = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
+                    action_type='discrete', action_size=10, model_name=model_name + '_rnd', p_lr=7e-5, v_batch_fraction=1.,
                     v_num_itr=1, memory=memory, c2=0.5,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
@@ -347,7 +361,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd, num_itr=15, motivation_weight=1)
+                             obs_to_state=obs_to_state_rnd, num_itr=15)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 
@@ -358,8 +372,8 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             reward_sess = tf.compat.v1.Session(graph=graph)
             reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent, sess=reward_sess, lr=7e-5,
-                                name=model_name, fixed_reward_model=False, with_action=True, reward_model_weight=2)
+                                obs_to_state=obs_to_state_irl, actions_size=9, policy=agent_gail, sess=reward_sess, lr=7e-5,
+                                name=model_name, fixed_reward_model=False, with_action=True)
             init = tf.compat.v1.global_variables_initializer()
             reward_sess.run(init)
             # If we want, we can use an already trained reward model
@@ -388,7 +402,7 @@ if __name__ == "__main__":
                         reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
                         fixed_reward_model=fixed_reward_model, motivation=motivation, evaluation=evaluation)
     else:
-        runner = ParallelRunner(agent=agent, frequency=frequency, envs=envs, save_frequency=save_frequency,
+        runner = ParallelRunner(agent_il=agent_gail, agent_im=agent_rnd, frequency=frequency, envs=envs, save_frequency=save_frequency,
                                 logging=logging, total_episode=total_episode, curriculum=curriculum,
                                 frequency_mode=frequency_mode, curriculum_mode='episodes', callback_function=callback,
                                 reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,

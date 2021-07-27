@@ -19,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'really_big_3d'
+model_name = 'really_big_3d_irl'
 
-reward_model_name = "really_big_3d_540asdsa00"
+reward_model_name = "really_big_3d_irl_3000"
 
 def plot_map(map):
     """
@@ -291,11 +291,11 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 100
-            desired_point_z = 2
+            desired_point_x = 98
+            desired_point_z = 5
             desired_point_y = 1
 
-            threshold = 5
+            threshold = 1
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
@@ -362,19 +362,26 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
-                    de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
+                    # de_point = np.zeros(2)
+                    # de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
+                    # de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
                     # if np.abs(de_point[0] - desired_point_x) < threshold and \
                     #         np.abs(de_point[1] - desired_point_z) < threshold:
                     #     break
 
-                il_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                # The actions is one less than the states, so add the last state
+                state = traj[-1]
+                state = np.concatenate([state, filler])
+                state[-2:] = state[3:5]
+                state = dict(global_in=state)
+                states_batch.append(state)
+
+
+                il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
                 step_il_rews.extend(il_rew)
 
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
-
                 moti_rew = motivation.eval(states_batch)
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
@@ -413,7 +420,7 @@ if __name__ == '__main__':
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews < np.asarray(1.5))
+            il_to_observe = np.where(sum_il_rews > np.asarray(3.))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
