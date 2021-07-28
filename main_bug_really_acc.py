@@ -48,7 +48,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
+parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
@@ -249,12 +249,16 @@ def callback(agent, env, runner):
 
     if runner.ep % save_frequency == 0:
         if isinstance(env, list):
-            global trajectories_for_episode
-            global actions_for_episode
+
+            with open("arrays/{}_trajectories.json".format(model_name)) as f:
+                trajectories_for_episode = json.load(f)
+            with open("arrays/{}_trajectories.json".format(model_name)) as f:
+                actions_for_episode = json.load(f)
+
             if len(trajectories_for_episode.keys()) == 0:
                 last_key = 0
             else:
-                last_key = list(trajectories_for_episode.keys())[-1] + 1
+                last_key = int(list(trajectories_for_episode.keys())[-1]) + 1
 
             for e in env:
                 for traj, acts in zip(e.trajectories_for_episode.values(), e.actions_for_episode.values()):
@@ -281,6 +285,7 @@ def callback(agent, env, runner):
         f = open("arrays/{}_actions.json".format(model_name), "w")
         f.write(json_str)
         f.close()
+        input('...')
 
 
 if __name__ == "__main__":
@@ -306,6 +311,18 @@ if __name__ == "__main__":
     if parallel:
         trajectories_for_episode = dict()
         actions_for_episode = dict()
+        # Save the trajectories
+        json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
+        f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        f.write(json_str)
+        f.close()
+
+        # Save the actions
+        json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
+        f = open("arrays/{}_actions.json".format(model_name), "w")
+        f.write(json_str)
+        f.close()
+
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {

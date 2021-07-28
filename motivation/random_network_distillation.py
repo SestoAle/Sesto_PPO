@@ -16,7 +16,7 @@ class RND:
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
-        self.obs_norm = RunningStat(shape=(2225))
+        #self.obs_norm = RunningStat(shape=(1359))
 
         # The tensorflow session
         self.sess = sess
@@ -150,7 +150,7 @@ class RND:
             else:
                 del self.buffer[0]
 
-        self.obs_norm.push(obs['global_in'])
+        #self.obs_norm.push(obs['global_in'])
 
         self.buffer.append(obs)
 

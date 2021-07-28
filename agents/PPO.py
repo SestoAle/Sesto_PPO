@@ -498,6 +498,7 @@ class PPO:
         feed_dict[self.sequence_lengths] = [1]
         action, logprob, probs, internal = self.sess.run([self.action, self.log_prob, self.probs, self.rnn_state],
                                                          feed_dict=feed_dict)
+
         if self.recurrent_baseline:
             feed_dict[self.v_state_in] = v_internal
             v_internal = self.sess.run([self.v_state_in], feed_dict=feed_dict)

@@ -97,11 +97,10 @@ class EpisodeThreaded(Thread):
     # Entropy-weighted mixture policy for policy fusion
     def entropy_weighted_fusion(self, main_probs, sub_probs):
         # Entropy of the main policy
-        sub_entr = self.entropy(sub_probs)
+        sub_entr = self.entropy(sub_probs[0])
         total_probs = (sub_entr) * main_probs + (1 - sub_entr) * sub_probs
         total_probs = self.boltzmann(total_probs[0])
         actions = np.argmax(np.random.multinomial(1, total_probs))
-        print("oh")
         return actions
 
     def boltzmann(self, probs, temperature=1.):
@@ -116,6 +115,7 @@ class EpisodeThreaded(Thread):
         entr = 0
         for p in probs:
             entr += p * np.log(p)
+        entr /= np.log(self.agent_motivation.action_size)
         return np.clip(-entr, 0, 1)
 
     def run(self) -> None:
@@ -143,21 +143,23 @@ class EpisodeThreaded(Thread):
             while not done:
                 # Evaluation - Execute step
                 if not self.recurrent:
-                    actions_imitation, logprobs, probs_imitation = self.agent_imitation.eval([state])
-                    actions_motivation, logprobs, probs_motivation = self.agent_motivation.eval([state])
+                    actions_imitation, logprobs_imitation, probs_imitation = self.agent_imitation.eval([state])
+                    actions_motivation, logprobs_motivation, probs_motivation = self.agent_motivation.eval([state])
                 else:
-                    actions_imitation, logprobs, probs_imitation, internal_n_imitation, v_internal_n_imitation = \
+                    actions_imitation, logprobs_imitation, probs_imitation, internal_n_imitation, v_internal_n_imitation = \
                         self.agent_imitation.eval_recurrent([state], internal_imitation, v_internal_imitation)
-                    internal_n_motivation = internal_n_imitation
-                    v_internal_n_motivation = v_internal_n_imitation
-                    #actions_motivation, logprobs, probs_motivation, internal_n_motivation, v_internal_n_motivation \
-                    #    = self.agent_motivation.eval_recurrent([state], internal_motivation, v_internal_motivation)
+
+                    actions_motivation, logprobs_motivation, probs_motivation, internal_n_motivation, v_internal_n_motivation \
+                       = self.agent_motivation.eval_recurrent([state], internal_motivation, v_internal_motivation)
 
                 if self.phase == 'imitation':
                     actions = actions_imitation[0]
                 else:
                     #actions = actions_motivation[0]
-                    actions = self.entropy_weighted_fusion(probs_imitation, probs_motivation)
+                    actions = self.entropy_weighted_fusion(probs_motivation, probs_imitation)
+
+                logprobs_imitation = np.log(probs_imitation[0][actions])
+                logprobs_motivation = np.log(probs_motivation[0][actions])
 
                 probs = probs_imitation
                 state_n, done, reward = self.env.execute(actions)
@@ -174,8 +176,11 @@ class EpisodeThreaded(Thread):
                 self.parallel_buffer['states_n'][self.index].append(state_n)
                 self.parallel_buffer['done'][self.index].append(done)
                 self.parallel_buffer['reward'][self.index].append(reward)
-                self.parallel_buffer['action'][self.index].append(actions)
-                self.parallel_buffer['logprob'][self.index].append(logprobs)
+
+                self.parallel_buffer['action_imitation'][self.index].append(actions_imitation[0])
+                self.parallel_buffer['logprob_imitation'][self.index].append(logprobs_imitation)
+                self.parallel_buffer['action_motivation'][self.index].append(actions_motivation[0])
+                self.parallel_buffer['logprob_motivation'][self.index].append(logprobs_motivation)
 
                 if self.recurrent:
                     self.parallel_buffer['internal_imitation'][self.index].append(internal_imitation)
@@ -375,8 +380,10 @@ class Runner:
             'states_n': [],
             'done': [],
             'reward': [],
-            'action': [],
-            'logprob': [],
+            'action_imitation': [],
+            'logprob_imitation': [],
+            'action_motivation': [],
+            'logprob_motivation': [],
             'internal_imitation': [],
             'v_internal_imitation': [],
             'internal_motivation': [],
@@ -397,8 +404,10 @@ class Runner:
             parallel_buffer['states_n'].append([])
             parallel_buffer['done'].append([])
             parallel_buffer['reward'].append([])
-            parallel_buffer['action'].append([])
-            parallel_buffer['logprob'].append([])
+            parallel_buffer['action_imitation'].append([])
+            parallel_buffer['logprob_imitation'].append([])
+            parallel_buffer['action_motivation'].append([])
+            parallel_buffer['logprob_motivation'].append([])
             parallel_buffer['internal_imitation'].append([])
             parallel_buffer['v_internal_imitation'].append([])
             parallel_buffer['internal_motivation'].append([])
@@ -502,25 +511,29 @@ class Runner:
 
                 if not self.recurrent:
                     # Add to the agent experience in order of execution
-                    for state, state_n, action, reward, logprob, done in zip(
+                    for state, state_n, action_imitation, action_motivation, reward, logprob_imitation, logprob_motivation, done in zip(
                             self.parallel_buffer['states'][i],
                             self.parallel_buffer['states_n'][i],
-                            self.parallel_buffer['action'][i],
+                            self.parallel_buffer['action_imitation'][i],
+                            self.parallel_buffer['action_motivation'][i],
                             self.parallel_buffer['reward'][i],
-                            self.parallel_buffer['logprob'][i],
+                            self.parallel_buffer['logprob_imitation'][i],
+                            self.parallel_buffer['logprob_motivation'][i],
                             self.parallel_buffer['done'][i]
                     ):
-                        self.agent_imitation.add_to_buffer(state, state_n, action, reward, logprob, done)
-                        self.agent_motivation.add_to_buffer(state, state_n, action, reward, logprob, done)
+                        self.agent_imitation.add_to_buffer(state, state_n, action_imitation, reward, logprob_imitation, done)
+                        self.agent_motivation.add_to_buffer(state, state_n, action_motivation, reward, logprob_motivation, done)
                 else:
                     # Add to the agent experience in order of execution
-                    for state, state_n, action, reward, logprob, done, internal_imitation, v_internal_imitation,\
+                    for state, state_n, action_imitation, action_motivation, reward, logprob_imitation, logprob_motivation, done, internal_imitation, v_internal_imitation,\
                             internal_motivation, v_internal_motivation in zip(
                             self.parallel_buffer['states'][i],
                             self.parallel_buffer['states_n'][i],
-                            self.parallel_buffer['action'][i],
+                            self.parallel_buffer['action_imitation'][i],
+                            self.parallel_buffer['action_motivation'][i],
                             self.parallel_buffer['reward'][i],
-                            self.parallel_buffer['logprob'][i],
+                            self.parallel_buffer['logprob_imitation'][i],
+                            self.parallel_buffer['logprob_motivation'][i],
                             self.parallel_buffer['done'][i],
                             self.parallel_buffer['internal_imitation'][i],
                             self.parallel_buffer['v_internal_imitation'][i],
@@ -528,15 +541,15 @@ class Runner:
                             self.parallel_buffer['v_internal_motivation'][i],
                     ):
                         try:
-                            self.agent_imitation.add_to_buffer(state, state_n, action, reward, logprob, done,
+                            self.agent_imitation.add_to_buffer(state, state_n, action_imitation, reward, logprob_imitation, done,
                                                      internal_imitation.c[0], internal_imitation.h[0], v_internal_imitation.c[0], v_internal_imitation.h[0])
-                            self.agent_motivation.add_to_buffer(state, state_n, action, reward, logprob, done,
+                            self.agent_motivation.add_to_buffer(state, state_n, action_motivation, reward, logprob_motivation, done,
                                                      internal_motivation.c[0], internal_motivation.h[0], v_internal_motivation.c[0], v_internal_motivation.h[0])
                         except Exception as e:
                             zero_state = np.reshape(internal_imitation[0], [-1, ])
-                            self.agent_imitation.add_to_buffer(state, state_n, action, reward, logprob, done,
+                            self.agent_imitation.add_to_buffer(state, state_n, action_imitation, reward, logprob_imitation, done,
                                                      zero_state, zero_state, zero_state, zero_state)
-                            self.agent_motivation.add_to_buffer(state, state_n, action, reward, logprob, done,
+                            self.agent_motivation.add_to_buffer(state, state_n, action_motivation, reward, logprob_motivation, done,
                                                      zero_state, zero_state, zero_state, zero_state)
 
                 # For motivation, add the agents experience to the motivation buffer
