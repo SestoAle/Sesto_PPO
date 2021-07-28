@@ -285,7 +285,6 @@ def callback(agent, env, runner):
         f = open("arrays/{}_actions.json".format(model_name), "w")
         f.write(json_str)
         f.close()
-        input('...')
 
 
 if __name__ == "__main__":
