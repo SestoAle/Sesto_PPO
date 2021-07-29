@@ -175,7 +175,10 @@ class Runner:
                     action = [np.random.randint(self.agent.action_size)]
 
                 action = action[0]
-                # action = int(input('action: '))
+                # Manual input
+                # action = 99
+                # while (action == 99):
+                #     action = self.env.command_to_action(input(': '))
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
@@ -196,9 +199,9 @@ class Runner:
                 # - The intrinsic reward will be added later -
                 if self.reward_model is not None:
 
-                    # irl_reward = self.reward_model.eval([state], [state_n],
-                    #                                         [action])
-                    # print(irl_reward)
+                    irl_reward = self.reward_model.eval([state], [state_n],
+                                                            [action])
+                    print(irl_reward)
                     self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 # If step is equal than max timesteps, terminate the episode

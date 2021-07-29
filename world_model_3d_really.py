@@ -19,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'really_big_3d_irl_v2'
+model_name = 'really_big_3d_irl_v2_hc'
 
-reward_model_name = "really_big_3d_irl_v2_3000"
+reward_model_name = "really_big_3d_irl_v2_rf_24000"
 
 def plot_map(map):
     """
@@ -209,7 +209,6 @@ if __name__ == '__main__':
     try:
         with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
             actions = json.load(f)
-
     except Exception as e:
         print("act problem")
         print(e)
@@ -333,7 +332,7 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            # traj_to_observe = np.asarray(traj_to_observe)
+
             # from copy import deepcopy
             # traj_to_cluster = deepcopy(traj_to_observe)
             # traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
@@ -416,11 +415,11 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews > np.asarray(3.))
+            il_to_observe = np.where(sum_il_rews < np.asarray(il_mean))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]

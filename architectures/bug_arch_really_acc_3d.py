@@ -40,10 +40,13 @@ def network_spec(states):
     agent = linear(agent, 1024, name='global_embs', activation=tf.nn.tanh)
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
-    threedgrid = embedding(threedgrid, indices=7, size=8, name='global_embs')
-    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.tanh)
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.tanh)
-    threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
+    threedgrid = embedding(threedgrid, indices=7, size=32, name='global_embs')
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(1, 1, 1), name='conv_01', activation=tf.nn.tanh)
+    threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(1, 1, 1), name='conv_02', activation=tf.nn.tanh)
+    threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
+    # threedgrid = linear(threedgrid, 1024, name='three_embs', activation=tf.nn.tanh)
 
 
     # target_distances = linear(target_distances, 1024, name='target_distances_emb', activation=tf.nn.tanh)
@@ -160,6 +163,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_n = tf.concat([agent_n_plane_x, agent_n_plane_z, agent_n_jump], axis=1)
     global_state_n = agent_n
 
+    # global_state = tf.compat.v1.Print(global_state, [global_state], 'Global state: ', summarize=1e5)
     global_state = embedding(global_state, indices=280, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3*32))
     global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
@@ -180,12 +184,15 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                      )
 
+    # action_state = tf.compat.v1.Print(action_state, [action_state], 'Action state: ', summarize=1e5)
     action_state = embedding(action_state, indices=10, size=32, name='action_embs')
     action_state = tf.reshape(action_state, [-1, 32])
     action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
+
+
     # action_state = tf.compat.v1.layers.dropout(action_state, rate=0.2)
 
     # inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)

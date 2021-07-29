@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big_3d_irl')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big_3d_irl_v2_rf')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -39,7 +39,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='really_big_51000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='really_big_3d_irl_v2_rf_33000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d_v2.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -48,7 +48,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
+parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
@@ -112,7 +112,7 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+2197], [13, 13, 13]), 1, (1,2))
+        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+1331], [11, 11, 11]), 1, (1,2))
         # fig = plt.figure()
         # ax = fig.gca(projection='3d')
         # filled = (1 - (threedgrid == 5))
@@ -252,7 +252,7 @@ def callback(agent, env, runner):
 
             with open("arrays/{}_trajectories.json".format(model_name)) as f:
                 trajectories_for_episode = json.load(f)
-            with open("arrays/{}_trajectories.json".format(model_name)) as f:
+            with open("arrays/{}_actions.json".format(model_name)) as f:
                 actions_for_episode = json.load(f)
 
             if len(trajectories_for_episode.keys()) == 0:
@@ -285,6 +285,9 @@ def callback(agent, env, runner):
         f = open("arrays/{}_actions.json".format(model_name), "w")
         f.write(json_str)
         f.close()
+
+        del trajectories_for_episode
+        del actions_for_episode
 
 
 if __name__ == "__main__":
@@ -349,7 +352,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
                     action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
-                    v_num_itr=1, memory=memory, c2=0.5,
+                    v_num_itr=1, memory=memory, c2=0.01,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models
