@@ -2,6 +2,7 @@ import pickle
 import json
 import numpy as np
 from utils import NumpyEncoder
+from clustering.clustering_ae import cluster
 
 def load_demonstrations(dems_name):
     with open('reward_model/dems/' + dems_name, 'rb') as f:
@@ -52,7 +53,8 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
     return demonstrations
 
 if __name__ == '__main__':
-
+    trajectories = np.load('traj_to_observe.npy')
+    cluster(trajectories, 'clustering/autoencoders/labyrinth')
     # model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
     #
     # expert_traj = load_demonstrations('dem_acc_impossibru.pkl')

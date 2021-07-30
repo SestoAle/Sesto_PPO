@@ -11,7 +11,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from clustering.clustering import cluster_trajectories
+from clustering.clustering_ae import cluster
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -349,10 +349,12 @@ if __name__ == '__main__':
             # for id in indexes:
             #     new_episode_to_observe.append(episodes_to_observe[id])
             # episodes_to_observe = new_episode_to_observe
-            print(np.shape(traj_to_observe))
-            with open('traj_to_observe.npy', 'wb') as f:
-                np.save(f, traj_to_observe)
-            input('...')
+            cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/labyrinth')
+            traj_to_observe = traj_to_observe[cluster_indices]
+            new_episode_to_observe = []
+            for id in cluster_indices:
+                new_episode_to_observe.append(episodes_to_observe[id])
+            episodes_to_observe = new_episode_to_observe
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -416,7 +418,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
@@ -510,11 +512,11 @@ if __name__ == '__main__':
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
-                # irl_rew = savitzky_golay(irl_rew, 51, 3)
-                # im_rew = savitzky_golay(im_rew, 51, 3)
+                irl_rew = savitzky_golay(irl_rew, 51, 3)
+                im_rew = savitzky_golay(im_rew, 51, 3)
 
-                # irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
-                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
+                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
                 # diff = np.asarray(im_rew) - np.asarray(irl_rew)
 

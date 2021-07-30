@@ -167,13 +167,13 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                                                                           dtype=tf.dtypes.float32)
                          )
 
-    # inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
-    # inventory = linear(inventory, 64, name='latent_inventory_n', activation=tf.nn.relu,
-    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-    #                                                                       dtype=tf.dtypes.float32)
-    #                       )
+    inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
+    inventory = linear(inventory, 64, name='latent_inventory_n', activation=tf.nn.relu,
+                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+                                                                          dtype=tf.dtypes.float32)
+                          )
 
-    encoded = tf.concat([global_state, action_state], axis=1)
+    encoded = tf.concat([global_state, action_state, inventory], axis=1)
 
     global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
