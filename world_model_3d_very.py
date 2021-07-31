@@ -20,9 +20,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'double_jump_labyrinth'
+model_name = 'double_jump_climb'
 
-reward_model_name = "double_jump_labyrinth_3000"
+reward_model_name = "double_jump_climb_3000"
 
 def plot_map(map):
     """
@@ -292,8 +292,8 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 10
-            desired_point_z = 115
+            desired_point_x = 95
+            desired_point_z = 5
             desired_point_y = 27
 
             threshold = 2
@@ -349,7 +349,7 @@ if __name__ == '__main__':
             # for id in indexes:
             #     new_episode_to_observe.append(episodes_to_observe[id])
             # episodes_to_observe = new_episode_to_observe
-            cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/labyrinth')
+            cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/climb')
             traj_to_observe = traj_to_observe[cluster_indices]
             new_episode_to_observe = []
             for id in cluster_indices:

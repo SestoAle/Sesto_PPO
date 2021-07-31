@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big_3d_irl_v2_rf')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='really_big_3d_irl')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -351,9 +351,9 @@ if __name__ == "__main__":
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=1.,
-                    v_num_itr=1, memory=memory, c2=0.01,
-                    v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
+                    action_type='discrete', action_size=10, model_name=model_name, p_lr=3e-4, v_batch_fraction=0.33,
+                    v_num_itr=10, memory=memory, c2=0.01,
+                    v_lr=3e-4, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
