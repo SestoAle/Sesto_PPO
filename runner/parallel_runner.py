@@ -276,12 +276,6 @@ class Runner:
                 self.ep = len(self.history['episode_timesteps'])
                 self.total_step = np.sum(self.history['episode_timesteps'])
 
-        # Decaying weight of the motivation/inverse reinforcement learning model
-        self.last_episode_for_decaying = 0
-        # if self.motivation is not None:
-        #     self.motivation.motivation_weight = 0.8
-        #     self.min_motivation_weight = 0.2
-
     # Return a list of thread, that will save the experience in the shared buffer
     # The thread will run for 1 episode
     def create_episode_threads(self, parallel_buffer, agent, config):
@@ -538,11 +532,8 @@ class Runner:
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
-                    if self.alternate_frequency > 0:
-                        if self.alternate_turn == 0:
-                            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
-                    else:
-                        self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+                    self.agent.buffer['rewards'] = list(intrinsic_rews)
 
                 if self.reward_model is not None:
 
@@ -557,23 +548,11 @@ class Runner:
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
-                    if self.last_episode_for_decaying > 0:
-                        intrinsic_rews *= (1 - self.motivation.motivation_weight)
-                    else:
-                        intrinsic_rews *= self.reward_model.reward_model_weight
 
-                    if self.alternate_frequency > 0:
-                        if self.alternate_turn == 1:
-                            self.agent.buffer['rewards'] = list(intrinsic_rews)
-                    else:
-                        self.agent.buffer['rewards'] = list(intrinsic_rews)
+
+                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 self.agent.train()
-                # For alternating between motivation and imitation learning
-                if self.alternate_frequency > 0:
-                    self.alternate_count += 1
-                    if self.alternate_count % self.alternate_frequency == 0:
-                        self.alternate_turn = (self.alternate_turn + 1) % 2
 
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
