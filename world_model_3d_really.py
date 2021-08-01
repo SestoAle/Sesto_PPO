@@ -21,7 +21,7 @@ name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_repl
 
 model_name = 'really_big_3d_irl_v2'
 
-reward_model_name = "really_big_3d_irl_v2_rf_24000"
+reward_model_name = "really_big_3d_irl_v2_48000"
 
 def plot_map(map):
     """
@@ -290,11 +290,11 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 98
-            desired_point_z = 5
+            desired_point_x = 97
+            desired_point_z = 4
             desired_point_y = 1
 
-            threshold = 1
+            threshold = 2
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
@@ -325,8 +325,8 @@ if __name__ == '__main__':
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold \
-                                and np.abs(de_point[2] - desired_point_y) < threshold:
+                                np.abs(de_point[1] - desired_point_z) < threshold: #\
+                                # and np.abs(de_point[2] - desired_point_y) < threshold:
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             break
@@ -361,12 +361,12 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
-                    # de_point = np.zeros(2)
-                    # de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
-                    # de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
-                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
-                    #         np.abs(de_point[1] - desired_point_z) < threshold:
-                    #     break
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
                 # The actions is one less than the states, so add the last state
                 state = traj[-1]
@@ -425,7 +425,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = moti_to_observe
+            # idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
