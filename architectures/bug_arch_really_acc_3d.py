@@ -37,16 +37,16 @@ def network_spec(states):
     agent = embedding(agent, indices=280, size=32, name='agent_embs')
     agent = tf.reshape(agent, (-1, 3 * 32))
     # agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
-    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.tanh)
-    is_grounded = linear(is_grounded, 1024, name='grounded_embs', activation=tf.nn.tanh)
-    can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.tanh)
+    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.relu)
+    is_grounded = linear(is_grounded, 1024, name='grounded_embs', activation=tf.nn.relu)
+    can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
     threedgrid = embedding(threedgrid, indices=7, size=32, name='global_embs')
-    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.tanh)
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.tanh)
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
     # threedgrid = linear(threedgrid, 1024, name='three_embs', activation=tf.nn.tanh)
@@ -58,7 +58,7 @@ def network_spec(states):
 
     global_state = tf.concat([agent, threedgrid], axis=1)
 
-    global_state = linear(global_state, 1024, name='embs', activation=tf.nn.tanh)
+    global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 
     return global_state
 

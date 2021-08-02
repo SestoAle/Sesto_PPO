@@ -462,8 +462,6 @@ if __name__ == '__main__':
                 print('Demonstrations loaded! We have ' + str(
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
-
-
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
