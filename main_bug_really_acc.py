@@ -112,10 +112,10 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+1331], [11, 11, 11]), 1, (1,2))
+        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+6859], [19, 19, 19]), 1, (1,2))
         # fig = plt.figure()
         # ax = fig.gca(projection='3d')
-        # filled = (1 - (threedgrid == 5))
+        # filled = (1 - (threedgrid == 0))
         # cmap = plt.get_cmap("viridis")
         # norm = plt.Normalize(threedgrid.min(), threedgrid.max())
         # ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")

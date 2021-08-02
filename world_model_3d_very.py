@@ -337,18 +337,6 @@ if __name__ == '__main__':
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)
-            # from copy import deepcopy
-            # traj_to_cluster = deepcopy(traj_to_observe)
-            # traj_to_cluster[:, 0] = ((np.asarray(traj_to_cluster[:, 0]) + 1) / 2) * 100
-            # traj_to_cluster[:, 1] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 130
-            # traj_to_cluster[:, 2] = ((np.asarray(traj_to_cluster[:, 1]) + 1) / 2) * 40
-            # indexes = np.asarray(cluster_trajectories(traj_to_cluster), np.int)
-            # print(indexes)
-            # traj_to_observe = traj_to_observe[indexes]
-            # new_episode_to_observe = []
-            # for id in indexes:
-            #     new_episode_to_observe.append(episodes_to_observe[id])
-            # episodes_to_observe = new_episode_to_observe
             cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/labyrinth')
             traj_to_observe = traj_to_observe[cluster_indices]
             new_episode_to_observe = []
