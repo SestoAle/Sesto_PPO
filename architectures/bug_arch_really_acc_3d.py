@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 6887
+    input_length = 1359
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -21,7 +21,7 @@ def network_spec(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 6859, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 1331, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -42,13 +42,13 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
-    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 19, 19, 19]), tf.int32)
-    threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 11, 11, 11]), tf.int32)
+    threedgrid = embedding(threedgrid, indices=2, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = tf.reshape(threedgrid, [-1, 5 * 5 * 5 * 64])
+    threedgrid = tf.reshape(threedgrid, [-1, 3 * 3 * 3 * 64])
     # threedgrid = linear(threedgrid, 1024, name='three_embs', activation=tf.nn.tanh)
 
 

@@ -112,7 +112,7 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        # threedgrid = np.rot90(np.reshape(state['global_in'][10:10+6859], [19, 19, 19]), 1, (1,2))
+        # threedgrid = np.reshape(state['global_in'][10:10 + 1331], [11, 11, 11])
         # fig = plt.figure()
         # ax = fig.gca(projection='3d')
         # filled = (1 - (threedgrid == 0))
@@ -234,6 +234,9 @@ class BugEnvironment:
             return 4
         if command == 'd':
             return 1
+
+        if command == 'q':
+            return 0
 
         if command == ' ':
             return 9
