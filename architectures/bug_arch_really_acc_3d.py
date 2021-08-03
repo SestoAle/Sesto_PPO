@@ -43,12 +43,13 @@ def network_spec(states):
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
-    threedgrid = embedding(threedgrid, indices=2, size=32, name='global_embs')
+    # threedgrid = embedding(threedgrid, indices=2, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = tf.reshape(threedgrid, [-1, 4 * 4 * 4 * 64])
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
+    threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
     # threedgrid = linear(threedgrid, 1024, name='three_embs', activation=tf.nn.tanh)
 
 
