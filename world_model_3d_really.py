@@ -232,7 +232,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/50)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)

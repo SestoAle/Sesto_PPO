@@ -42,9 +42,9 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
-    # threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
-    threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    # threedgrid = embedding(threedgrid, indices=2, size=32, name='global_embs')
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
+    #threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
+    threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
