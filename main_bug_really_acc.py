@@ -86,9 +86,9 @@ class BugEnvironment:
         self.episode = -1
 
     def execute(self, actions):
-        actions = 99
-        while(actions == 99):
-            actions = self.command_to_action(input(': '))
+        # actions = 99
+        # while(actions == 99):
+        #     actions = self.command_to_action(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
         reward = env_info.rewards[0]
@@ -112,14 +112,14 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        threedgrid = np.reshape(state['global_in'][10:10 + 3375], [15, 15, 15])
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        filled = (1 - (threedgrid == 0))
-        cmap = plt.get_cmap("viridis")
-        norm = plt.Normalize(threedgrid.min(), threedgrid.max())
-        ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")
-        plt.show()
+        # threedgrid = np.reshape(state['global_in'][10:10 + 3375], [15, 15, 15])
+        # fig = plt.figure()
+        # ax = fig.gca(projection='3d')
+        # filled = (1 - (threedgrid == 0))
+        # cmap = plt.get_cmap("viridis")
+        # norm = plt.Normalize(threedgrid.min(), threedgrid.max())
+        # ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")
+        # plt.show()
 
         # print(state['global_in'][-2:])
         # print(state['global_in'][7:7+12])
