@@ -79,14 +79,14 @@ class OpenWorldEnv:
             second_state = dict(global_in=terminal_steps.obs[0][1, :])
             third_state = dict(global_in=terminal_steps.obs[0][2, :])
             state = [first_state, second_state, third_state]
-            reward = terminal_steps.reward
+            reward = terminal_steps.logits
         else:
             first_state = dict(global_in=decision_steps.obs[0][0, :])
             second_state = dict(global_in=decision_steps.obs[0][1, :])
             third_state = dict(global_in=decision_steps.obs[0][2, :])
             state = [first_state, second_state, third_state]
             done = [False, False, False]
-            reward = decision_steps.reward
+            reward = decision_steps.logits
 
 
 
