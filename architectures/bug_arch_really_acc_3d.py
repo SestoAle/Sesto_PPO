@@ -222,11 +222,11 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
-    # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
-    grad_tfs = tf.gradients(result, [agent, action_state])
-    grad_tfs = [tf.reshape(grads, [BS, -1]) for grads in grad_tfs]
-    grad_tf = tf.concat(grad_tfs, axis=-1)
-    norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
-    loss_tf = 0.5 * tf.reduce_mean(norm_tf)
+    # # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
+    # grad_tfs = tf.gradients(result, [agent, action_state])
+    # grad_tfs = [tf.reshape(grads, [BS, -1]) for grads in grad_tfs]
+    # grad_tf = tf.concat(grad_tfs, axis=-1)
+    # norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
+    # loss_tf = 0.5 * tf.reduce_mean(norm_tf)
 
-    return result, loss_tf
+    return result, 0

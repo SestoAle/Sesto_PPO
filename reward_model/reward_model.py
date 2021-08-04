@@ -619,7 +619,7 @@ class GAIL(RewardModel):
                 self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.logits - 1), 2)) + (
                       (1 - self.labels) * tf.pow((self.logits + 1), 2)))
 
-                self.loss += (self.gradient_penalty_weight * self.gp)
+                # self.loss += (self.gradient_penalty_weight * self.gp)
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
 
