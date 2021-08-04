@@ -358,6 +358,8 @@ class Runner:
                     # intrinsic_rews /= self.reward_model.r_norm.std
 
                     intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
+                    print(intrinsic_rews)
+                    input('...')
                     # intrinsic_rews -= np.mean(intrinsic_rews)
                     # intrinsic_rews /= np.std(intrinsic_rews)
                     if self.last_episode_for_decaying > 0:
