@@ -553,6 +553,7 @@ class Runner:
                         intrinsic_rews -= self.reward_model.r_norm.mean
                         intrinsic_rews /= self.reward_model.r_norm.std
                         print(self.reward_model.r_norm.mean)
+                        input('....')
                     else:
                         intrinsic_rews -= np.mean(intrinsic_rews)
                         intrinsic_rews /= np.std(intrinsic_rews)
@@ -696,7 +697,7 @@ class Runner:
                 print("Reward at the end of episode " + str(ep + 1) + ": " + str(reward))
 
         if isinstance(self.reward_model.r_norm, DynamicRunningStat):
-            rewards = self.reward_model.eval(self.reward_model.policy_traj['states'], self.reward_model.policy_traj['states_n'],
+            rewards = self.reward_model.eval(self.reward_model.policy_traj['obs'], self.reward_model.policy_traj['obs_n'],
                                              self.reward_model.policy_traj['acts'])
 
             for r in rewards:
