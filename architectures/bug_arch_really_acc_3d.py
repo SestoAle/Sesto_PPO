@@ -132,7 +132,6 @@ def obs_to_state_irl(obs):
 def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     global_state_n = states_n[0]
-    BS, _ = shape_list(states[0])
     action_state = tf.cast(act, tf.int32)
 
     # Jump
@@ -170,9 +169,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # agent = embedding(agent, indices=280, size=32, name='embs')
     # agent = tf.reshape(agent, (-1, 3*32))
     agent = tf.one_hot(agent, 280)
-    global_state = linear(agent, 32, name='agent_embedding', activation=tf.nn.tanh)
-    global_state = tf.reshape(global_state, [-1, 3*32])
-    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+    agent = linear(agent, 32, name='agent_embedding', activation=tf.nn.tanh)
+    agent = tf.reshape(agent, [-1, 3*32])
+    global_state = linear(agent, 64, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
@@ -195,9 +194,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     # action_state = tf.compat.v1.Print(action_state, [action_state], 'Action state: ', summarize=1e5)
     action_state = tf.one_hot(action_state, 10)
-    action = linear(action_state, 32, name='action_embedding', activation=tf.nn.tanh)
-    action = tf.reshape(action, [-1, 32])
-    action = linear(action, 64, name='latent_action_n', activation=tf.nn.relu,
+    action_state = linear(action_state, 32, name='action_embedding', activation=tf.nn.tanh)
+    action_state = tf.reshape(action_state, [-1, 32])
+    action = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
@@ -225,7 +224,6 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
                           )
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
     grad_tfs = tf.gradients(result, [agent, action_state])
-    grad_tfs = [tf.reshape(grads, [BS, -1]) for grads in grad_tfs]
     grad_tf = tf.concat(grad_tfs, axis=-1)
     norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
     loss_tf = 0.5 * tf.reduce_mean(norm_tf)

@@ -202,7 +202,6 @@ class Runner:
                     # irl_reward = self.reward_model.eval([state], [state_n],
                     #                                         [action])
                     # print(irl_reward)
-                    # input('...')
                     self.reward_model.add_to_policy_buffer(state, state_n, action)
 
                 # If step is equal than max timesteps, terminate the episode
@@ -357,9 +356,9 @@ class Runner:
                     # intrinsic_rews -= self.reward_model.r_norm.mean
                     # intrinsic_rews /= self.reward_model.r_norm.std
 
-                    intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
-                    # intrinsic_rews -= np.mean(intrinsic_rews)
-                    # intrinsic_rews /= np.std(intrinsic_rews)
+                    #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
+                    intrinsic_rews -= np.mean(intrinsic_rews)
+                    intrinsic_rews /= np.std(intrinsic_rews)
                     if self.last_episode_for_decaying > 0:
                         intrinsic_rews *= (1 - self.motivation.motivation_weight)
                     else:
