@@ -91,6 +91,7 @@ def network_spec_rnd(states):
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
     global_state = agent
+
     global_state = embedding(global_state, indices=280, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     global_state = linear(global_state, 64, name='global_embs', activation=tf.nn.relu)
