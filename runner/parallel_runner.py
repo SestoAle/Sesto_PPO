@@ -4,6 +4,7 @@ import json
 from utils import NumpyEncoder
 import time
 from threading import Thread
+from utils import *
 
 # Act thread
 # Act thread
@@ -546,8 +547,15 @@ class Runner:
                     # intrinsic_rews /= self.reward_model.r_norm.std
 
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
-                    intrinsic_rews -= np.mean(intrinsic_rews)
-                    intrinsic_rews /= np.std(intrinsic_rews)
+                    if isinstance(self.reward_model.r_norm, DynamicRunningStat):
+                        for r in intrinsic_rews:
+                            self.reward_model.r_norm.push(r)
+                        intrinsic_rews -= self.reward_model.r_norm.mean
+                        intrinsic_rews /= self.reward_model.r_norm.std
+                        print(self.reward_model.r_norm.mean)
+                    else:
+                        intrinsic_rews -= np.mean(intrinsic_rews)
+                        intrinsic_rews /= np.std(intrinsic_rews)
 
                     self.agent.buffer['rewards'] = list(intrinsic_rews)
 
@@ -686,6 +694,13 @@ class Runner:
 
             if verbose:
                 print("Reward at the end of episode " + str(ep + 1) + ": " + str(reward))
+
+        if isinstance(self.reward_model.r_norm, DynamicRunningStat):
+            rewards = self.reward_model.eval(self.reward_model.policy_traj['states'], self.reward_model.policy_traj['states_n'],
+                                             self.reward_model.policy_traj['acts'])
+
+            for r in rewards:
+                self.reward_model.r_norm.push(r)
 
     # Update intrinsic motivation
     # Update its statistics AND train the model. We print also the model loss
