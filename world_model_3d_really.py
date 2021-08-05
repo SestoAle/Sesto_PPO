@@ -19,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'relu_only_irl'
+model_name = 'vaffanculo_im'
 
-reward_model_name = "really_big_3d_irl_v2_m_42000"
+reward_model_name = "vaffanculo_im_6000"
 
 def plot_map(map):
     """
@@ -332,13 +332,13 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            traj_to_observe = np.asarray(traj_to_observe)
-            cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
-            traj_to_observe = traj_to_observe[cluster_indices]
-            new_episode_to_observe = []
-            for id in cluster_indices:
-                new_episode_to_observe.append(episodes_to_observe[id])
-            episodes_to_observe = new_episode_to_observe
+            # traj_to_observe = np.asarray(traj_to_observe)
+            # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
+            # traj_to_observe = traj_to_observe[cluster_indices]
+            # new_episode_to_observe = []
+            # for id in cluster_indices:
+            #     new_episode_to_observe.append(episodes_to_observe[id])
+            # episodes_to_observe = new_episode_to_observe
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -419,7 +419,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            # idxs_to_observe = moti_to_observe
+            idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
