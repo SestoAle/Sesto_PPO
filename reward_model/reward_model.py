@@ -606,23 +606,37 @@ class GAIL(RewardModel):
                 self.states, self.act, self.states_n = input()
 
                 with tf.compat.v1.variable_scope('net'):
-                    self.logits, self.gp = network(states=self.states, states_n=self.states_n, act=self.act,
+                    self.reward, self.latent = network(states=self.states, states_n=self.states_n, act=self.act,
                                                    with_action=self.with_action, actions_size=self.actions_size)
 
-                self.discriminator = tf.nn.sigmoid(self.logits)
+                self.discriminator = tf.nn.sigmoid(self.reward)
 
                 # Loss Function
                 # Original loss from GAIL paper
-                # self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                #          (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
+                         (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
                 # Loss from AMP
-                self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.logits - 1), 2)) + (
-                      (1 - self.labels) * tf.pow((self.logits + 1), 2)))
+                # self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
+                #       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
 
-                self.loss += (self.gradient_penalty_weight * self.gp)
+                if self.gradient_penalty_weight > 0.0:
+                    BS, length = shape_list(self.states[0])
+                    self.expert_states = tf.compat.v1.placeholder(tf.float32, [None, length], name='exp_state')
+                    self.expert_acts = tf.compat.v1.placeholder(tf.int32, [None, 1], name='expert_acts')
+                    self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, length], name='exp_state_n')
+
+                    with tf.compat.v1.variable_scope('net', reuse=True):
+                        logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
+                                                           with_action=self.with_action, actions_size=self.actions_size)
+
+                    grad_tfs = tf.gradients(logits, latent)
+                    grad_tf = tf.concat(grad_tfs, axis=-1)
+                    norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
+                    loss_tf = 0.5 * tf.reduce_mean(norm_tf)
+                    self.loss += (self.gradient_penalty_weight * loss_tf)
+
 
                 self.step = tf.compat.v1.train.AdamOptimizer(learning_rate=self.lr).minimize(self.loss)
-
 
     def train(self):
         losses = []
@@ -701,13 +715,13 @@ class GAIL(RewardModel):
             acts = np.expand_dims(acts, axis=1)
             feed_dict[self.act] = acts
 
-        rew, logits = self.sess.run([self.discriminator, self.logits], feed_dict=feed_dict)
+        rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
         rew = np.reshape(rew, (-1))
 
         # Reward from original GAIL
-        # rew = - np.log(1 - rew + eps)
+        rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        rew = np.maximum(0, 1 - 0.25 * np.square((logits - 1)))
+        # rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
 
         # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):

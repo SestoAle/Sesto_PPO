@@ -131,13 +131,14 @@ def obs_to_state_irl(obs):
 
 def network_spec_irl(states, states_n, act, with_action, actions_size):
 
+    global_state = states[0]
     global_state_n = states_n[0]
     action_state = tf.cast(act, tf.int32)
 
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(states[0], [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -149,6 +150,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+    global_state = agent
 
     agent_n_plane_x, agent_n_plane_z, agent_n_jump, _, _, _, _, _, _, _, _ = \
         tf.split(global_state_n, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
@@ -166,12 +168,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     global_state_n = agent_n
 
     # global_state = tf.compat.v1.Print(global_state, [global_state], 'Global state: ', summarize=1e5)
-    # agent = embedding(agent, indices=280, size=32, name='embs')
-    # agent = tf.reshape(agent, (-1, 3*32))
-    agent = tf.one_hot(agent, 280)
-    agent = linear(agent, 32, name='agent_embedding', activation=tf.nn.tanh)
-    agent = tf.reshape(agent, [-1, 3*32])
-    global_state = linear(agent, 64, name='latent_1', activation=tf.nn.relu,
+    global_state = embedding(global_state, indices=280, size=32, name='embs')
+    global_state = tf.reshape(global_state, (-1, 3*32))
+    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
@@ -193,10 +192,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                      )
 
     # action_state = tf.compat.v1.Print(action_state, [action_state], 'Action state: ', summarize=1e5)
-    action_state = tf.one_hot(action_state, 10)
-    action_state = linear(action_state, 32, name='action_embedding', activation=tf.nn.tanh)
+    action_state = embedding(action_state, indices=10, size=32, name='action_embs')
     action_state = tf.reshape(action_state, [-1, 32])
-    action = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
+    action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
@@ -210,22 +208,20 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([global_state, action], axis=1)
+    encoded = tf.concat([global_state, action_state], axis=1)
 
-    result = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
+    global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
 
-    result = linear(result, 1, name='out',
+    global_state = linear(global_state, 1, name='out',
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                           )
     # global_state = tf.compat.v1.layers.dropout(global_state, rate=0.2)
-    grad_tfs = tf.gradients(result, [agent, action_state])
-    grad_tf = tf.concat(grad_tfs, axis=-1)
-    norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
-    loss_tf = 0.5 * tf.reduce_mean(norm_tf)
 
-    return result, loss_tf
+
+
+    return global_state, encoded

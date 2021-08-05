@@ -7,7 +7,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='dist*,emb*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='really_big_3d_irl_v2')
 parser.add_argument('-nm', '--num-mean', help="The number of the episode to compute the mean", default=1000)
 parser.add_argument('-mr', '--num-mean-reward-loss', help="Same as nm, for reward loss", default=10)
 parser.add_argument('-sp', '--save-plot', help="If true save the plot in folder saved_plot", default=None)
