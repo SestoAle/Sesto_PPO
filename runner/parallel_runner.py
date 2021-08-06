@@ -533,7 +533,7 @@ class Runner:
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
 
-                    self.agent.buffer['rewards'] = list(intrinsic_rews)
+                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
 
@@ -550,7 +550,7 @@ class Runner:
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.reward_model.reward_model_weight
 
-                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    self.agent.buffer['rewards'] = list(intrinsic_rews)
 
                 self.agent.train()
 
@@ -698,6 +698,10 @@ class Runner:
     # Update its statistics AND train the model. We print also the model loss
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
+        print(loss)
+        self.history['reward_model_loss'].append(loss)
+        print(self.history['reward_model_loss'].append(loss))
+        input('....')
         # print('Mean reward loss = {}'.format(loss))
 
     # Method for count time after each episode

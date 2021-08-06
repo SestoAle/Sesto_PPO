@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'vaffanculo_troiaio'
+model_name = 'vaffanculo'
 
 reward_model_name = "vaffanculo_im_24000"
 
@@ -232,7 +232,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/50)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -332,7 +332,10 @@ if __name__ == '__main__':
                             break
 
             # Cluster trajectories to reduce the number of trajectories to observe
-            # traj_to_observe = np.asarray(traj_to_observe)
+            traj_to_observe = np.asarray(traj_to_observe)
+            with open('traj_to_observe.npy', 'wb') as f:
+                np.save(f, traj_to_observe)
+            input('...')
             # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
             # traj_to_observe = traj_to_observe[cluster_indices]
             # new_episode_to_observe = []
@@ -413,13 +416,13 @@ if __name__ == '__main__':
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews < np.asarray(il_mean))
+            il_to_observe = np.where(sum_il_rews > np.asarray(il_mean))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = moti_to_observe
+            #idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
