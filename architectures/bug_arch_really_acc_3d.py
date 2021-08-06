@@ -212,7 +212,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([global_state, action_state, threedgrid], axis=1)
+    encoded = tf.concat([global_state, action_state], axis=1)
 
     global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.tanh,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,

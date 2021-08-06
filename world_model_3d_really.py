@@ -19,9 +19,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'vaffanculo_im'
+model_name = 'vaffanculo_troiaio'
 
-reward_model_name = "vaffanculo_im_6000"
+reward_model_name = "vaffanculo_im_24000"
 
 def plot_map(map):
     """
@@ -232,7 +232,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/50)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
