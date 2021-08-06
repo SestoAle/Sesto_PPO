@@ -258,7 +258,7 @@ class Runner:
 
                 # Getting initial experience from the environment to do the first training epoch of the reward model
                 self.get_experience(self.envs[0], self.reward_frequency, random=True)
-                self.reward_model.train()
+                self.update_reward_model()
 
         # For curriculum training
         self.start_training = 0
@@ -700,7 +700,7 @@ class Runner:
         loss, _ = self.reward_model.train()
         print(loss)
         self.history['reward_model_loss'].append(loss)
-        print(self.history['reward_model_loss'].append(loss))
+        print(self.history['reward_model_loss'])
         input('....')
         # print('Mean reward loss = {}'.format(loss))
 
