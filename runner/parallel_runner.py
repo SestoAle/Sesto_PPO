@@ -698,11 +698,8 @@ class Runner:
     # Update its statistics AND train the model. We print also the model loss
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
-        print(loss)
         self.history['reward_model_loss'].append(loss)
-        print(self.history['reward_model_loss'])
-        input('....')
-        # print('Mean reward loss = {}'.format(loss))
+        print('Mean reward loss = {}'.format(loss))
 
     # Method for count time after each episode
     def timer(self, start, end):
