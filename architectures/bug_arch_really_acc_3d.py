@@ -193,7 +193,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     # action_state = tf.compat.v1.Print(action_state, [action_state], 'Action state: ', summarize=1e5)
     action_state = tf.one_hot(action_state, 10)
+    action_state = tf.reshape(action_state, [-1, 10])
     global_state = tf.one_hot(global_state, 280)
+    global_state = tf.reshape(global_state, [-1, 3*280])
 
 
     # action_state = embedding(action_state, indices=10, size=32, name='action_embs')
@@ -214,7 +216,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     encoded = tf.concat([global_state, action_state], axis=1)
 
-    global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.tanh,
+    global_state = linear(encoded, 512, name='latent_1', activation=tf.nn.tanh,
                           init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
                                                                           dtype=tf.dtypes.float32)
                          )
