@@ -202,7 +202,7 @@ class Runner:
                     irl_reward = self.reward_model.eval([state], [state_n],
                                                             [action])
                     print(irl_reward)
-                    self.reward_model.add_to_policy_buffer(state, state_n, action)
+                    self.reward_model.add_to_policy_buffer([state], [state_n], [action])
 
                 # If step is equal than max timesteps, terminate the episode
                 if step >= self.env._max_episode_timesteps - 1:

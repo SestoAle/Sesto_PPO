@@ -11,7 +11,7 @@ eps = 1e-12
 class RewardModel:
 
     def __init__(self, actions_size, policy, network_architecture, input_architecture, obs_to_state, name, lr,
-                 sess=None, buffer_size=100000, gradient_penalty_weight=0.0, reward_model_weight=1.,
+                 sess=None, buffer_size=1000, gradient_penalty_weight=0.0, reward_model_weight=1.,
                  with_action=False, num_itr=20, batch_size=32, eval_with_probs=False, **kwargs):
 
         # Initialize some model attributes
@@ -283,32 +283,43 @@ class RewardModel:
 
     # Add ot policy buffer a new transitions
     def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='prob'):
+        # The transictions must be a list of transiction
 
-        if len(self.policy_traj['obs']) >= self.buffer_size:
+        new_n = len(obs)
+
+        if len(self.policy_traj['obs']) + new_n > self.buffer_size:
+
+            diff = len(self.policy_traj['obs']) + new_n - self.buffer_size
+
             if del_mode == "latest":
-                del self.policy_traj['obs'][0]
-                del self.policy_traj['obs_n'][0]
-                del self.policy_traj['acts'][0]
+                del self.policy_traj['obs'][0:diff]
+                del self.policy_traj['obs_n'][0:diff]
+                del self.policy_traj['acts'][0:diff]
 
             elif del_mode == "prob":
+
                 N = len(self.policy_traj['obs'])
                 probs = np.arange(N) + 1
                 probs = probs / float(np.sum(probs))
-                pidx = np.random.choice(np.arange(N), p=probs)
-                del self.policy_traj['obs'][pidx]
-                del self.policy_traj['obs_n'][pidx]
-                del self.policy_traj['acts'][pidx]
+                indices_to_remove = np.random.choice(np.arange(N), diff, p=probs)
+
+                for idx in sorted(indices_to_remove, reverse=True):
+                    del self.policy_traj['obs'][idx]
+                    del self.policy_traj['obs_n'][idx]
+                    del self.policy_traj['acts'][idx]
 
             elif del_mode == "random":
-                index = np.random.randint(0, len(self.policy_traj['obs']))
+                indices_to_remove = np.random.choice(len(self.policy_traj['obs']), diff, replace=False)
+                for idx in sorted(indices_to_remove, reverse=True):
+                    del self.policy_traj['obs'][idx]
+                    del self.policy_traj['obs_n'][idx]
+                    del self.policy_traj['acts'][idx]
 
-                del self.policy_traj['obs'][index]
-                del self.policy_traj['obs_n'][index]
-                del self.policy_traj['acts'][index]
+        self.policy_traj['obs'].extend(obs)
+        self.policy_traj['obs_n'].extend(obs_n)
+        self.policy_traj['acts'].extend(acts)
 
-        self.policy_traj['obs'].append(obs)
-        self.policy_traj['obs_n'].append(obs_n)
-        self.policy_traj['acts'].append(acts)
+        print(len(self.policy_traj['obs']))
 
     # Method that clean the buffer if we want an efficent del_mode='probs'
     def clean_buffer(self):

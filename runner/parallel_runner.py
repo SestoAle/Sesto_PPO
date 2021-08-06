@@ -464,10 +464,13 @@ class Runner:
                     self.motivation.add_to_buffer(state_n)
 
                 # For reward model, add the agents experience to the reward model buffer
-                for state, state_n, action in zip(self.parallel_buffer['reward_model'][i]['state'],
-                                                  self.parallel_buffer['reward_model'][i]['state_n'],
-                                                  self.parallel_buffer['reward_model'][i]['action']):
-                    self.reward_model.add_to_policy_buffer(state, state_n, action)
+                # for state, state_n, action in zip(self.parallel_buffer['reward_model'][i]['state'],
+                #                                   self.parallel_buffer['reward_model'][i]['state_n'],
+                #                                   self.parallel_buffer['reward_model'][i]['action']):
+                #     self.reward_model.add_to_policy_buffer(state, state_n, action)
+                self.reward_model.add_to_policy_buffer(self.parallel_buffer['reward_model'][i]['state'],
+                                                       self.parallel_buffer['reward_model'][i]['state_n'],
+                                                       self.parallel_buffer['reward_model'][i]['action'])
 
                 # Upadte the hisotry in order of execution
                 for episode_reward, step, mean_entropies, std_entropies in zip(
@@ -678,7 +681,7 @@ class Runner:
                 else:
                     action, _, c_probs = self.agent.eval([state])
                 state_n, terminal, step_reward = env.execute(actions=action)
-                self.reward_model.add_to_policy_buffer(state, state_n, action)
+                self.reward_model.add_to_policy_buffer([state], [state_n], [action])
 
                 state = state_n
                 reward += step_reward
