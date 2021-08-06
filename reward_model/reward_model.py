@@ -282,7 +282,7 @@ class RewardModel:
         return policy_traj
 
     # Add ot policy buffer a new transitions
-    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='prob'):
+    def add_to_policy_buffer(self, obs, obs_n, acts, del_mode='random'):
         # The transictions must be a list of transiction
 
         new_n = len(obs)
@@ -318,8 +318,6 @@ class RewardModel:
         self.policy_traj['obs'].extend(obs)
         self.policy_traj['obs_n'].extend(obs_n)
         self.policy_traj['acts'].extend(acts)
-
-        print(len(self.policy_traj['obs']))
 
     # Method that clean the buffer if we want an efficent del_mode='probs'
     def clean_buffer(self):
