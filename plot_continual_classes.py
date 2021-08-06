@@ -12,7 +12,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='*warrior*')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='*archer*')
 
 args = parser.parse_args()
 
@@ -156,7 +156,7 @@ try:
     rect1 = x2.bar(x - width / 2, melees, width=width, label='Melee', color='seagreen')
     rect2 = x2.bar(x + width / 2, ranges, width=width, label='Ranged', color='khaki')
     x2.set_xticks(x)
-    x2.set_xticklabels(labels)
+    #x2.set_xticklabels(labels)
     x2.legend()
 
     x2.set_xticklabels(labels)
