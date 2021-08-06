@@ -168,21 +168,21 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     global_state_n = agent_n
 
     # global_state = tf.compat.v1.Print(global_state, [global_state], 'Global state: ', summarize=1e5)
-    global_state = embedding(global_state, indices=280, size=32, name='embs')
-    global_state = tf.reshape(global_state, (-1, 3*32))
-    global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
-                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-                                                                          dtype=tf.dtypes.float32)
-                          )
-    # #threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
+    # global_state = embedding(global_state, indices=280, size=32, name='embs')
+    # global_state = tf.reshape(global_state, (-1, 3*32))
+    # global_state = linear(global_state, 64, name='latent_1', activation=tf.nn.relu,
+    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+    #                                                                       dtype=tf.dtypes.float32)
+    #                       )
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    # #threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
-    # threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
-    # #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    # threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
-    # #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    # threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
-    # threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
+    threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
+    #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
+    #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
+    threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
 
     # global_state_n = embedding(global_state_n, indices=280, size=32, name='embs')
     # global_state_n = tf.reshape(global_state_n, (-1, 3 * 32))
@@ -200,10 +200,10 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     action_state = embedding(action_state, indices=10, size=32, name='action_embs')
     action_state = tf.reshape(action_state, [-1, 32])
-    action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
-                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-                                                                          dtype=tf.dtypes.float32)
-                         )
+    # action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
+    #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
+    #                                                                       dtype=tf.dtypes.float32)
+    #                      )
 
 
     # action_state = tf.compat.v1.layers.dropout(action_state, rate=0.2)
@@ -214,12 +214,19 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([global_state, action_state], axis=1)
+    encoded = tf.concat([threedgrid, action_state], axis=1)
 
-    global_state = linear(encoded, 512, name='latent_2', activation=tf.nn.relu,
-                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-                                                                          dtype=tf.dtypes.float32)
+    global_state = linear(encoded, 1024, name='latent_1', activation=tf.nn.relu,
+
                          )
+
+    global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.relu,
+
+                          )
+
+    global_state = linear(global_state, 256, name='latent_3', activation=tf.nn.relu,
+
+                          )
 
     # global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.relu,
     #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
