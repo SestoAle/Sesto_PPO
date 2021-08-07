@@ -176,8 +176,8 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                       )
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    threedgrid = embedding(threedgrid, indices=2, size=32, name='global_embs')
-    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
+    threedgrid_state = embedding(threedgrid, indices=2, size=32, name='global_embs')
+    threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
@@ -198,8 +198,9 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # global_state = tf.reshape(global_state, [-1, 3*280])
 
 
-    action_state = embedding(action_state, indices=10, size=32, name='action_embs')
-    action_state = tf.reshape(action_state, [-1, 32])
+    action_state = embedding(action_state, indices=10, size=512, name='action_embs')
+    action_state = tf.reshape(action_state, [-1, 512])
+    action = action_state
     # action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
     #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
     #                                                                       dtype=tf.dtypes.float32)
@@ -214,7 +215,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
 
-    encoded = tf.concat([threedgrid, action_state], axis=1)
+    encoded = tf.concat([threedgrid, action], axis=1)
 
     global_state = linear(encoded, 1024, name='latent_1', activation=tf.nn.relu,
 
@@ -242,4 +243,4 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
 
 
-    return global_state, encoded
+    return global_state, threedgrid_state, action_state

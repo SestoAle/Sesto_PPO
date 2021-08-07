@@ -615,7 +615,7 @@ class GAIL(RewardModel):
                 self.states, self.act, self.states_n = input()
 
                 with tf.compat.v1.variable_scope('net'):
-                    self.reward, self.latent = network(states=self.states, states_n=self.states_n, act=self.act,
+                    self.reward, _ = network(states=self.states, states_n=self.states_n, act=self.act,
                                                    with_action=self.with_action, actions_size=self.actions_size)
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
@@ -635,10 +635,11 @@ class GAIL(RewardModel):
                     self.expert_states_n = tf.compat.v1.placeholder(tf.float32, [None, length], name='exp_state_n')
 
                     with tf.compat.v1.variable_scope('net', reuse=True):
-                        logits, latent = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
+                        net_output = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
                                                            with_action=self.with_action, actions_size=self.actions_size)
 
-                    grad_tfs = tf.gradients(logits, latent)
+                    grad_tfs = tf.gradients(net_output[0], net_output[1,:])
+                    grad_tfs = [np.reshape(grad, [BS, -1]) for grad in grad_tfs]
                     grad_tf = tf.concat(grad_tfs, axis=-1)
                     norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
                     loss_tf = 0.5 * tf.reduce_mean(norm_tf)
@@ -758,7 +759,7 @@ class GAIL(RewardModel):
             acts = np.expand_dims(acts, axis=1)
             feed_dict[self.act] = acts
 
-        rew, latent = self.sess.run([self.discriminator, self.latent], feed_dict=feed_dict)
+        rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
         rew = np.reshape(rew, (-1))
 
         # Reward from original GAIL
@@ -771,4 +772,4 @@ class GAIL(RewardModel):
             for r in rew:
                 self.r_norm.push(r)
 
-        return rew, latent
+        return rew

@@ -21,7 +21,7 @@ name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_repl
 
 model_name = 'vaffanculo_im'
 
-reward_model_name = "vaffanculo_im_24000"
+reward_model_name = "vaffanculo_im_60000"
 
 def plot_map(map):
     """
