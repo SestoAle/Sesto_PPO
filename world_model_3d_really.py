@@ -336,12 +336,12 @@ if __name__ == '__main__':
             # with open('traj_to_observe.npy', 'wb') as f:
             #     np.save(f, traj_to_observe)
             # input('...')
-            cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
-            traj_to_observe = traj_to_observe[cluster_indices]
-            new_episode_to_observe = []
-            for id in cluster_indices:
-                new_episode_to_observe.append(episodes_to_observe[id])
-            episodes_to_observe = new_episode_to_observe
+            # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
+            # traj_to_observe = traj_to_observe[cluster_indices]
+            # new_episode_to_observe = []
+            # for id in cluster_indices:
+            #     new_episode_to_observe.append(episodes_to_observe[id])
+            # episodes_to_observe = new_episode_to_observe
 
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
@@ -358,12 +358,12 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
-                    de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
-                    if np.abs(de_point[0] - desired_point_x) < threshold and \
-                            np.abs(de_point[1] - desired_point_z) < threshold:
-                        break
+                    # de_point = np.zeros(2)
+                    # de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
+                    # de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
+                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
+                    #         np.abs(de_point[1] - desired_point_z) < threshold:
+                    #     break
 
                 # The actions is one less than the states, so add the last state
                 state = traj[-1]
@@ -412,17 +412,17 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            il_to_observe = np.where(sum_il_rews < np.asarray(il_mean))
+            il_to_observe = np.where(sum_il_rews > np.asarray(il_mean))
             il_to_observe = np.reshape(il_to_observe, -1)
             idxs_to_observe, idxs1, idxs2 = np.intersect1d(moti_to_observe, il_to_observe, return_indices=True)
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            idxs_to_observe = moti_to_observe
+            #idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
@@ -480,7 +480,7 @@ if __name__ == '__main__':
                 for action in actions[key]:
                     actions_batch.append(action)
 
-                irl_rew, latent = reward_model.eval_latent(states_batch[:-1], states_batch, actions_batch)
+                irl_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
