@@ -615,8 +615,9 @@ class GAIL(RewardModel):
                 self.states, self.act, self.states_n = input()
 
                 with tf.compat.v1.variable_scope('net'):
-                    self.reward, _ = network(states=self.states, states_n=self.states_n, act=self.act,
+                    self.reward = network(states=self.states, states_n=self.states_n, act=self.act,
                                                    with_action=self.with_action, actions_size=self.actions_size)
+                    self.reward = self.reward[0]
 
                 self.discriminator = tf.nn.sigmoid(self.reward)
 
