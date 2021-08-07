@@ -639,7 +639,7 @@ class GAIL(RewardModel):
                         net_output = network(states=[self.expert_states], states_n=[self.expert_states_n], act=self.expert_acts,
                                                            with_action=self.with_action, actions_size=self.actions_size)
 
-                    grad_tfs = tf.gradients(net_output[0], net_output[1,:])
+                    grad_tfs = tf.gradients(net_output[0], net_output[1:])
                     grad_tfs = [np.reshape(grad, [BS, -1]) for grad in grad_tfs]
                     grad_tf = tf.concat(grad_tfs, axis=-1)
                     norm_tf = tf.reduce_sum(tf.square(grad_tf), axis=-1)
