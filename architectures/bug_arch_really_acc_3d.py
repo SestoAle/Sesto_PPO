@@ -199,7 +199,6 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
 
     action_state = embedding(action_state, indices=10, size=512, name='action_embs')
-    print(action_state)
     action_state = tf.reshape(action_state, [-1, 512])
     action = action_state
     # action_state = linear(action_state, 64, name='latent_action_n', activation=tf.nn.relu,
