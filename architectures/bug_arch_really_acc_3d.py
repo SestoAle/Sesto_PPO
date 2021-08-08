@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 3403
+    input_length = 9289
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -21,7 +21,7 @@ def network_spec(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -42,7 +42,7 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
-    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
     threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
@@ -50,6 +50,8 @@ def network_spec(states):
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_04', activation=tf.nn.relu)
+
     threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
     # threedgrid = linear(threedgrid, 1024, name='three_embs', activation=tf.nn.tanh)
 
@@ -77,7 +79,7 @@ def network_spec_rnd(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -116,7 +118,7 @@ def network_spec_rnd(states):
 
 
 def input_spec_irl():
-    input_length = 3403
+    input_length = 4941
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -138,7 +140,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -174,7 +176,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                       init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
     #                                                                       dtype=tf.dtypes.float32)
     #                       )
-    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 15, 15, 15]), tf.int32)
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
     threedgrid_state = embedding(threedgrid, indices=3, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
@@ -182,6 +184,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_04', activation=tf.nn.relu)
     threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
 
     # global_state_n = embedding(global_state_n, indices=280, size=32, name='embs')

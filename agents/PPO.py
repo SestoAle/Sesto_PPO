@@ -88,12 +88,12 @@ class PPO:
                 self.main_net = self.network_spec(self.inputs)
 
                 # Final p_layers
-                self.p_network = self.linear(self.main_net, 1024, name='p_fc1', activation=tf.nn.relu)
+                self.p_network = self.linear(self.main_net, 512, name='p_fc1', activation=tf.nn.relu)
                 if self.previous_act:
                     self.p_network = tf.concat([self.p_network, self.inputs[-1]], axis=1)
 
                 if not self.recurrent:
-                    self.p_network = self.linear(self.p_network, 1024, name='p_fc2', activation=tf.nn.relu)
+                    self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
                 else:
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables

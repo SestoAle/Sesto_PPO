@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'vaffanculo_im'
+model_name = 'vaffanculo'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -265,7 +265,8 @@ if __name__ == '__main__':
 
             # Load imitation model
             with graph.as_default():
-                #reward_model_name = "double_jump_impossibru_5_90000"
+                model_name = 'vaffanculo_im'
+                reward_model_name = "vaffanculo_im_60000"
                 tf.compat.v1.disable_eager_execution()
                 reward_sess = tf.compat.v1.Session(graph=graph)
                 reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
@@ -422,7 +423,7 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe[np.sort(idxs1)]
             traj_to_observe = np.asarray(traj_to_observe)
 
-            #idxs_to_observe = moti_to_observe
+            idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
 
