@@ -460,15 +460,17 @@ class Runner:
                                                      zero_state, zero_state, zero_state, zero_state)
 
                 # For motivation, add the agents experience to the motivation buffer
-                for state_n in self.parallel_buffer['motivation'][i]['state_n']:
-                    self.motivation.add_to_buffer(state_n)
+                if self.motivation is not None:
+                    for state_n in self.parallel_buffer['motivation'][i]['state_n']:
+                        self.motivation.add_to_buffer(state_n)
 
                 # For reward model, add the agents experience to the reward model buffer
                 # for state, state_n, action in zip(self.parallel_buffer['reward_model'][i]['state'],
                 #                                   self.parallel_buffer['reward_model'][i]['state_n'],
                 #                                   self.parallel_buffer['reward_model'][i]['action']):
                 #     self.reward_model.add_to_policy_buffer(state, state_n, action)
-                self.reward_model.add_to_policy_buffer(self.parallel_buffer['reward_model'][i]['state'],
+                if self.reward_model is not None:
+                    self.reward_model.add_to_policy_buffer(self.parallel_buffer['reward_model'][i]['state'],
                                                        self.parallel_buffer['reward_model'][i]['state_n'],
                                                        self.parallel_buffer['reward_model'][i]['action'])
 
