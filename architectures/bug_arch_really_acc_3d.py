@@ -118,7 +118,7 @@ def network_spec_rnd(states):
 
 
 def input_spec_irl():
-    input_length = 4941
+    input_length = 9289
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -154,20 +154,20 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
 
-    agent_n_plane_x, agent_n_plane_z, agent_n_jump, _, _, _, _, _, _, _, _ = \
-        tf.split(global_state_n, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
-
-    agent_n_plane_x = ((agent_n_plane_x + 1) / 2) * 220
-    agent_n_plane_x = tf.cast(agent_n_plane_x, tf.int32)
-
-    agent_n_plane_z = ((agent_n_plane_z + 1) / 2) * 280
-    agent_n_plane_z = tf.cast(agent_n_plane_z, tf.int32)
-
-    agent_n_jump = ((agent_n_jump + 1) / 2) * 40
-    agent_n_jump = tf.cast(agent_n_jump, tf.int32)
-
-    agent_n = tf.concat([agent_n_plane_x, agent_n_plane_z, agent_n_jump], axis=1)
-    global_state_n = agent_n
+    # agent_n_plane_x, agent_n_plane_z, agent_n_jump, _, _, _, _, _, _, _, _ = \
+    #     tf.split(global_state_n, [1, 1, 1, 1, 1, 3, 2, 3375, 4, 12, 2], axis=1)
+    #
+    # agent_n_plane_x = ((agent_n_plane_x + 1) / 2) * 220
+    # agent_n_plane_x = tf.cast(agent_n_plane_x, tf.int32)
+    #
+    # agent_n_plane_z = ((agent_n_plane_z + 1) / 2) * 280
+    # agent_n_plane_z = tf.cast(agent_n_plane_z, tf.int32)
+    #
+    # agent_n_jump = ((agent_n_jump + 1) / 2) * 40
+    # agent_n_jump = tf.cast(agent_n_jump, tf.int32)
+    #
+    # agent_n = tf.concat([agent_n_plane_x, agent_n_plane_z, agent_n_jump], axis=1)
+    # global_state_n = agent_n
 
     # global_state = tf.compat.v1.Print(global_state, [global_state], 'Global state: ', summarize=1e5)
     # global_state = embedding(global_state, indices=280, size=32, name='embs')
