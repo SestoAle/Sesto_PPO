@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'vaffanculo'
+model_name = 'vaffanculo_im'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -232,7 +232,7 @@ if __name__ == '__main__':
             print(2)
             input('...')
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/50)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -308,11 +308,6 @@ if __name__ == '__main__':
 
             plt.figure()
 
-            for traj in list(trajectories.values())[-100:]:
-                print_traj(traj)
-            plt.show()
-            input('...')
-
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
@@ -333,8 +328,8 @@ if __name__ == '__main__':
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold \
-                                and np.abs(de_point[2] - desired_point_y) < threshold:
+                                np.abs(de_point[1] - desired_point_z) < threshold: \
+                                #and np.abs(de_point[2] - desired_point_y) < threshold:
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             break
@@ -420,7 +415,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
