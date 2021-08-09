@@ -19,7 +19,7 @@ class PPO:
                  p_num_itr=20, v_num_itr=20, v_batch_fraction=0.33, previous_act=False,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
                  action_max_value=1, frequency_mode='episodes',
-                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.9, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
+                 epsilon=0.2, c1=0.5, c2=0.01, discount=0.99, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
                  model_name='agent',
                  # LSTM
                  recurrent=False, recurrent_length=8, recurrent_baseline=False,
