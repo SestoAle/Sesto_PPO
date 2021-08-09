@@ -544,9 +544,17 @@ class Runner:
                 if self.reward_model is not None:
 
                     # Compute intrinsic rewards
-                    intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
-                                                            self.agent.buffer['actions'])
+                    num_batches = 10
+                    batch_size = int(np.ceil(len(self.agent.buffer['states']) / num_batches))
+                    intrinsic_rews = []
+                    for i in range(num_batches):
+                        c_intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'][batch_size*i:batch_size*i + batch_size],
+                                                                self.agent.buffer['states_n'][batch_size*i:batch_size*i + batch_size],
+                                                                self.agent.buffer['actions'][batch_size*i:batch_size*i + batch_size])
 
+                        intrinsic_rews.extend(list(c_intrinsic_rews))
+
+                    intrinsic_rews = np.asarray(intrinsic_rews)
                     # Normalize rewards
                     # intrinsic_rews -= self.reward_model.r_norm.mean
                     # intrinsic_rews /= self.reward_model.r_norm.std
