@@ -715,15 +715,15 @@ class Runner:
         loss, _ = self.reward_model.train()
         self.history['reward_model_loss'].append(loss)
 
-        if len(self.agent.buffer['states']) > 0:
-            self.reward_model_std = np.std(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
-                                                            self.agent.buffer['actions']))
-
-            self.reward_model_mean = np.mean(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
-                                   self.agent.buffer['actions']))
-        else:
-            self.reward_model_mean = 0
-            self.reward_model_std = 1
+        # if len(self.agent.buffer['states']) > 0:
+        #     self.reward_model_std = np.std(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+        #                                                     self.agent.buffer['actions']))
+        #
+        #     self.reward_model_mean = np.mean(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+        #                            self.agent.buffer['actions']))
+        # else:
+        #     self.reward_model_mean = 0
+        #     self.reward_model_std = 1
 
         print('Mean reward loss = {}'.format(loss))
 
