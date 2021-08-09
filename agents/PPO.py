@@ -417,9 +417,11 @@ class PPO:
                 feed_dict[self.sequence_lengths] = np.ones(batch_size)
                 feed_dict[self.recurrent_train_length] = 1
 
-            v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
+            v_values.append(self.sess.run(self.value, feed_dict=feed_dict))
 
         v_values = np.append(v_values, 0)
+        print(v_values)
+        input('...')
 
         discounted_rewards = self.compute_gae(v_values)
 
