@@ -402,7 +402,7 @@ class PPO:
         # Compute values for each state
 
         num_batches = 10
-        batch_size = int(np.ceil(num_batches / len(self.buffer['states'])))
+        batch_size = int(np.ceil(len(self.buffer['states'])/num_batches))
         v_values = []
         for i in range(num_batches):
             states = self.obs_to_state(self.buffer['states'][batch_size*i:batch_size*i + batch_size])
@@ -417,7 +417,7 @@ class PPO:
                 feed_dict[self.sequence_lengths] = np.ones(batch_size)
                 feed_dict[self.recurrent_train_length] = 1
 
-            v_values.append(self.sess.run(self.value, feed_dict=feed_dict))
+            v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
 
         v_values = np.append(v_values, 0)
         print(v_values)
