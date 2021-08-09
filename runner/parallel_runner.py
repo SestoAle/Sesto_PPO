@@ -551,8 +551,10 @@ class Runner:
                     # intrinsic_rews /= self.reward_model.r_norm.std
 
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
-                    intrinsic_rews -= np.mean(intrinsic_rews)
-                    intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
+                    # intrinsic_rews -= np.mean(intrinsic_rews)
+                    # intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
+                    intrinsic_rews -= self.reward_model_mean
+                    intrinsic_rews /= self.reward_model_std
                     intrinsic_rews *= self.reward_model.reward_model_weight
                     self.agent.buffer['rewards'] = list(intrinsic_rews)
 
@@ -703,6 +705,17 @@ class Runner:
     def update_reward_model(self):
         loss, _ = self.reward_model.train()
         self.history['reward_model_loss'].append(loss)
+
+        if len(self.agent.buffer['states']) > 0:
+            self.reward_model_std = np.std(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+                                                            self.agent.buffer['actions']))
+
+            self.reward_model_mean = np.mean(self.reward_model.eval(self.agent.buffer['states'], self.agent.buffer['states_n'],
+                                   self.agent.buffer['actions']))
+        else:
+            self.reward_model_mean = 0
+            self.reward_model_std = 1
+
         print('Mean reward loss = {}'.format(loss))
 
     # Method for count time after each episode

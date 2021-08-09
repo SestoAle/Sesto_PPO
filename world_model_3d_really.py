@@ -306,6 +306,13 @@ if __name__ == '__main__':
             step_moti_rews = []
             step_il_rews = []
 
+            plt.figure()
+
+            for traj in list(trajectories.values())[-100:]:
+                print_traj(traj)
+            plt.show()
+            input('...')
+
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 

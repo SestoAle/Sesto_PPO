@@ -93,7 +93,7 @@ class PPO:
                     self.p_network = tf.concat([self.p_network, self.inputs[-1]], axis=1)
 
                 if not self.recurrent:
-                    self.p_network = self.linear(self.p_network, 256, name='p_fc2', activation=tf.nn.relu)
+                    self.p_network = self.linear(self.p_network, 128, name='p_fc2', activation=tf.nn.relu)
                 else:
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables
@@ -219,7 +219,7 @@ class PPO:
 
                 # Final p_layers
                 if not self.recurrent_baseline:
-                    self.v_network = self.linear(self.v_network, 256, name='v_fc1', activation=tf.nn.tanh)
+                    self.v_network = self.linear(self.v_network, 512, name='v_fc1', activation=tf.nn.relu)
                 else:
                     # The last FC layer will be replaced by an LSTM layer.
                     # Recurrent network needs more variables
@@ -243,7 +243,7 @@ class PPO:
                     # Take only the last state of the sequence
                     self.v_network = self.v_rnn_state.h
 
-                self.v_network = self.linear(self.v_network, 256, name='v_fc2', activation=tf.nn.tanh)
+                self.v_network = self.linear(self.v_network, 128, name='v_fc2', activation=tf.nn.relu)
 
                 # Value function
                 self.value = tf.squeeze(self.linear(self.v_network, 1))

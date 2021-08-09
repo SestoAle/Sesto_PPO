@@ -228,7 +228,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
                           )
 
-    global_state = linear(global_state, 256, name='latent_3', activation=tf.nn.relu,
+    global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
 
                           )
 
