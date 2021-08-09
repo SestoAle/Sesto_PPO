@@ -402,7 +402,7 @@ class PPO:
         # Compute values for each state
 
         num_batches = 10
-        batch_size = np.ceil(num_batches / len(self.buffer['states']))
+        batch_size = int(np.ceil(num_batches / len(self.buffer['states'])))
         v_values = []
         for i in range(num_batches):
             states = self.obs_to_state(self.buffer['states'][batch_size*i:batch_size*i + batch_size])
@@ -418,6 +418,7 @@ class PPO:
                 feed_dict[self.recurrent_train_length] = 1
 
             v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
+
         v_values = np.append(v_values, 0)
 
         discounted_rewards = self.compute_gae(v_values)
