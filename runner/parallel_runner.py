@@ -558,9 +558,9 @@ class Runner:
                     intrinsic_rews *= self.reward_model.reward_model_weight
                     self.agent.buffer['rewards'] = list(intrinsic_rews)
 
-                self.agent.train()
                 print(np.shape(self.agent.buffer['rewards']))
                 input('...')
+                self.agent.train()
 
             # If frequency episodes are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'episodes' and \
