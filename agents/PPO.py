@@ -420,7 +420,7 @@ class PPO:
             v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
 
         v_values = np.append(v_values, 0)
-        print(v_values)
+        print(np.shape(v_values))
         input('...')
 
         discounted_rewards = self.compute_gae(v_values)
