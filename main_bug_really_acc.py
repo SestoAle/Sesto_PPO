@@ -345,9 +345,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 5
     # Memory of the agent (in episode)
-    memory = 10
+    memory = 5
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -399,7 +399,7 @@ if __name__ == "__main__":
     else:
         # If parallel, create more environments
         envs = []
-        for i in range(10):
+        for i in range(5):
             envs.append(BugEnvironment(game_name=game_name, no_graphics=True, worker_id=work_id + i,
                                        max_episode_timesteps=max_episode_timestep))
 

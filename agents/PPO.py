@@ -401,19 +401,23 @@ class PPO:
         # Compute GAE for rewards. If lambda == 1, they are discounted rewards
         # Compute values for each state
 
-        states = self.obs_to_state(self.buffer['states'])
-        feed_dict = self.create_state_feed_dict(states)
-        if self.recurrent_baseline:
-            v_internal_states_c = self.buffer['v_internal_states_c']
-            v_internal_states_h = self.buffer['v_internal_states_h']
-            v_internal_states_c = np.reshape(v_internal_states_c, [len(self.buffer['states']), -1])
-            v_internal_states_h = np.reshape(v_internal_states_h, [len(self.buffer['states']), -1])
-            v_internal_states = (v_internal_states_c, v_internal_states_h)
-            feed_dict[self.v_state_in] = v_internal_states
-            feed_dict[self.sequence_lengths] = np.ones(len(self.buffer['states']))
-            feed_dict[self.recurrent_train_length] = 1
+        num_batches = 10
+        batch_size = np.ceil(num_batches / len(self.buffer['states']))
+        v_values = []
+        for i in range(num_batches):
+            states = self.obs_to_state(self.buffer['states'][batch_size*i:batch_size*i + batch_size])
+            feed_dict = self.create_state_feed_dict(states)
+            if self.recurrent_baseline:
+                v_internal_states_c = self.buffer['v_internal_states_c'][batch_size*i:batch_size*i + batch_size]
+                v_internal_states_h = self.buffer['v_internal_states_h'][batch_size*i:batch_size*i + batch_size]
+                v_internal_states_c = np.reshape(v_internal_states_c, [batch_size, -1])
+                v_internal_states_h = np.reshape(v_internal_states_h, [batch_size, -1])
+                v_internal_states = (v_internal_states_c, v_internal_states_h)
+                feed_dict[self.v_state_in] = v_internal_states
+                feed_dict[self.sequence_lengths] = np.ones(batch_size)
+                feed_dict[self.recurrent_train_length] = 1
 
-        v_values = self.sess.run(self.value, feed_dict=feed_dict)
+            v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
         v_values = np.append(v_values, 0)
 
         discounted_rewards = self.compute_gae(v_values)
