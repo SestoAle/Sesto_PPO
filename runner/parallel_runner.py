@@ -557,7 +557,7 @@ class Runner:
                     #intrinsic_rews -= self.reward_model_mean
                     #intrinsic_rews /= self.reward_model_std
                     intrinsic_rews *= self.reward_model.reward_model_weight
-                    #self.agent.buffer['rewards'] = list(intrinsic_rews)
+                    self.agent.buffer['rewards'] = list(intrinsic_rews)
 
                 self.agent.train()
 

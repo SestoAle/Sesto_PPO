@@ -376,6 +376,7 @@ if __name__ == "__main__":
 
     # If we use IRL, create the reward model
     reward_model = None
+    graph = tf.compat.v1.Graph()
     if args.use_reward_model:
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
