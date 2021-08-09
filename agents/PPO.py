@@ -420,10 +420,11 @@ class PPO:
             v_values.extend(self.sess.run(self.value, feed_dict=feed_dict))
 
         v_values = np.append(v_values, 0)
-        print(np.shape(v_values))
-        input('...')
 
         discounted_rewards = self.compute_gae(v_values)
+        print(discounted_rewards[:100])
+        discounted_rewards = self.compute_discounted_reward()
+        print(discounted_rewards[:100])
 
         # Get batch size based on batch_fraction
         batch_size = int(len(self.buffer['states']) * self.batch_fraction)
