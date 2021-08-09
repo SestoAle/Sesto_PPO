@@ -555,6 +555,10 @@ class Runner:
                     # intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
                     intrinsic_rews -= self.reward_model_mean
                     intrinsic_rews /= self.reward_model_std
+                    print(intrinsic_rews)
+                    print(self.reward_model_mean)
+                    print(self.reward_model_std)
+                    input('...')
                     intrinsic_rews *= self.reward_model.reward_model_weight
                     self.agent.buffer['rewards'] = list(intrinsic_rews)
 
