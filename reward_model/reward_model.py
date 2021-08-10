@@ -615,19 +615,19 @@ class GAIL(RewardModel):
                 self.states, self.act, self.states_n = input()
 
                 with tf.compat.v1.variable_scope('net'):
-                    self.reward = network(states=self.states, states_n=self.states_n, act=self.act,
+                    self.logits = network(states=self.states, states_n=self.states_n, act=self.act,
                                                    with_action=self.with_action, actions_size=self.actions_size)
-                    self.reward = self.reward[0]
+                    self.logits = self.logits[0]
 
-                self.discriminator = tf.nn.sigmoid(self.reward)
+                self.discriminator = tf.nn.sigmoid(self.logits)
 
                 # Loss Function
                 # Original loss from GAIL paper
-                self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
-                         (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
+                # self.loss = -tf.reduce_mean((self.labels * tf.math.log(self.discriminator + eps)) + (
+                #          (1 - self.labels) * tf.math.log(1 - self.discriminator + eps)))
                 # Loss from AMP
-                # self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.discriminator - 1), 2)) + (
-                #       (1 - self.labels) * tf.pow((self.discriminator + 1), 2)))
+                self.loss = tf.reduce_mean((self.labels * tf.math.pow((self.logits - 1), 2)) + (
+                      (1 - self.labels) * tf.pow((self.logits + 1), 2)))
 
                 if self.gradient_penalty_weight > 0.0:
                     BS, length = shape_list(self.states[0])
@@ -728,13 +728,14 @@ class GAIL(RewardModel):
             acts = np.expand_dims(acts, axis=1)
             feed_dict[self.act] = acts
 
-        rew = self.sess.run([self.discriminator], feed_dict=feed_dict)
+        rew, logits = self.sess.run([self.discriminator, self.logits], feed_dict=feed_dict)
         rew = np.reshape(rew, (-1))
+        logits = np.reshape(logits, (-1))
 
         # Reward from original GAIL
-        rew = - np.log(1 - rew + eps)
+        #rew = - np.log(1 - rew + eps)
         # Reward from AMP
-        # rew = np.maximum(0, 1 - 0.25 * np.power((rew - 1), 2))
+        rew = np.maximum(0, 1 - 0.25 * np.power((logits - 1), 2))
 
         # Add the rewards to the normalization statistics
         if not isinstance(self.r_norm, DynamicRunningStat):
