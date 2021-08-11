@@ -39,7 +39,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_15000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_18000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d_v7.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -48,8 +48,8 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
-parser.set_defaults(fixed_reward_model=False)
+parser.set_defaults(use_reward_model=True)
+parser.set_defaults(fixed_reward_model=True)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
 parser.set_defaults(use_motivation=False)
@@ -370,7 +370,7 @@ if __name__ == "__main__":
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd, num_itr=15, motivation_weight=1)
+                             obs_to_state=obs_to_state_rnd, num_itr=30, motivation_weight=1)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 

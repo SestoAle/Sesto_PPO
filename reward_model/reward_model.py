@@ -16,7 +16,7 @@ class RewardModel:
 
         # Initialize some model attributes
         # RunningStat to normalize reward from the model
-        self.r_norm = DynamicRunningStat()
+        self.r_norm = RunningStat()
 
         # Policy agent needed to compute the discriminator
         self.policy = policy

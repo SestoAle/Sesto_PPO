@@ -101,15 +101,34 @@ def network_spec_rnd(states):
     inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
     inventory = linear(inventory, 64, name='inventory_latent', activation=tf.nn.relu)
 
-    global_state = tf.concat([global_state, inventory], axis=1)
+    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
+    # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
+    threedgrid_state = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01',
+                               activation=tf.nn.relu)
+    # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
+    # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
+    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_04', activation=tf.nn.relu)
+    threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
 
-    global_state = linear(global_state, 512, name='latent_1', activation=tf.nn.relu,
-                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-                                                                          dtype=tf.dtypes.float32)
+    #global_state = tf.concat([global_state, inventory], axis=1)
+    global_state = threedgrid
+
+    global_state = linear(encoded, 1024, name='latent_1', activation=tf.nn.relu,
+
+                         )
+
+    global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.relu,
+
                           )
-    global_state = linear(global_state, 64, name='latent_2',
-                          init=tf.compat.v1.keras.initializers.Orthogonal(gain=np.sqrt(2), seed=None,
-                                                                          dtype=tf.dtypes.float32)
+
+    global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
+
+                          )
+
+    global_state = linear(global_state, 64, name='out',
                           )
 
 

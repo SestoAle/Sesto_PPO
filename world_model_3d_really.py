@@ -19,7 +19,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'vaffanculo_im'
+model_name = 'vaffanculo'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -361,12 +361,12 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
-                    # de_point = np.zeros(2)
-                    # de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
-                    # de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
-                    # if np.abs(de_point[0] - desired_point_x) < threshold and \
-                    #         np.abs(de_point[1] - desired_point_z) < threshold:
-                    #     break
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
+                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
+                    if np.abs(de_point[0] - desired_point_x) < threshold and \
+                            np.abs(de_point[1] - desired_point_z) < threshold:
+                        break
 
                 # The actions is one less than the states, so add the last state
                 state = traj[-1]

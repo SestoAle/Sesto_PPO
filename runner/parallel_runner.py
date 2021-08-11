@@ -551,17 +551,24 @@ class Runner:
                         c_intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'][batch_size*i:batch_size*i + batch_size],
                                                                 self.agent.buffer['states_n'][batch_size*i:batch_size*i + batch_size],
                                                                 self.agent.buffer['actions'][batch_size*i:batch_size*i + batch_size])
-
+                        for rew in c_intrinsic_rews:
+                            self.reward_model.r_norm.push(rew)
                         intrinsic_rews.extend(list(c_intrinsic_rews))
+
+
 
                     intrinsic_rews = np.asarray(intrinsic_rews)
                     # Normalize rewards
-                    # intrinsic_rews -= self.reward_model.r_norm.mean
-                    # intrinsic_rews /= self.reward_model.r_norm.std
+                    print(self.reward_model.r_norm.mean)
+                    print(self.reward_model.r_norm.std)
+                    print(self.reward_model.r_norm.n)
+                    input('...')
+                    intrinsic_rews -= self.reward_model.r_norm.mean
+                    intrinsic_rews /= self.reward_model.r_norm.std
 
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
-                    # intrinsic_rews -= np.mean(intrinsic_rews)
-                    # intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
+                    #intrinsic_rews -= np.mean(intrinsic_rews)
+                    #intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
                     #intrinsic_rews -= self.reward_model_mean
                     #intrinsic_rews /= self.reward_model_std
                     intrinsic_rews *= self.reward_model.reward_model_weight
