@@ -559,12 +559,6 @@ class Runner:
 
                     intrinsic_rews = np.asarray(intrinsic_rews)
                     # Normalize rewards
-                    print(self.reward_model.r_norm.mean)
-                    print(self.reward_model.r_norm.std)
-                    print(self.reward_model.r_norm.n)
-                    print(np.mean(intrinsic_rews))
-                    print(np.std(intrinsic_rews))
-                    input('...')
                     intrinsic_rews -= self.reward_model.r_norm.mean
                     intrinsic_rews /= (self.reward_model.r_norm.std + 1e-5)
 
