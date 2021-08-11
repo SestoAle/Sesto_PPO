@@ -295,7 +295,7 @@ if __name__ == '__main__':
             desired_point_z = 4
             desired_point_y = 1
 
-            threshold = 5
+            threshold = 2
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
@@ -311,17 +311,17 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
-                # to_observe = False
-                # for point in traj:
-                #     de_point = np.zeros(2)
-                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 100
-                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 130
-                #     if np.abs(de_point[0] - 55) < threshold and \
-                #             np.abs(de_point[1] - 116) < threshold:
-                #         to_observe = True
-                #         break
-                #
-                # if to_observe:
+                to_observe = False
+                for point in traj:
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
+                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
+                    if np.abs(de_point[0] - 70) < threshold and \
+                            np.abs(de_point[1] - 15) < threshold:
+                        to_observe = True
+                        break
+
+                if to_observe:
                     for point in traj:
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220

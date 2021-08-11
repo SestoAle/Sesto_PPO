@@ -116,7 +116,7 @@ def network_spec_rnd(states):
     #global_state = tf.concat([global_state, inventory], axis=1)
     global_state = threedgrid
 
-    global_state = linear(encoded, 1024, name='latent_1', activation=tf.nn.relu,
+    global_state = linear(global_state, 1024, name='latent_1', activation=tf.nn.relu,
 
                          )
 
