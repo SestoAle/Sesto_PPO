@@ -39,7 +39,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
-parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_6000')
+parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_15000')
 parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_acc_really_big_only_jump_3d_v7.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
@@ -70,7 +70,7 @@ class BugEnvironment:
         self.config = None
         self.actions_eps = 0.1
         self.previous_action = [0, 0]
-        # Table where we save the position for intrisic reward and spawn position
+        # Table where we save the position for intrinsic reward and spawn position
         self.pos_buffer = dict()
         self.pos_already_normed = pos_already_normed
         self.r_max = 0.5
@@ -249,21 +249,12 @@ class BugEnvironment:
         return self.r_max * (1 - (counter / self.max_counter))
 
 def callback(agent, env, runner):
-    global save_frequency
-
-    if runner.ep % save_frequency == 0:
+    save_frequency = 100
+    global last_key
+    if runner.ep % save_frequency == 100:
         if isinstance(env, list):
-
-            with open("arrays/{}_trajectories.json".format(model_name)) as f:
-                trajectories_for_episode = json.load(f)
-            with open("arrays/{}_actions.json".format(model_name)) as f:
-                actions_for_episode = json.load(f)
-
-            if len(trajectories_for_episode.keys()) == 0:
-                last_key = 0
-            else:
-                last_key = int(list(trajectories_for_episode.keys())[-1]) + 1
-
+            trajectories_for_episode = dict()
+            actions_for_episode = dict()
             for e in env:
                 for traj, acts in zip(e.trajectories_for_episode.values(), e.actions_for_episode.values()):
                     trajectories_for_episode[last_key] = traj
@@ -280,13 +271,13 @@ def callback(agent, env, runner):
 
         # Save the trajectories
         json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        f = open("arrays/{}/{}_trajectories_{}.json".format(model_name, model_name, runner.ep), "w")
         f.write(json_str)
         f.close()
 
         # Save the actions
         json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_actions.json".format(model_name), "w")
+        f = open("arrays/{}/{}_actions_{}.json".format(model_name, model_name, runner.ep), "w")
         f.write(json_str)
         f.close()
 
@@ -315,19 +306,23 @@ if __name__ == "__main__":
 
     # Central buffer for parallel execution
     if parallel:
-        trajectories_for_episode = dict()
-        actions_for_episode = dict()
-        # Save the trajectories
-        json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_trajectories.json".format(model_name), "w")
-        f.write(json_str)
-        f.close()
-
-        # Save the actions
-        json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_actions.json".format(model_name), "w")
-        f.write(json_str)
-        f.close()
+        last_key = 0
+        if os.path.exists('arrays/{}'.format(model_name)):
+            os.rmdir('arrays/{}'.format(model_name))
+        os.makedirs('arrays/{}'.format(model_name))
+        # trajectories_for_episode = dict()
+        # actions_for_episode = dict()
+        # # Save the trajectories
+        # json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
+        # f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        # f.write(json_str)
+        # f.close()
+        #
+        # # Save the actions
+        # json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
+        # f = open("arrays/{}_actions.json".format(model_name), "w")
+        # f.write(json_str)
+        # f.close()
 
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
