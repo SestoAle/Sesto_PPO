@@ -251,7 +251,7 @@ class BugEnvironment:
 def callback(agent, env, runner):
     save_frequency = 100
     global last_key
-    if runner.ep % save_frequency == 0:
+    if runner.ep % save_frequency == 100:
         if isinstance(env, list):
             trajectories_for_episode = dict()
             actions_for_episode = dict()
