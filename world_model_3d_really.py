@@ -316,8 +316,8 @@ if __name__ == '__main__':
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
                     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
-                    if np.abs(de_point[0] - 92) < threshold and \
-                            np.abs(de_point[1] - 49) < threshold:
+                    if np.abs(de_point[0] - 70) < threshold and \
+                            np.abs(de_point[1] - 15) < threshold:
                         to_observe = True
                         break
 
