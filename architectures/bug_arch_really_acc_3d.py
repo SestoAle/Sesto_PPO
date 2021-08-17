@@ -96,7 +96,7 @@ def network_spec_rnd(states):
 
     global_state = embedding(global_state, indices=280, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
-    global_state = linear(global_state, 64, name='global_embs', activation=tf.nn.relu)
+    global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.relu)
 
     inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
     inventory = linear(inventory, 64, name='inventory_latent', activation=tf.nn.relu)
@@ -114,7 +114,7 @@ def network_spec_rnd(states):
     threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
 
     #global_state = tf.concat([global_state, inventory], axis=1)
-    global_state = threedgrid
+    #global_state = global_state
 
     global_state = linear(global_state, 1024, name='latent_1', activation=tf.nn.relu,
 
