@@ -81,37 +81,37 @@ def network_spec_rnd(states):
     inventory = \
         tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
 
-    agent_plane_x = ((agent_plane_x + 1) / 2) * 220
-    agent_plane_x = tf.cast(agent_plane_x, tf.int32)
-
-    agent_plane_z = ((agent_plane_z + 1) / 2) * 280
-    agent_plane_z = tf.cast(agent_plane_z, tf.int32)
-
-    agent_jump = ((agent_jump + 1) / 2) * 40
-    agent_jump = tf.cast(agent_jump, tf.int32)
+    # agent_plane_x = ((agent_plane_x + 1) / 2) * 220
+    # agent_plane_x = tf.cast(agent_plane_x, tf.int32)
+    #
+    # agent_plane_z = ((agent_plane_z + 1) / 2) * 280
+    # agent_plane_z = tf.cast(agent_plane_z, tf.int32)
+    #
+    # agent_jump = ((agent_jump + 1) / 2) * 40
+    # agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
     global_state = agent
 
-    global_state = embedding(global_state, indices=280, size=32, name='embs')
-    global_state = tf.reshape(global_state, (-1, 3 * 32))
+    # global_state = embedding(global_state, indices=280, size=32, name='embs')
+    # global_state = tf.reshape(global_state, (-1, 3 * 32))
     global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.relu)
 
-    inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
-    inventory = linear(inventory, 64, name='inventory_latent', activation=tf.nn.relu)
+    # inventory = linear(inventory, 32, name='inventory_embs', activation=tf.nn.tanh)
+    # inventory = linear(inventory, 64, name='inventory_latent', activation=tf.nn.relu)
 
-    threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
-    # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    threedgrid_state = embedding(threedgrid, indices=3, size=32, name='global_embs')
-    threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01',
-                               activation=tf.nn.relu)
-    # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
-    # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
-    threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_04', activation=tf.nn.relu)
-    threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
+    # threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
+    # # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
+    # threedgrid_state = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    # threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01',
+    #                            activation=tf.nn.relu)
+    # # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    # threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
+    # # threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
+    # threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_03', activation=tf.nn.relu)
+    # threedgrid = conv_layer_3d(threedgrid, 64, [3, 3, 3], strides=(2, 2, 2), name='conv_04', activation=tf.nn.relu)
+    # threedgrid = tf.reshape(threedgrid, [-1, 2 * 2 * 2 * 64])
 
     #global_state = tf.concat([global_state, inventory], axis=1)
     #global_state = global_state

@@ -53,11 +53,37 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
     return demonstrations
 
 if __name__ == '__main__':
-    trajectories = np.load('traj_to_observe.npy')
-    cluster(trajectories, 'clustering/autoencoders/labyrinth')
+    #trajectories = np.load('traj_to_observe.npy')
+    #cluster(trajectories, 'clustering/autoencoders/labyrinth')
     # model_name = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2'
     #
-    # expert_traj = load_demonstrations('dem_acc_impossibru.pkl')
+    expert_traj = load_demonstrations('dem_acc_really_big_only_jump_3d_v9.pkl')
+    expert_traj = [state['global_in'] for state in expert_traj['obs']]
+    expert_traj = np.asarray(expert_traj)
+
+    mean_x = 0
+    mean_y = 0
+    mean_z = 0
+
+    for i in range(715, 716):
+        mean_x += expert_traj[i, 0]
+        mean_y += expert_traj[i, 1]
+        mean_z += expert_traj[i, 2]
+
+    mean_x /= 1
+    mean_y /= 1
+    mean_z /= 1
+
+    mean_x = ((mean_x + 1) / 2) * 220
+    mean_y = ((mean_y + 1) / 2) * 280
+    mean_z = ((mean_z + 1) / 2) * 40
+
+    print(mean_x)
+    print(mean_y)
+    print(mean_z)
+
+
+
     # second_expert_traj = load_demonstrations('dem_acc_impossibru_to_add.pkl')
     #
     # expert_traj['obs'].extend(second_expert_traj['obs'])

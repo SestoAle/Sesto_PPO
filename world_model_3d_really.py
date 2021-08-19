@@ -3,6 +3,7 @@ from math import factorial
 import os
 import pickle
 from math import factorial
+from clustering.rdp import rdp_with_index
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile'
+model_name = 'questoeimpossibile_rc'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -39,6 +40,33 @@ def plot_map(map):
     ax.set_yticks(np.arange(heatmap.shape[0] + 1) - .5, minor=True)
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
+
+# Insert to the table. Position must be a 2 element vector
+# Return the counter of that position
+def insert_to_pos_table(pos_buffer, position, tau):
+
+    # Check if the position is already in the buffer
+    for k in pos_buffer.keys():
+        # If position - k < tau, then the position is already in the buffer
+        # Add its counter to one and return it
+
+        # The position are already normalized by the environment
+        k_value = list(map(float, k.split(" ")))
+        k_value = np.asarray(k_value)
+        position = np.asarray(position)
+
+        distance = np.linalg.norm(k_value - position)
+        if distance < tau:
+            pos_buffer[k] += 1
+            return pos_buffer[k]
+
+    pos_key = ' '.join(map(str, position))
+    pos_buffer[pos_key] = 1
+    return pos_buffer[pos_key]
+
+# Compute the intrinsic reward based on the counter
+def compute_intrinsic_reward(counter, max_counter=500, r_max=0.5):
+    return r_max * (1 - (counter / max_counter))
 
 def load_demonstrations(dems_name):
     with open('reward_model/dems/' + dems_name, 'rb') as f:
@@ -294,11 +322,11 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 220
-            desired_point_z = 130
-            desired_point_y = 1
+            desired_point_x = 210
+            desired_point_z = 118
+            desired_point_y = 16
 
-            threshold = 2
+            threshold = 4
 
             # Save the motivation rewards and the imitation rewards
             sum_moti_rews = []
@@ -311,6 +339,12 @@ if __name__ == '__main__':
 
             plt.figure()
 
+            traj_len = 281
+            max_length = -9999
+            mean_length = 0
+
+            pos_buffer = dict()
+            new_traj_to_observe = []
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
@@ -319,23 +353,27 @@ if __name__ == '__main__':
                 #     de_point = np.zeros(2)
                 #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
                 #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
-                #     if np.abs(de_point[0] - 90) < threshold and \
-                #             np.abs(de_point[1] - 47) < threshold:
+                #     if np.abs(de_point[0] - 180) < threshold and \
+                #             np.abs(de_point[1] - 116) < threshold:
                 #         to_observe = True
                 #         break
                 #
                 # if to_observe:
-                    for point in traj:
+                    for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold: \
-                                #and np.abs(de_point[2] - desired_point_y) < threshold:
+                                np.abs(de_point[1] - desired_point_z) < threshold :
+
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
+                            # for pos_point in traj:
+                            #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
                             break
+
+            # print("pos buffer created!")
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)
@@ -343,6 +381,7 @@ if __name__ == '__main__':
             #     np.save(f, traj_to_observe)
             # input('...')
             # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
+            # cluster_indices = [4229,  239, 9062, 6959, 7693, 2169,  389,  153,   28, 2475]
             # traj_to_observe = traj_to_observe[cluster_indices]
             # new_episode_to_observe = []
             # for id in cluster_indices:
@@ -353,6 +392,7 @@ if __name__ == '__main__':
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
                 states_batch = []
                 actions_batch = []
+
                 for state, action in zip(traj, actions[key]):
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
@@ -367,6 +407,13 @@ if __name__ == '__main__':
                     de_point = np.zeros(2)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 220
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 280
+
+                    # pos_key = ' '.join(map(str, state[:3]))
+                    # counter = pos_buffer[pos_key]
+                    # moti_rew = compute_intrinsic_reward(counter)
+                    # moti_rews.append(moti_rew)
+                    # step_moti_rews.extend(moti_rew)
+
                     if np.abs(de_point[0] - desired_point_x) < threshold and \
                             np.abs(de_point[1] - desired_point_z) < threshold:
                         break
@@ -380,13 +427,12 @@ if __name__ == '__main__':
 
                 il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
                 step_il_rews.extend(il_rew)
-
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
+
                 moti_rew = motivation.eval(states_batch)
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
-
                 moti_rew = np.sum(moti_rew)
                 sum_moti_rews.append(moti_rew)
                 sum_moti_rews_dict[idx_traj] = moti_rew
@@ -417,7 +463,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
@@ -468,8 +514,10 @@ if __name__ == '__main__':
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
                 states_batch = []
+                actions_batch = []
                 key = episodes_to_observe[idx]
-                for state in traj:
+
+                for state, action in zip(traj, actions[key]):
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
@@ -480,12 +528,9 @@ if __name__ == '__main__':
                     # Create the states batch to feed the models
                     state = dict(global_in=state)
                     states_batch.append(state)
-
-                actions_batch = []
-                for action in actions[key]:
                     actions_batch.append(action)
 
-                irl_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))

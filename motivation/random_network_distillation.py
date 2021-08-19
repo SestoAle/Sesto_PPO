@@ -130,6 +130,33 @@ class RND:
 
         return rewards
 
+    # Eval function
+    def eval_latent(self, obs):
+        # Convert the observation to states
+        states = self.obs_to_state(obs)
+
+        # Create the feed dict for the target network
+        feed_target = self.create_state_feed_dict(states)
+
+        # Get the target prediction (without training it)
+        target_labels = self.sess.run([self.target], feed_target)[0]
+
+        # Get the predictor estimation
+        feed_predictor = self.create_state_feed_dict(states)
+        feed_predictor[self.target_labels] = target_labels
+
+        # Compute the MSE to use as reward (after normalization)
+        # Update the predictor networks
+        rewards, latents = self.sess.run([self.rewards, self.predictor], feed_predictor)
+        rewards = np.reshape(rewards, (-1))
+
+        # Add the rewards to the normalization statistics
+        if not isinstance(self.r_norm, DynamicRunningStat):
+            for r in rewards:
+                self.r_norm.push(r)
+
+        return rewards, latents
+
     # Create a state feed_dict from states
     def create_state_feed_dict(self, states):
 

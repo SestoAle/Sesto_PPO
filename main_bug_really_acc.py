@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='vaffanculo')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='questoeimpossibile_rc')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -48,7 +48,7 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=True)
+parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
@@ -249,20 +249,15 @@ class BugEnvironment:
         return self.r_max * (1 - (counter / self.max_counter))
 
 def callback(agent, env, runner):
-    global save_frequency
+
+    global last_key
+    save_frequency = 100
 
     if runner.ep % save_frequency == 0:
         if isinstance(env, list):
 
-            with open("arrays/{}_trajectories.json".format(model_name)) as f:
-                trajectories_for_episode = json.load(f)
-            with open("arrays/{}_actions.json".format(model_name)) as f:
-                actions_for_episode = json.load(f)
-
-            if len(trajectories_for_episode.keys()) == 0:
-                last_key = 0
-            else:
-                last_key = int(list(trajectories_for_episode.keys())[-1]) + 1
+            trajectories_for_episode = dict()
+            actions_for_episode = dict()
 
             for e in env:
                 for traj, acts in zip(e.trajectories_for_episode.values(), e.actions_for_episode.values()):
@@ -280,13 +275,13 @@ def callback(agent, env, runner):
 
         # Save the trajectories
         json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        f = open("arrays/{}/{}_trajectories_{}.json".format(model_name, model_name, runner.ep), "w")
         f.write(json_str)
         f.close()
 
         # Save the actions
         json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_actions.json".format(model_name), "w")
+        f = open("arrays/{}/{}_actions_{}.json".format(model_name, model_name, runner.ep), "w")
         f.write(json_str)
         f.close()
 
@@ -315,19 +310,23 @@ if __name__ == "__main__":
 
     # Central buffer for parallel execution
     if parallel:
-        trajectories_for_episode = dict()
-        actions_for_episode = dict()
-        # Save the trajectories
-        json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_trajectories.json".format(model_name), "w")
-        f.write(json_str)
-        f.close()
-
-        # Save the actions
-        json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
-        f = open("arrays/{}_actions.json".format(model_name), "w")
-        f.write(json_str)
-        f.close()
+        last_key = 0
+        if os.path.exists('arrays/{}'.format(model_name)):
+            os.rmdir('arrays/{}'.format(model_name))
+        os.makedirs('arrays/{}'.format(model_name))
+        # trajectories_for_episode = dict()
+        # actions_for_episode = dict()
+        # # Save the trajectories
+        # json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
+        # f = open("arrays/{}_trajectories.json".format(model_name), "w")
+        # f.write(json_str)
+        # f.close()
+        #
+        # # Save the actions
+        # json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
+        # f = open("arrays/{}_actions.json".format(model_name), "w")
+        # f.write(json_str)
+        # f.close()
 
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
