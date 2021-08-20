@@ -180,8 +180,8 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
+    inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
