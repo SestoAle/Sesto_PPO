@@ -215,8 +215,19 @@ if __name__ == '__main__':
     # Open the trajectories file, if exists. A trajectory is a list of points (& inventory) encountered during training
     trajectories = None
     try:
-        with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
-            trajectories = json.load(f)
+        trajectories = dict()
+        actions = dict()
+        for filename in os.listdir("arrays/{}/".format(model_name)):
+            if 'trajectories' in filename:
+                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                    trajectories.update(json.load(f))
+            else:
+                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                    actions.update(json.load(f))
+
+        # do your stuff
+        # with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
+        #     trajectories = json.load(f)
 
     except Exception as e:
         print("traj problem")
@@ -233,14 +244,14 @@ if __name__ == '__main__':
             pass
 
     # As well as the action made in the episode
-    actions = None
-    try:
-        with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
-            actions = json.load(f)
-    except Exception as e:
-        print("act problem")
-        print(e)
-        pass
+    # actions = None
+    # try:
+    #     with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
+    #         actions = json.load(f)
+    # except Exception as e:
+    #     print("act problem")
+    #     print(e)
+    #     pass
 
     # Create pos_buffer from trajectories
     buffer = trajectories_to_pos_buffer(trajectories)
@@ -348,17 +359,17 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
-                # to_observe = False
-                # for point in traj:
-                #     de_point = np.zeros(2)
-                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
-                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
-                #     if np.abs(de_point[0] - 180) < threshold and \
-                #             np.abs(de_point[1] - 116) < threshold:
-                #         to_observe = True
-                #         break
-                #
-                # if to_observe:
+                to_observe = False
+                for point in traj:
+                    de_point = np.zeros(2)
+                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
+                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
+                    if np.abs(de_point[0] - 180) < threshold and \
+                            np.abs(de_point[1] - 116) < threshold:
+                        to_observe = True
+                        break
+
+                if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
@@ -463,7 +474,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 

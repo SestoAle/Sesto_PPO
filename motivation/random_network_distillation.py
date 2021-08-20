@@ -10,13 +10,14 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec, obs_to_state, lr=7e-5, buffer_size=1e5, batch_size=128,
-                 motivation_weight=1.,
+    def __init__(self, sess, input_spec, network_spec_target, network_spec_predictor, obs_to_state, lr=7e-5, buffer_size=1e5, batch_size=128,
+                 motivation_weight=1., obs_normalization=True,
                  num_itr=3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
-        #self.obs_norm = RunningStat(shape=(1359))
+        self.obs_norm = RunningStat(shape=(9289))
+        self.obs_normalization = obs_normalization
 
         # The tensorflow session
         self.sess = sess
@@ -28,7 +29,8 @@ class RND:
         self.num_itr = num_itr
         # Functions that define input and network specifications
         self.input_spec = input_spec
-        self.network_spec = network_spec
+        self.network_spec_target = network_spec_target
+        self.network_spec_predictor = network_spec_predictor
         self.obs_to_state = obs_to_state
         # Weight of the reward output by the motivation model
         self.motivation_weight = motivation_weight
@@ -43,12 +45,12 @@ class RND:
             # Target network, it must remain fixed during all the training
             with tf.compat.v1.variable_scope('target'):
                 # Network specification from external function
-                self.target = self.network_spec(self.inputs)
+                self.target = self.network_spec_target(self.inputs)
 
             # Predictor network
             with tf.compat.v1.variable_scope('predictor'):
                 # Network specification from external function
-                self.predictor = self.network_spec(self.inputs)
+                self.predictor = self.network_spec_predictor(self.inputs)
 
             # For fixed target labels, use a placeholder in order to NOT update the target network
             _, latent = shape_list(self.target)
@@ -68,6 +70,14 @@ class RND:
     # Fit function
     def train(self):
         losses = []
+
+        # If we want to use observation normalization, normalize the buffer
+        if self.obs_normalization:
+            print(self.buffer[0]['global_in'])
+            self.normalize_buffer()
+            print(self.buffer[0]['global_in'])
+            input('...')
+
 
         for it in range(self.num_itr):
 
@@ -105,6 +115,14 @@ class RND:
 
     # Eval function
     def eval(self, obs):
+
+        # Normalize observation
+        if self.obs_normalization:
+            print(obs)
+            self.normalize_states(obs)
+            print(obs)
+            input('...')
+
         # Convert the observation to states
         states = self.obs_to_state(obs)
 
@@ -132,6 +150,11 @@ class RND:
 
     # Eval function
     def eval_latent(self, obs):
+
+        # Normalize observation
+        if self.obs_normalization:
+            self.normalize_states(obs)
+
         # Convert the observation to states
         states = self.obs_to_state(obs)
 
@@ -177,7 +200,7 @@ class RND:
             else:
                 del self.buffer[0]
 
-        #self.obs_norm.push(obs['global_in'])
+        self.obs_norm.push(obs['global_in'])
 
         self.buffer.append(obs)
 
@@ -200,6 +223,12 @@ class RND:
     # Normalize the buffer state based on the running mean
     def normalize_buffer(self):
         for state in self.buffer:
+            state['global_in'] = (state['global_in'] - self.obs_norm.mean) / (self.obs_norm.std + eps)
+            state['global_in'] = np.clip(state['global_in'], -5, 5)
+
+    # Normalize input states based on the running mean
+    def normalize_states(self, states):
+        for state in states:
             state['global_in'] = (state['global_in'] - self.obs_norm.mean) / (self.obs_norm.std + eps)
             state['global_in'] = np.clip(state['global_in'], -5, 5)
 
