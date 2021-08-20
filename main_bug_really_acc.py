@@ -85,6 +85,9 @@ class BugEnvironment:
         self.actions_for_episode = dict()
         self.episode = -1
 
+        # Defined the values to sample for goal-conditioned policy
+        self.reward_weights = [0, 0, 0.3, 0.5, 0.7, 1, 1]
+
     def execute(self, actions):
         # actions = 99
         # while(actions == 99):
@@ -99,6 +102,8 @@ class BugEnvironment:
         self.previous_action = actions
 
         state = dict(global_in=env_info.vector_observations[0])
+        # Append the value of the motivation weight
+        state['global_in'].extends(self.sample_weights)
 
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
@@ -130,6 +135,10 @@ class BugEnvironment:
         return state, done, reward
 
     def reset(self):
+
+        # Sample a motivation reward weight
+        self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights), 1)[0]]
+        self.sample_weights = [self.sample_weights, 1-self.sample_weights]
 
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)

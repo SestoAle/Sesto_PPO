@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 9289
+    input_length = 9291
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -20,8 +20,8 @@ def network_spec(states):
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
+    inventory, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -78,8 +78,8 @@ def network_spec_rnd_predictor(states):
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
+    inventory, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
 
     # agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     # agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -125,8 +125,8 @@ def network_spec_rnd_target(states):
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
+    inventory, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
 
     # agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     # agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -156,7 +156,7 @@ def network_spec_rnd_target(states):
     return global_state
 
 def input_spec_irl():
-    input_length = 9289
+    input_length = 9291
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -177,8 +177,8 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
 
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
+    inventory, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
