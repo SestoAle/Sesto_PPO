@@ -103,7 +103,7 @@ class BugEnvironment:
 
         state = dict(global_in=env_info.vector_observations[0])
         # Append the value of the motivation weight
-        state['global_in'].extends(self.sample_weights)
+        state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
 
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
