@@ -5,8 +5,8 @@ from utils import NumpyEncoder
 import time
 from threading import Thread
 import sys
+from copy import deepcopy
 
-# Act thread
 # Act thread
 class ActThreaded(Thread):
     def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states, recurrent=False, internals=None,
@@ -466,13 +466,9 @@ class Runner:
                 # For motivation, add the agents experience to the motivation buffer
                 if self.motivation is not None:
                     for state_n in self.parallel_buffer['motivation'][i]['state_n']:
-                        self.motivation.add_to_buffer(state_n)
+                        # We need deepcopy because the state will be normalized (and not for the policy)
+                        self.motivation.add_to_buffer(deepcopy(state_n))
 
-                # For reward model, add the agents experience to the reward model buffer
-                # for state, state_n, action in zip(self.parallel_buffer['reward_model'][i]['state'],
-                #                                   self.parallel_buffer['reward_model'][i]['state_n'],
-                #                                   self.parallel_buffer['reward_model'][i]['action']):
-                #     self.reward_model.add_to_policy_buffer(state, state_n, action)
                 if self.reward_model is not None:
                     self.reward_model.add_to_policy_buffer(self.parallel_buffer['reward_model'][i]['state'],
                                                        self.parallel_buffer['reward_model'][i]['state_n'],
@@ -536,11 +532,11 @@ class Runner:
                     #intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
                     # Compute intrinsic rewards
                     num_batches = 10
-                    batch_size = int(np.ceil(len(self.agent.buffer['states']) / num_batches))
+                    batch_size = int(np.ceil(len(self.agent.buffer['states_n']) / num_batches))
                     intrinsic_rews = []
                     for i in range(num_batches):
-                        c_intrinsic_rews = self.motivation.eval(
-                            self.agent.buffer['states_n'][batch_size * i:batch_size * i + batch_size])
+                        c_intrinsic_rews = self.motivation.eval(deepcopy(
+                            self.agent.buffer['states_n'][batch_size * i:batch_size * i + batch_size]))
                         # for rew in c_intrinsic_rews:
                         #     self.reward_model.r_norm.push(rew)
                         intrinsic_rews.extend(list(c_intrinsic_rews))
@@ -711,12 +707,15 @@ class Runner:
                     self.reward_model.add_to_policy_buffer([state], [state_n], [action])
 
                 if self.motivation is not None:
-                    self.motivation.add_to_buffer(state_n)
+                    self.motivation.add_to_buffer(deepcopy(state_n))
 
                 state = state_n
                 reward += step_reward
                 if terminal or step >= env._max_episode_timesteps:
                     break
+
+            if self.motivation is not None:
+                self.motivation.clear_buffer()
 
             if verbose:
                 print("Reward at the end of episode " + str(ep + 1) + ": " + str(reward))

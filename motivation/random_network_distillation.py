@@ -89,6 +89,8 @@ class RND:
             # Convert the observation to states
             states = self.obs_to_state(mini_batch)
 
+            #
+
             # Create the feed dict for the target network
             feed_target = self.create_state_feed_dict(states)
 
