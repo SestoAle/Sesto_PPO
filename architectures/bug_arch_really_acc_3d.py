@@ -156,7 +156,7 @@ def network_spec_rnd_target(states):
     return global_state
 
 def input_spec_irl():
-    input_length = 9291
+    input_length = 9289
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     global_state_n = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state_n')
@@ -166,7 +166,10 @@ def input_spec_irl():
     return [[global_state], act, [global_state_n]]
 
 def obs_to_state_irl(obs):
-    global_batch = np.stack([state['global_in'] for state in obs])
+    if len(obs[0]['global_in']) > 9289:
+        global_batch = np.stack([state['global_in'][-2:] for state in obs])
+    else:
+        global_batch = np.stack([state['global_in'] for state in obs])
     return [global_batch]
 
 def network_spec_irl(states, states_n, act, with_action, actions_size):
