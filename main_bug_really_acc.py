@@ -137,7 +137,7 @@ class BugEnvironment:
     def reset(self):
 
         # Sample a motivation reward weight
-        self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))[0]]
+        self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
         self.sample_weights = [self.sample_weights, 1-self.sample_weights]
 
         self.previous_action = [0, 0]
