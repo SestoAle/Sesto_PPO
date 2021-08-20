@@ -150,6 +150,8 @@ class BugEnvironment:
 
         env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
+        # Append the value of the motivation weight
+        state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
