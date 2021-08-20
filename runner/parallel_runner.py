@@ -184,7 +184,7 @@ class Runner:
         self.evaluation = evaluation
 
         # TODO: pass this as an argument
-        self.motivation_frequency = 5
+        self.motivation_frequency = 10
 
         # For alternating between motivation and imitation reward
         self.alternate_frequency = 0
@@ -260,6 +260,9 @@ class Runner:
                 # Getting initial experience from the environment to do the first training epoch of the reward model
                 self.get_experience(self.envs[0], self.reward_frequency, random=True)
                 self.update_reward_model()
+        elif self.motivation is not None:
+            # If there is only intrinsic motivation, do some episode for the normalization buffer
+            self.get_experience(self.envs[0], self.motivation_frequency, random=True)
 
         # For curriculum training
         self.start_training = 0
@@ -704,7 +707,11 @@ class Runner:
                 else:
                     action, _, c_probs = self.agent.eval([state])
                 state_n, terminal, step_reward = env.execute(actions=action)
-                self.reward_model.add_to_policy_buffer([state], [state_n], [action])
+                if self.reward_model is not None:
+                    self.reward_model.add_to_policy_buffer([state], [state_n], [action])
+
+                if self.motivation is not None:
+                    self.motivation.add_to_buffer(state_n)
 
                 state = state_n
                 reward += step_reward
