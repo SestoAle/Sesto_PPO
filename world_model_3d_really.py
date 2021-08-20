@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_rc'
+model_name = 'questoeimpossibile_irl'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -293,10 +293,11 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "double_jump_impossibru_5"
+                model_name = "questoeimpossibile_rc"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
-                motivation = RND(motivation_sess, input_spec=input_spec, network_spec=network_spec_rnd,
+                motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd,
+                                 network_spec_target=network_spec_rnd, obs_normalization=False,
                                  obs_to_state=obs_to_state_rnd, motivation_weight=1)
                 init = tf.compat.v1.global_variables_initializer()
                 motivation_sess.run(init)
@@ -359,17 +360,17 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
-                to_observe = False
-                for point in traj:
-                    de_point = np.zeros(2)
-                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
-                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
-                    if np.abs(de_point[0] - 180) < threshold and \
-                            np.abs(de_point[1] - 116) < threshold:
-                        to_observe = True
-                        break
-
-                if to_observe:
+                # to_observe = False
+                # for point in traj:
+                #     de_point = np.zeros(2)
+                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
+                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
+                #     if np.abs(de_point[0] - 180) < threshold and \
+                #             np.abs(de_point[1] - 116) < threshold:
+                #         to_observe = True
+                #         break
+                #
+                # if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 220
