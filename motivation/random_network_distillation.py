@@ -73,11 +73,7 @@ class RND:
 
         # If we want to use observation normalization, normalize the buffer
         if self.obs_normalization:
-            print(self.buffer[0]['global_in'])
             self.normalize_buffer()
-            print(self.buffer[0]['global_in'])
-            input('...')
-
 
         for it in range(self.num_itr):
 
@@ -120,10 +116,7 @@ class RND:
 
         # Normalize observation
         if self.obs_normalization:
-            print(obs)
             self.normalize_states(obs)
-            print(obs)
-            input('...')
 
         # Convert the observation to states
         states = self.obs_to_state(obs)

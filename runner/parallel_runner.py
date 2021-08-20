@@ -605,6 +605,14 @@ class Runner:
         f.write(json_str)
         f.close()
 
+        # Save statistics of RND (mean and std) as json
+        if self.motivation is not None:
+            stats = dict(mean=self.motivation.obs_norm.mean, std=self.motivation.obs_norm.mean)
+            json_str = json.dumps(stats, cls=NumpyEncoder)
+            f = open("arrays/{}_rnd_stat.json".format(model_name), "w")
+            f.write(json_str)
+            f.close()
+
         # Save the tf model
         agent.save_model(name=model_name, folder='saved')
 
