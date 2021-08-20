@@ -42,6 +42,8 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
+    goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
     threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
@@ -60,7 +62,7 @@ def network_spec(states):
 
     # inventory = linear(inventory, 1024, name='inventory_embs', activation=tf.nn.tanh)
 
-    global_state = tf.concat([agent, threedgrid], axis=1)
+    global_state = tf.concat([agent, threedgrid, goal_weight], axis=1)
 
     global_state = linear(global_state, 1024, name='embs', activation=tf.nn.relu)
 

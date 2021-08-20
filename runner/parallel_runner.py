@@ -546,19 +546,16 @@ class Runner:
                     weights = [state['global_in'][-2:] for state in
                                self.agent.buffer['states_n']]
                     weights = np.asarray(weights)
-                    print(weights)
                     # Normalize rewards
                     # intrinsic_rews -= self.motivation.r_norm.mean
                     # intrinsic_rews /= self.motivation.r_norm.std
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
-                    print(intrinsic_rews)
                     intrinsic_rews *= weights[:, 0]
-                    print(intrinsic_rews)
-                    input('....')
 
-                    self.agent.buffer['rewards'] = list(intrinsic_rews)
+
+                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 if self.reward_model is not None:
 
@@ -583,17 +580,14 @@ class Runner:
                     weights = [state['global_in'][-2:] for state in
                                self.agent.buffer['states_n']]
                     weights = np.asarray(weights)
-                    print(weights)
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
                     intrinsic_rews -= np.mean(intrinsic_rews)
                     intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
                     #intrinsic_rews -= self.reward_model_mean
                     #intrinsic_rews /= self.reward_model_std
                     intrinsic_rews *= self.reward_model.reward_model_weight
-                    print(intrinsic_rews)
-                    intrinsic_rews *= weights[:, 0]
-                    print(intrinsic_rews)
-                    input('....')
+                    intrinsic_rews *= weights[:, 1]
+
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
                 self.agent.train()
