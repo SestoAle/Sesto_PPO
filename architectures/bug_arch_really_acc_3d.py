@@ -167,7 +167,7 @@ def input_spec_irl():
 
 def obs_to_state_irl(obs):
     if len(obs[0]['global_in']) > 9289:
-        global_batch = np.stack([state['global_in'][-2:] for state in obs])
+        global_batch = np.stack([state['global_in'][:-2] for state in obs])
     else:
         global_batch = np.stack([state['global_in'] for state in obs])
     return [global_batch]
