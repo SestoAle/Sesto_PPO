@@ -16,7 +16,7 @@ class RND:
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
-        self.obs_norm = RunningStat(shape=(9289))
+        self.obs_norm = RunningStat(shape=(9291))
         self.obs_normalization = obs_normalization
 
         # The tensorflow session
