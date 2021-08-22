@@ -86,7 +86,7 @@ class BugEnvironment:
         self.episode = -1
 
         # Defined the values to sample for goal-conditioned policy
-        self.reward_weights = [0, 0, 0.3, 0.5, 0.7, 1, 1]
+        self.reward_weights = [0, 0.3, 0.5, 0.7, 1, 1]
 
     def execute(self, actions):
         # actions = 99
