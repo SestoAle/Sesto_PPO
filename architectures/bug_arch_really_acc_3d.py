@@ -98,18 +98,22 @@ def network_spec_rnd_predictor(states):
 
     # global_state = embedding(global_state, indices=280, size=32, name='embs')
     # global_state = tf.reshape(global_state, (-1, 3 * 32))
-    global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
+    # global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
 
     global_state = linear(global_state, 1024, name='latent_1', activation=tf.nn.leaky_relu,
 
                          )
 
-    global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.leaky_relu,
 
                           )
 
     global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
+
+                          )
+
+    global_state = linear(global_state, 128, name='latent_4', activation=tf.nn.relu,
 
                           )
 
@@ -145,12 +149,16 @@ def network_spec_rnd_target(states):
 
     # global_state = embedding(global_state, indices=280, size=32, name='embs')
     # global_state = tf.reshape(global_state, (-1, 3 * 32))
-    global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
+    # global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
 
     global_state = linear(global_state, 1024, name='latent_1', activation=tf.nn.leaky_relu,
 
                          )
+
+    global_state = linear(global_state, 512, name='latent_2', activation=tf.nn.leaky_relu,
+
+                          )
 
     global_state = linear(global_state, 64, name='out',
                           )

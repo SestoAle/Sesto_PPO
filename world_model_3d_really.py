@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_irl'
+model_name = 'questoeimpossibile_con'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -143,16 +143,18 @@ def print_traj(traj):
     ep_trajectory = np.asarray(traj)
     plt.xlim(0, 220)
     plt.ylim(0, 280)
-    color = 'g'
+    color = 'c'
 
-    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
+    if (ep_trajectory[-1, 3:5] == [0.5, 0.5]).all():
         color = 'g'
     elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
         color = 'b'
     elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
         color = 'y'
-    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
+    elif (ep_trajectory[-1, 3:5] == [0.3, 0.7]).all():
         color = 'm'
+    elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
+        color = 'k'
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 220
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 280
@@ -293,15 +295,18 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                model_name = "questoeimpossibile_rc"
+                #model_name = "questoeimpossibile_rc"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
-                motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd,
-                                 network_spec_target=network_spec_rnd, obs_normalization=False,
+                motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
+                                 network_spec_target=network_spec_rnd_target, obs_normalization=True,
                                  obs_to_state=obs_to_state_rnd, motivation_weight=1)
                 init = tf.compat.v1.global_variables_initializer()
                 motivation_sess.run(init)
                 motivation.load_model(name=model_name, folder='saved')
+                # RND stats
+                with open("arrays/{}.json".format("{}_rnd_stat".format(model_name)), 'rb') as f:
+                    rnd_stat = json.load(f)
 
             # Load imitation model
             graph = tf.compat.v1.Graph()
@@ -381,6 +386,10 @@ if __name__ == '__main__':
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
+
+                            # for j in range(i + 1, traj_len):
+                            #     traj[j] = traj[i]
+
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
                             break
@@ -442,7 +451,7 @@ if __name__ == '__main__':
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
 
-                moti_rew = motivation.eval(states_batch)
+                moti_rew = motivation.eval(states_batch, rnd_stat['mean'][:73], rnd_stat['std'][:73])
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
                 moti_rew = np.sum(moti_rew)
@@ -543,7 +552,7 @@ if __name__ == '__main__':
                     actions_batch.append(action)
 
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                im_rew = motivation.eval(states_batch)
+                im_rew = motivation.eval(states_batch, rnd_stat['mean'][:73], rnd_stat['std'][:73])
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
