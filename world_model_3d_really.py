@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_irl'
+model_name = 'questoeimpossibile_con'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -299,7 +299,7 @@ if __name__ == '__main__':
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
-                                 network_spec_target=network_spec_rnd_target, obs_normalization=True,
+                                 network_spec_target=network_spec_rnd_target, obs_normalization=False,
                                  obs_to_state=obs_to_state_rnd, motivation_weight=1)
                 init = tf.compat.v1.global_variables_initializer()
                 motivation_sess.run(init)
@@ -451,7 +451,7 @@ if __name__ == '__main__':
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
 
-                moti_rew = motivation.eval(states_batch, rnd_stat['mean'][:73], rnd_stat['std'][:73])
+                moti_rew = motivation.eval(states_batch)
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
                 moti_rew = np.sum(moti_rew)
@@ -552,7 +552,7 @@ if __name__ == '__main__':
                     actions_batch.append(action)
 
                 irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                im_rew = motivation.eval(states_batch, rnd_stat['mean'][:73], rnd_stat['std'][:73])
+                im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
