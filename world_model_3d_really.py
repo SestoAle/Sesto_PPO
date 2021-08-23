@@ -191,26 +191,30 @@ def print_traj_with_diff(traj, diff, thr=None):
     plt.ylim(0, 280)
     color = 'g'
 
-    if (ep_trajectory[-1, 3:5] == [0, 0]).all():
+    if (ep_trajectory[-1, 3:5] == [0.5, 0.5]).all():
         color = 'g'
     elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
         color = 'b'
     elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
         color = 'y'
-    elif (ep_trajectory[-1, 3:5] == [1, 1]).all():
+    elif (ep_trajectory[-1, 3:5] == [0.3, 0.7]).all():
         color = 'm'
+    elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
+        color = 'k'
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 220
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 280
 
-    if thr == None:
-        thr = np.mean(diff)
+    # if thr == None:
+    #     thr = np.mean(diff)
+    #
+    # for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
+    #     if d > thr:
+    #         plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'r')
+    #     else:
+    #         plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
+    plt.plot(ep_trajectory[:, 0], ep_trajectory[:, 1], color)
 
-    for point, point_n, d in zip(ep_trajectory[:-1], ep_trajectory[1:], diff):
-        if d > thr:
-            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], 'r')
-        else:
-            plt.plot([point[0], point_n[0]], [point[1], point_n[1]], color)
 
 if __name__ == '__main__':
 
@@ -304,9 +308,6 @@ if __name__ == '__main__':
                 init = tf.compat.v1.global_variables_initializer()
                 motivation_sess.run(init)
                 motivation.load_model(name=model_name, folder='saved')
-                # RND stats
-                with open("arrays/{}.json".format("{}_rnd_stat".format(model_name)), 'rb') as f:
-                    rnd_stat = json.load(f)
 
             # Load imitation model
             graph = tf.compat.v1.Graph()
@@ -484,7 +485,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
