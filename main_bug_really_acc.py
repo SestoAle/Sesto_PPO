@@ -17,7 +17,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -86,7 +86,8 @@ class BugEnvironment:
         self.episode = -1
 
         # Defined the values to sample for goal-conditioned policy
-        self.reward_weights = [0.5]
+        self.reward_weights = [0, 0, 0.3, 0.5, 0.7, 0.7, 0.8, 0.8, 1, 1]
+
 
     def execute(self, actions):
         # actions = 99
@@ -137,8 +138,15 @@ class BugEnvironment:
     def reset(self):
 
         # Sample a motivation reward weight
+        self.reward_weights = self.config['reward_weights']
         self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
-        self.sample_weights = [self.sample_weights, 1-self.sample_weights]
+        self.sample_weights = [1, self.sample_weights, 1-self.sample_weights]
+
+        # Change config to be fed to Unity (no list)
+        unity_config = dict()
+        for key in self.config.keys():
+            if key != "reward_weights":
+                unity_config[key] = self.config[key]
 
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
@@ -148,7 +156,7 @@ class BugEnvironment:
         self.actions_for_episode[self.episode] = []
         # self.set_spawn_position()
 
-        env_info = self.unity_env.reset(train_mode=True, config=self.config)[self.default_brain]
+        env_info = self.unity_env.reset(train_mode=True, config=unity_config)[self.default_brain]
         state = dict(global_in=env_info.vector_observations[0])
         # Append the value of the motivation weight
         state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
@@ -343,10 +351,12 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [1000000000000000000000000000],
+        "thresholds": [2000, 2000],
         "parameters": {
-            "agent_spawn_x": [0],
-            "agent_spawn_z": [0]
+            "agent_spawn_x": [0, 0, 0],
+            "agent_spawn_z": [0, 0, 0],
+            "reward_weights": [[0], [0, 0.3, 0.5], [0, 0, 0.3, 0.5, 0.8, 0.8, 1, 1]]
+
         }
     }
 

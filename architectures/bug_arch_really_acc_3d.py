@@ -2,7 +2,7 @@ import tensorflow as tf
 from layers.layers import *
 
 def input_spec():
-    input_length = 9291
+    input_length = 9292
     global_state = tf.compat.v1.placeholder(tf.float32, [None, input_length], name='state')
 
     return [global_state]
@@ -21,7 +21,7 @@ def network_spec(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -81,7 +81,7 @@ def network_spec_rnd_predictor(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -132,7 +132,7 @@ def network_spec_rnd_target(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
     inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 2], axis=1)
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -177,7 +177,7 @@ def input_spec_irl():
 
 def obs_to_state_irl(obs):
     if len(obs[0]['global_in']) > 9289:
-        global_batch = np.stack([state['global_in'][:-2] for state in obs])
+        global_batch = np.stack([state['global_in'][:-3] for state in obs])
     else:
         global_batch = np.stack([state['global_in'] for state in obs])
     return [global_batch]

@@ -11,7 +11,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from clustering.clustering_ae import cluster
+#from clustering.clustering_ae import cluster
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -20,9 +20,9 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_con'
+model_name = 'questoeimpossibile_con_3'
 
-reward_model_name = "vaffanculo_im_60000"
+reward_model_name = "vaffanculo_60000"
 
 def plot_map(map):
     """
@@ -155,6 +155,8 @@ def print_traj(traj):
         color = 'm'
     elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
         color = 'k'
+    else:
+        print(ep_trajectory[-1, 3:5])
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 220
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 280
@@ -230,7 +232,6 @@ if __name__ == '__main__':
             else:
                 with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
                     actions.update(json.load(f))
-
         # do your stuff
         # with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
         #     trajectories = json.load(f)
@@ -299,7 +300,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "questoeimpossibile_rc"
+                #model_name = "asdasdas"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -310,26 +311,28 @@ if __name__ == '__main__':
                 motivation.load_model(name=model_name, folder='saved')
 
             # Load imitation model
-            graph = tf.compat.v1.Graph()
-            with graph.as_default():
-                from architectures.bug_arch_very_acc import *
-                model_name = 'vaffanculo_im'
-                reward_model_name = "vaffanculo_im_60000"
-                tf.compat.v1.disable_eager_execution()
-                reward_sess = tf.compat.v1.Session(graph=graph)
-                reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                    obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess,
-                                    lr=7e-5, reward_model_weight=0.7,
-                                    name=model_name, fixed_reward_model=False, with_action=True)
-                init = tf.compat.v1.global_variables_initializer()
-                reward_sess.run(init)
-                reward_model.load_model(reward_model_name)
+            # graph = tf.compat.v1.Graph()
+            # with graph.as_default():
+            #     from architectures.bug_arch_very_acc import *
+            #     model_name = 'vaffanculo'
+            #     reward_model_name = "vaffanculo_2_6000"
+            #     tf.compat.v1.disable_eager_execution()
+            #     reward_sess = tf.compat.v1.Session(graph=graph)
+            #     reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
+            #                         obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess,
+            #                         lr=7e-5, reward_model_weight=0.7,
+            #                         name=model_name, fixed_reward_model=False, with_action=True)
+            #     init = tf.compat.v1.global_variables_initializer()
+            #     reward_sess.run(init)
+            #     reward_model.load_model(reward_model_name)
         except Exception as e:
             reward_model = None
+            motivation = None
             print(e)
 
 
-        if motivation is not None and reward_model is not None:
+        if motivation is not None:
+                # and reward_model is not None:
 
             # Filler the state
             # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
@@ -383,13 +386,13 @@ if __name__ == '__main__':
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold :
+                                np.abs(de_point[1] - desired_point_z) < threshold:
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
-
+                            #
                             # for j in range(i + 1, traj_len):
-                            #     traj[j] = traj[i]
+                            #     traj[j] = traj[i + 1]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -399,7 +402,7 @@ if __name__ == '__main__':
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)
-            # with open('traj_to_observe.npy', 'wb') as f:
+            # with open('traj_to_observe_2.npy', 'wb') as f:
             #     np.save(f, traj_to_observe)
             # input('...')
             # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
@@ -447,7 +450,8 @@ if __name__ == '__main__':
                 state = dict(global_in=state)
                 states_batch.append(state)
 
-                il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                # il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                il_rew = np.zeros(len(states_batch))
                 step_il_rews.extend(il_rew)
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
@@ -552,7 +556,8 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
 
-                irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                # irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                irl_rew = np.zeros(len(states_batch))
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
