@@ -139,13 +139,15 @@ class BugEnvironment:
 
         # Sample a motivation reward weight
         self.reward_weights = self.config['reward_weights']
+        self.win_weight = self.config['win_weight']
         self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
-        self.sample_weights = [1, self.sample_weights, 1-self.sample_weights]
+        self.sample_win = self.win_weight[np.random.randint(len(self.win_weight))]
+        self.sample_weights = [self.sample_win, self.sample_weights, 1-self.sample_weights]
 
         # Change config to be fed to Unity (no list)
         unity_config = dict()
         for key in self.config.keys():
-            if key != "reward_weights":
+            if key != "reward_weights" and key != 'win_weight':
                 unity_config[key] = self.config[key]
 
         self.previous_action = [0, 0]
@@ -355,8 +357,8 @@ if __name__ == "__main__":
         "parameters": {
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
+            "win_weightt": [[0, 1], [0, 1], [0, 1]],
             "reward_weights": [[0], [0, 0.3, 0.5], [0, 0, 0.3, 0.5, 0.8, 0.8, 1, 1]]
-
         }
     }
 
