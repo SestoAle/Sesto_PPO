@@ -543,8 +543,8 @@ class Runner:
                         intrinsic_rews.extend(list(c_intrinsic_rews))
 
                     # Get the weights of the motivation rewards
-                    weights = [state['global_in'][-2:] for state in
-                               self.agent.buffer['states_n']]
+                    weights = [state['global_in'][-3:] for state in
+                               self.agent.buffer['states']]
                     weights = np.asarray(weights)
                     # Normalize rewards
                     # intrinsic_rews -= self.motivation.r_norm.mean
@@ -553,11 +553,17 @@ class Runner:
                     intrinsic_rews /= np.std(intrinsic_rews)
                     intrinsic_rews *= self.motivation.motivation_weight
 
+                    print(weights)
+                    print(self.agent.buffer['rewards'])
+                    # Weight of win
+                    self.agent.buffer['rewards'] = np.asarray(self.agent.buffer['rewards']) * weights[:, 0]
+                    print(self.agent.buffer['rewards'])
 
-                    intrinsic_rews *= weights[:, 0]
-
-
+                    intrinsic_rews *= weights[:, 1]
+                    print(intrinsic_rews)
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                    print(self.agent.buffer['rewards'])
+                    input('...')
 
                 if self.reward_model is not None:
 
@@ -579,8 +585,8 @@ class Runner:
                     # intrinsic_rews /= (self.reward_model.r_norm.std + 1e-5)
 
                     # Get the weights of the motivation rewards
-                    weights = [state['global_in'][-2:] for state in
-                               self.agent.buffer['states_n']]
+                    weights = [state['global_in'][-3:] for state in
+                               self.agent.buffer['states']]
                     weights = np.asarray(weights)
                     #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
                     intrinsic_rews -= np.mean(intrinsic_rews)
@@ -588,7 +594,7 @@ class Runner:
                     #intrinsic_rews -= self.reward_model_mean
                     #intrinsic_rews /= self.reward_model_std
                     intrinsic_rews *= self.reward_model.reward_model_weight
-                    intrinsic_rews *= weights[:, 1]
+                    intrinsic_rews *= weights[:, 2]
 
                     self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
