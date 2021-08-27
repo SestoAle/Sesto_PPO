@@ -86,7 +86,7 @@ class BugEnvironment:
         self.episode = -1
 
         # Defined the values to sample for goal-conditioned policy
-        self.reward_weights = [0, 0, 0.3, 0.5, 0.7, 0.7, 0.8, 0.8, 1, 1]
+        self.reward_weights = [0, 0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1]
 
 
     def execute(self, actions):
@@ -358,7 +358,7 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "win_weight": [[0, 1], [0, 1], [0, 1]],
-            "reward_weights": [[0], [0, 0.3, 0.5], [0, 0.3, 0.5, 0.7, 0.8, 0.9, 1, 1]]
+            "reward_weights": [[0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1], [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1], [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1]]
         }
     }
 
