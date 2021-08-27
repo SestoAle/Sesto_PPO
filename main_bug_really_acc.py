@@ -353,12 +353,12 @@ if __name__ == "__main__":
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
     curriculum = {
         'current_step': 0,
-        "thresholds": [2000, 2000],
+        "thresholds": [3000, 3000],
         "parameters": {
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "win_weight": [[0, 1], [0, 1], [0, 1]],
-            "reward_weights": [[0], [0, 0.3, 0.5], [0, 0, 0.3, 0.5, 0.8, 0.8, 1, 1]]
+            "reward_weights": [[0], [0, 0.3, 0.5], [0, 0.3, 0.5, 0.7, 0.8, 0.9, 1, 1]]
         }
     }
 
