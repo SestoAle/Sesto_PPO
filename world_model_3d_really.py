@@ -11,7 +11,7 @@ import numpy as np
 from architectures.bug_arch_very_acc import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-#from clustering.clustering_ae import cluster
+from clustering.clustering_ae import cluster
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -386,13 +386,14 @@ if __name__ == '__main__':
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 280
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold:
+                                np.abs(de_point[1] - desired_point_z) < threshold and \
+                                point[-1] <= 0.5:
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
                             #
-                            # for j in range(i + 1, traj_len):
-                            #     traj[j] = traj[i + 1]
+                            for j in range(i + 1, traj_len):
+                                traj[j] = traj[i + 1]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -402,10 +403,10 @@ if __name__ == '__main__':
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)
-            # with open('traj_to_observe_2.npy', 'wb') as f:
-            #     np.save(f, traj_to_observe)
-            # input('...')
-            # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
+            with open('traj_to_observe.npy', 'wb') as f:
+                np.save(f, traj_to_observe)
+            input('...')
+            # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/impossible')
             # cluster_indices = [4229,  239, 9062, 6959, 7693, 2169,  389,  153,   28, 2475]
             # traj_to_observe = traj_to_observe[cluster_indices]
             # new_episode_to_observe = []

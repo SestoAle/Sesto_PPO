@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_con_3'
+model_name = 'final_im'
 
 reward_model_name = "vaffanculo_im_60000"
 
@@ -263,8 +263,8 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((500, 500))
-    covmap = np.zeros((500, 500))
+    heatmap = np.zeros((800, 800))
+    covmap = np.zeros((800, 800))
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -274,7 +274,6 @@ if __name__ == '__main__':
             covmap[k_value[0], k_value[1]] = 1
         except Exception as e:
             print(k)
-            print(2)
             input('...')
 
     heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)

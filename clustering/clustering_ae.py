@@ -9,7 +9,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 # Cluster through latent space of autoencoder.
 # The autoencoder is made in Torch
 # TODO: move the autoencoder to TF
-def cluster(trajectories, model, clustering_mode='spectral'):
+def cluster(trajectories, model, clustering_mode='kmeans', clusters=35):
 
     print('Clustering trajectories...')
     # Load pre-trained autoencoder
@@ -23,7 +23,7 @@ def cluster(trajectories, model, clustering_mode='spectral'):
     # Pass the trajectories in the autoencoder to get the latent vectors
     # Divide the trajectories in mini-batches
     size = np.shape(trajectories)
-    num_batch = 5
+    num_batch = 10
     mini_batch_len = int(size[0] / num_batch)
     latents = None
     for i in range(num_batch):
@@ -32,8 +32,8 @@ def cluster(trajectories, model, clustering_mode='spectral'):
         trajectories_tensor = trajectories_tensor.cuda()
         trajectories_tensor = trajectories_tensor.float()
         _, tmp_latents = autoencoder.forward(trajectories_tensor)
-        tmp_latents = tmp_latents.cpu().detach().numpy()
-        tmp_latents = np.reshape(tmp_latents, [-1, 48])
+        tmp_latents = tmp_latents[0].cpu().detach().numpy()
+        tmp_latents = np.reshape(tmp_latents, [-1, 512])
         if latents is None:
             latents = tmp_latents
         else:
@@ -41,14 +41,14 @@ def cluster(trajectories, model, clustering_mode='spectral'):
 
     # Cluster through Spectral
     if clustering_mode == 'spectral':
-        clusterer = SpectralClustering(10).fit(latents)
+        clusterer = SpectralClustering(clusters).fit(latents)
         closest = []
         num_cluster = np.max(clusterer.labels_)
         for i in range(num_cluster + 1):
             index = np.where(clusterer.labels_ == i)[0][0]
             closest.append(index)
     elif clustering_mode == 'kmeans':
-        clusterer = KMeans(10).fit(latents)
+        clusterer = KMeans(clusters).fit(latents)
         num_cluster = np.max(clusterer.labels_)
         closest, _ = pairwise_distances_argmin_min(clusterer.cluster_centers_, latents)
         closest = np.asarray(closest)

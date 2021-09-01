@@ -257,7 +257,16 @@ class BugEnvironment:
         if command == 'd':
             return 1
 
+        if command == 'e':
+            return 5
+        if command == 'c':
+            return 7
+        if command == 'z':
+            return 6
         if command == 'q':
+            return 8
+
+        if command == 'r':
             return 0
 
         if command == ' ':
@@ -358,7 +367,7 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "win_weight": [[1], [1], [1]],
-            "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 1, 1], [0, 0, 0.3, 0.5, 0.7, 1, 1], [0, 0, 0.3, 0.5, 0.7, 1, 1]]
+            "reward_weights": [[0], [0], [0]]
         }
     }
 
@@ -376,8 +385,8 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state,
-                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=0.33,
+        agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state, batch_fraction=0.2,
+                    action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=0.2,
                     v_num_itr=10, memory=memory, c2=0.1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
