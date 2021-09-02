@@ -20,7 +20,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'questoeimpossibile_con_3'
+model_name = 'questoeimpossibile_no_sample_lstm'
 
 reward_model_name = "vaffanculo_60000"
 

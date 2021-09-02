@@ -6,9 +6,10 @@ from math import factorial
 from clustering.rdp import rdp_with_index
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 
-from architectures.bug_arch_very_acc import *
+from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.clustering_ae import cluster
@@ -298,7 +299,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "questoeimpossibile_rc"
+                # model_name = "asdasdasdas"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -339,9 +340,14 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 210
-            desired_point_z = 118
+            desired_point_x = 466
+            desired_point_z = 478
             desired_point_y = 16
+
+            goal_area_x = 466
+            goal_area_z = 460
+            goal_area_height = 25
+            goal_area_width = 26
 
             threshold = 4
 
@@ -381,14 +387,18 @@ if __name__ == '__main__':
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
-                        if np.abs(de_point[0] - desired_point_x) < threshold and \
-                                np.abs(de_point[1] - desired_point_z) < threshold :
+                        # if np.abs(de_point[0] - desired_point_x) < threshold and \
+                        #         np.abs(de_point[1] - desired_point_z) < threshold :
+                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                        #         goal_area_z < de_point[1] < (goal_area_z + goal_area_height):
+                        if point[-1] < 0.3:
+
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
 
-                            for j in range(i + 1, traj_len):
-                                traj[j] = traj[i + 1]
+                            # for j in range(i + 1, traj_len):
+                            #     traj[j] = traj[i + 1]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -499,11 +509,13 @@ if __name__ == '__main__':
             print(idxs_to_observe)
 
             # Plot the trajectories
-            plt.figure()
+            fig = plt.figure()
             thr = np.mean(step_moti_rews)
             for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
                 print_traj(traj)
-
+            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+                                            facecolor='none', zorder=100)
+            fig.gca().add_patch(goal_region)
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
             # Increase demonstartions with bugged trajectory

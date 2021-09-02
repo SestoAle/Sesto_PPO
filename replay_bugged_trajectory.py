@@ -66,17 +66,6 @@ class BugEnvironment:
         # Get the agent position from the state to compute reward
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
-        # Get the counter of that position and compute reward
-        # counter = self.insert_to_pos_table(position[:2])
-        # reward = self.compute_intrinsic_reward(counter)
-        # reward = 0
-
-        # print(state['global_in'][:2])
-        # print(np.flip(np.transpose(np.reshape(state['global_in'][9:9+49], [7, 7])), 0))
-        # print(state['global_in'][-2:])
-        # print(state['global_in'][7:7+12])
-        # print(reward)
-        # print(done)
 
         return state, done, reward
 
@@ -192,6 +181,11 @@ if __name__ == "__main__":
     # Load the actions to execute
     with open('arrays/actions.json', 'rb') as f:
         actions = json.load(f)['actions']
+
+    # The first reset does not work, I dont know why.
+    # This is a workaround
+    env.reset()
+    env.execute(1)
 
     while True:
         # Reset
