@@ -10,7 +10,7 @@ from copy import deepcopy
 # Act thread
 class ActThreaded(Thread):
     def __init__(self, agent, env, parallel_buffer, index, config, num_steps, states, recurrent=False, internals=None,
-                 v_internals=None):
+                 v_internals=None, motivation=None, reward_model=None):
         self.env = env
         self.parallel_buffer = parallel_buffer
         self.index = index
@@ -21,6 +21,8 @@ class ActThreaded(Thread):
         self.internals = internals
         self.v_internals = v_internals
         self.recurrent = recurrent
+        self.motivation = motivation
+        self.reward_model = reward_model
         super().__init__()
 
 
@@ -56,6 +58,14 @@ class ActThreaded(Thread):
                 self.parallel_buffer['v_internal'][self.index].append(v_internal)
                 internal = internal_n
                 v_internal = v_internal_n
+
+            if self.motivation:
+                self.parallel_buffer['motivation'][self.index]['state_n'].append(state_n)
+
+            if self.reward_model:
+                self.parallel_buffer['reward_model'][self.index]['state'].append(state)
+                self.parallel_buffer['reward_model'][self.index]['state_n'].append(state_n)
+                self.parallel_buffer['reward_model'][self.index]['action'].append(actions)
 
             state = state_n
             if done:
@@ -303,7 +313,9 @@ class Runner:
             # Create a thread
             threads.append(ActThreaded(agent=agent, env=e, index=i, parallel_buffer=parallel_buffer, config=config,
                                        states=states, num_steps=num_steps, recurrent=self.recurrent,
-                                       internals=internals, v_internals=v_internals))
+                                       internals=internals, v_internals=v_internals,
+                                       motivation=(self.motivation is not None),
+                                       reward_model=(self.reward_model is not None)))
 
         # Return threads
         return threads
@@ -426,7 +438,7 @@ class Runner:
 
                 # Get how many episodes and steps are passed within threads
                 self.ep += np.sum(np.asarray(self.parallel_buffer['done'][:]) == 1)
-                self.total_step = len(threads) * self.frequency
+                self.total_step += len(self.envs) * self.frequency
 
             # Add the overall experience to the buffer
             # Update the history
@@ -489,8 +501,31 @@ class Runner:
 
             # Clear parallel buffer
             self.parallel_buffer = self.clear_parallel_buffer()
-            if self.frequency_mode == 'timesteps':
+
+            # If frequency timesteps are passed, update the motivation
+            if not self.evaluation and self.frequency_mode == 'timesteps' and \
+                    self.total_step > 0 and self.total_step % (self.motivation_frequency * len(self.envs)) == 0:
+
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.motivation is not None:
+                    self.update_motivation()
+
+            # If frequency timesteps are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'timesteps' and \
+                    self.total_step > 0 and self.total_step % (self.frequency * len(self.envs)) == 0:
+
+                # Compute intrinsic rewards (if any)
+                self.compute_intrinsic_rewards()
+
                 self.agent.train()
+
+            # If frequency episodes are passed, update the policy
+            if not self.evaluation and self.frequency_mode == 'timesteps' and \
+                    self.total_step > 0 and self.total_step % (self.reward_frequency * len(self.envs)) == 0:
+
+                # If we use intrinsic motivation, update also intrinsic motivation
+                if self.reward_model is not None and not self.fixed_reward_model:
+                    self.update_reward_model()
 
             # Logging information
             if self.ep > 0 and self.ep % self.logging == 0:
@@ -525,72 +560,8 @@ class Runner:
                         self.motivation.clear_buffer()
                         continue
 
-                if self.motivation is not None:
-                    # Normalize observation of the motivation buffer
-                    # self.motivation.normalize_buffer()
-                    # Compute intrinsic rewards
-                    #intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
-                    # Compute intrinsic rewards
-                    num_batches = 10
-                    batch_size = int(np.ceil(len(self.agent.buffer['states_n']) / num_batches))
-                    intrinsic_rews = []
-                    for i in range(num_batches):
-
-                        c_intrinsic_rews = self.motivation.eval(deepcopy(
-                            self.agent.buffer['states_n'][batch_size * i:batch_size * i + batch_size]))
-                        # for rew in c_intrinsic_rews:
-                        #     self.reward_model.r_norm.push(rew)
-                        intrinsic_rews.extend(list(c_intrinsic_rews))
-
-                    # Get the weights of the motivation rewards
-                    weights = [state['global_in'][-3:] for state in
-                               self.agent.buffer['states']]
-                    weights = np.asarray(weights)
-                    # Normalize rewards
-                    # intrinsic_rews -= self.motivation.r_norm.mean
-                    # intrinsic_rews /= self.motivation.r_norm.std
-                    intrinsic_rews -= np.mean(intrinsic_rews)
-                    intrinsic_rews /= np.std(intrinsic_rews)
-                    intrinsic_rews *= self.motivation.motivation_weight
-
-                    # Weight of win
-                    self.agent.buffer['rewards'] = np.asarray(self.agent.buffer['rewards']) * weights[:, 0]
-
-                    intrinsic_rews *= weights[:, 1]
-                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
-
-                if self.reward_model is not None:
-
-                    # Compute intrinsic rewards
-                    num_batches = 10
-                    batch_size = int(np.ceil(len(self.agent.buffer['states']) / num_batches))
-                    intrinsic_rews = []
-                    for i in range(num_batches):
-                        c_intrinsic_rews = self.reward_model.eval(self.agent.buffer['states'][batch_size*i:batch_size*i + batch_size],
-                                                                self.agent.buffer['states_n'][batch_size*i:batch_size*i + batch_size],
-                                                                self.agent.buffer['actions'][batch_size*i:batch_size*i + batch_size])
-                        # for rew in c_intrinsic_rews:
-                        #     self.reward_model.r_norm.push(rew)
-                        intrinsic_rews.extend(list(c_intrinsic_rews))
-
-                    intrinsic_rews = np.asarray(intrinsic_rews)
-                    # Normalize rewards
-                    # intrinsic_rews -= self.reward_model.r_norm.mean
-                    # intrinsic_rews /= (self.reward_model.r_norm.std + 1e-5)
-
-                    # Get the weights of the motivation rewards
-                    weights = [state['global_in'][-3:] for state in
-                               self.agent.buffer['states']]
-                    weights = np.asarray(weights)
-                    #intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
-                    intrinsic_rews -= np.mean(intrinsic_rews)
-                    intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
-                    #intrinsic_rews -= self.reward_model_mean
-                    #intrinsic_rews /= self.reward_model_std
-                    intrinsic_rews *= self.reward_model.reward_model_weight
-                    intrinsic_rews *= weights[:, 2]
-
-                    self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+                # Compute intrinsic rewards (if any)
+                self.compute_intrinsic_rewards()
 
                 self.agent.train()
 
@@ -766,6 +737,75 @@ class Runner:
         #     self.reward_model_std = 1
 
         print('Mean reward loss = {}'.format(loss))
+
+
+    def compute_intrinsic_rewards(self):
+        if self.motivation is not None:
+            # Normalize observation of the motivation buffer
+            # self.motivation.normalize_buffer()
+            # Compute intrinsic rewards
+            # intrinsic_rews = self.motivation.eval(self.agent.buffer['states_n'])
+            # Compute intrinsic rewards
+            num_batches = 10
+            batch_size = int(np.ceil(len(self.agent.buffer['states_n']) / num_batches))
+            intrinsic_rews = []
+            for i in range(num_batches):
+                c_intrinsic_rews = self.motivation.eval(deepcopy(
+                    self.agent.buffer['states_n'][batch_size * i:batch_size * i + batch_size]))
+                # for rew in c_intrinsic_rews:
+                #     self.reward_model.r_norm.push(rew)
+                intrinsic_rews.extend(list(c_intrinsic_rews))
+
+            # Get the weights of the motivation rewards
+            weights = [state['global_in'][-3:] for state in
+                       self.agent.buffer['states']]
+            weights = np.asarray(weights)
+            # Normalize rewards
+            # intrinsic_rews -= self.motivation.r_norm.mean
+            # intrinsic_rews /= self.motivation.r_norm.std
+            intrinsic_rews -= np.mean(intrinsic_rews)
+            intrinsic_rews /= np.std(intrinsic_rews)
+            intrinsic_rews *= self.motivation.motivation_weight
+
+            # Weight of win
+            self.agent.buffer['rewards'] = np.asarray(self.agent.buffer['rewards']) * weights[:, 0]
+
+            intrinsic_rews *= weights[:, 1]
+            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
+
+        if self.reward_model is not None:
+
+            # Compute intrinsic rewards
+            num_batches = 10
+            batch_size = int(np.ceil(len(self.agent.buffer['states']) / num_batches))
+            intrinsic_rews = []
+            for i in range(num_batches):
+                c_intrinsic_rews = self.reward_model.eval(
+                    self.agent.buffer['states'][batch_size * i:batch_size * i + batch_size],
+                    self.agent.buffer['states_n'][batch_size * i:batch_size * i + batch_size],
+                    self.agent.buffer['actions'][batch_size * i:batch_size * i + batch_size])
+                # for rew in c_intrinsic_rews:
+                #     self.reward_model.r_norm.push(rew)
+                intrinsic_rews.extend(list(c_intrinsic_rews))
+
+            intrinsic_rews = np.asarray(intrinsic_rews)
+            # Normalize rewards
+            # intrinsic_rews -= self.reward_model.r_norm.mean
+            # intrinsic_rews /= (self.reward_model.r_norm.std + 1e-5)
+
+            # Get the weights of the motivation rewards
+            weights = [state['global_in'][-3:] for state in
+                       self.agent.buffer['states']]
+            weights = np.asarray(weights)
+            # intrinsic_rews = (intrinsic_rews - np.min(intrinsic_rews)) / (np.max(intrinsic_rews) - np.min(intrinsic_rews))
+            intrinsic_rews -= np.mean(intrinsic_rews)
+            intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
+            # intrinsic_rews -= self.reward_model_mean
+            # intrinsic_rews /= self.reward_model_std
+            intrinsic_rews *= self.reward_model.reward_model_weight
+            intrinsic_rews *= weights[:, 2]
+
+            self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
     # Method for count time after each episode
     def timer(self, start, end):

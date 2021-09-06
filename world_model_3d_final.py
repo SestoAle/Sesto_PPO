@@ -21,8 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_im'
-
+model_name = 'final_im_2'
 reward_model_name = "vaffanculo_im_60000"
 
 def plot_map(map):
@@ -156,6 +155,8 @@ def print_traj(traj):
         color = 'm'
     elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
         color = 'k'
+
+    # print(ep_trajectory[-1, 3:5])
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
@@ -299,7 +300,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasdas"
+                #model_name = "final_im"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -340,12 +341,13 @@ if __name__ == '__main__':
 
             # Define the desired points to check
             # I will get all the saved trajectories that touch one of these points at least once
-            desired_point_x = 466
-            desired_point_z = 478
-            desired_point_y = 16
+            desired_point_x = 35
+            desired_point_z = 500
+            desired_point_y = 21
 
-            goal_area_x = 466
+            goal_area_x = 20
             goal_area_z = 460
+            goal_area_y = 21
             goal_area_height = 25
             goal_area_width = 26
 
@@ -389,16 +391,16 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                        #         goal_area_z < de_point[1] < (goal_area_z + goal_area_height):
-                        if point[-1] < 0.3:
-
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height):# and \
+                                    #np.abs(de_point[3] - desired_point_z) < threshold :
+                                        #point[-1] <= 0.5:
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
 
-                            # for j in range(i + 1, traj_len):
-                            #     traj[j] = traj[i + 1]
+                            for j in range(i + 1, traj_len):
+                                traj[j] = traj[i + 1]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -456,7 +458,8 @@ if __name__ == '__main__':
                 state = dict(global_in=state)
                 states_batch.append(state)
 
-                il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                #il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                il_rew = np.zeros(len(states_batch[:-1]))
                 step_il_rews.extend(il_rew)
                 il_rew = np.sum(il_rew)
                 sum_il_rews.append(il_rew)
@@ -563,7 +566,8 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
 
-                irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                #irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
+                irl_rew = np.zeros(len(states_batch))
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
                 plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
