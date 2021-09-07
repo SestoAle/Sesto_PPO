@@ -42,7 +42,7 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
-    goal_weight = tf.cast(tf.round(goal_weight*4), tf.int8)
+    goal_weight = tf.cast(tf.round(goal_weight*4), tf.int32)
     goal_weight = embedding(goal_weight, indices=5, size=32, name='goal_embs')
     goal_weight = linear(goal_weight, 1024, name='goal_linear', activation=tf.nn.relu)
 
