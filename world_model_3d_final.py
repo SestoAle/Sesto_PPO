@@ -21,8 +21,8 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_im_2'
-reward_model_name = "vaffanculo_im_60000"
+model_name = 'final_2'
+reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
     """
@@ -311,26 +311,26 @@ if __name__ == '__main__':
                 motivation.load_model(name=model_name, folder='saved')
 
             # Load imitation model
-            graph = tf.compat.v1.Graph()
-            with graph.as_default():
-                from architectures.bug_arch_very_acc import *
-                model_name = 'vaffanculo_im'
-                reward_model_name = "vaffanculo_im_60000"
-                tf.compat.v1.disable_eager_execution()
-                reward_sess = tf.compat.v1.Session(graph=graph)
-                reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
-                                    obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess,
-                                    lr=7e-5, reward_model_weight=0.7,
-                                    name=model_name, fixed_reward_model=False, with_action=True)
-                init = tf.compat.v1.global_variables_initializer()
-                reward_sess.run(init)
-                reward_model.load_model(reward_model_name)
+            # graph = tf.compat.v1.Graph()
+            # with graph.as_default():
+            #     from architectures.bug_arch_very_acc import *
+            #     model_name = 'vaffanculo_im'
+            #     reward_model_name = "vaffanculo_9000"
+            #     tf.compat.v1.disable_eager_execution()
+            #     reward_sess = tf.compat.v1.Session(graph=graph)
+            #     reward_model = GAIL(input_architecture=input_spec_irl, network_architecture=network_spec_irl,
+            #                         obs_to_state=obs_to_state_irl, actions_size=9, policy=None, sess=reward_sess,
+            #                         lr=7e-5, reward_model_weight=0.7,
+            #                         name=model_name, fixed_reward_model=False, with_action=True)
+            #     init = tf.compat.v1.global_variables_initializer()
+            #     reward_sess.run(init)
+            #     reward_model.load_model(reward_model_name)
         except Exception as e:
             reward_model = None
             print(e)
 
 
-        if motivation is not None and reward_model is not None:
+        if motivation is not None:
 
             # Filler the state
             # TODO: I do this because the state that I saved is only the points AND inventory, not the complete state
@@ -343,13 +343,13 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 21
+            desired_point_y = 40
 
-            goal_area_x = 20
-            goal_area_z = 460
+            goal_area_x = 15
+            goal_area_z = 461
             goal_area_y = 21
-            goal_area_height = 25
-            goal_area_width = 26
+            goal_area_height = 39
+            goal_area_width = 62
 
             threshold = 4
 
@@ -373,17 +373,19 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
-                # to_observe = False
-                # for point in traj:
-                #     de_point = np.zeros(2)
-                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
-                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                #     if np.abs(de_point[0] - 180) < threshold and \
-                #             np.abs(de_point[1] - 116) < threshold:
-                #         to_observe = True
-                #         break
-                #
-                # if to_observe:
+                to_observe = False
+                for point in traj:
+                    de_point = np.zeros(3)
+                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                    de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                    if np.abs(de_point[0] - 10) < threshold and \
+                            np.abs(de_point[1] - 463) < threshold and \
+                            np.abs(de_point[2] - 40) < threshold:
+                        to_observe = True
+                        break
+
+                if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
@@ -391,16 +393,17 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height):# and \
-                                    #np.abs(de_point[3] - desired_point_z) < threshold :
+                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                        #          goal_area_z < de_point[1] < (goal_area_z + goal_area_height):# and \
+                                    # np.abs(de_point[2] - desired_point_y) < threshold :
                                         #point[-1] <= 0.5:
+                        if True:
 
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
 
-                            for j in range(i + 1, traj_len):
-                                traj[j] = traj[i + 1]
+                            # for j in range(i + 1, traj_len):
+                            #     traj[j] = traj[i + 1]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -437,9 +440,10 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
-                    de_point = np.zeros(2)
+                    de_point = np.zeros(3)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 500
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 500
+                    de_point[2] = ((np.asarray(state['global_in'][2]) + 1) / 2) * 40
 
                     # pos_key = ' '.join(map(str, state[:3]))
                     # counter = pos_buffer[pos_key]
@@ -447,8 +451,9 @@ if __name__ == '__main__':
                     # moti_rews.append(moti_rew)
                     # step_moti_rews.extend(moti_rew)
 
-                    if np.abs(de_point[0] - desired_point_x) < threshold and \
-                            np.abs(de_point[1] - desired_point_z) < threshold:
+                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                            np.abs(de_point[2] - desired_point_y) < threshold:
                         break
 
                 # The actions is one less than the states, so add the last state
@@ -597,8 +602,12 @@ if __name__ == '__main__':
                 f.write(json_str)
                 f.close()
 
-                plt.figure()
+                fig = plt.figure()
                 print_traj_with_diff(traj, im_rew, thr)
+                goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
+                                                linewidth=5, edgecolor='r',
+                                                facecolor='none', zorder=100)
+                fig.gca().add_patch(goal_region)
 
                 plt.show()
                 plt.waitforbuttonpress()

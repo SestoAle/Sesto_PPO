@@ -29,7 +29,7 @@ def network_spec(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -46,7 +46,7 @@ def network_spec(states):
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    threedgrid = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    threedgrid = embedding(threedgrid, indices=4, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
@@ -89,7 +89,7 @@ def network_spec_rnd_predictor(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -140,7 +140,7 @@ def network_spec_rnd_target(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -199,7 +199,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -229,7 +229,7 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     #                       )
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
     # threedgrid = tf.reshape(threedgrid, [-1, 15, 15, 15, 1])
-    threedgrid_state = embedding(threedgrid, indices=3, size=32, name='global_embs')
+    threedgrid_state = embedding(threedgrid, indices=4, size=32, name='global_embs')
     threedgrid = conv_layer_3d(threedgrid_state, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_01', activation=tf.nn.relu)
     #threedgrid = tf.nn.max_pool3d(threedgrid, [2, 2, 2], strides=(2, 2, 2), padding="VALID")
     threedgrid = conv_layer_3d(threedgrid, 32, [3, 3, 3], strides=(2, 2, 2), name='conv_02', activation=tf.nn.relu)
