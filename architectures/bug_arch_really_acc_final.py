@@ -44,7 +44,6 @@ def network_spec(states):
 
     goal_weight = tf.cast(tf.round(goal_weight*4), tf.int32)
     goal_weight = embedding(goal_weight, indices=5, size=32, name='goal_embs')
-    goal_weight = tf.reshape(goal_weight, (-1, 3*32))
     goal_weight = linear(goal_weight, 1024, name='goal_linear', activation=tf.nn.relu)
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
