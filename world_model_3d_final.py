@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_2'
+model_name = 'final'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -89,9 +89,10 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
     for traj in trajectories.values():
         count += 1
         for state in traj:
-            position = np.asarray(state[:2])
+            position = np.asarray(state[:3])
             position[0] = (((position[0] + 1) / 2) * 500)
             position[1] = (((position[1] + 1) / 2) * 500)
+            position[2] = (((position[2] + 1) / 2) * 40)
             position = position.astype(int)
             pos_key = ' '.join(map(str, position))
             if pos_key in pos_buffer.keys():
@@ -267,6 +268,7 @@ if __name__ == '__main__':
     # Create Heatmap
     heatmap = np.zeros((800, 800))
     covmap = np.zeros((800, 800))
+    # graph = dict(x=[], y=[], z=[])
     for k in buffer.keys():
 
         k_value = list(map(float, k.split(" ")))
@@ -274,9 +276,18 @@ if __name__ == '__main__':
         try:
             heatmap[k_value[0], k_value[1]] += buffer[k]
             covmap[k_value[0], k_value[1]] = 1
+            # graph['x'].append(k_value[0])
+            # graph['z'].append(k_value[1])
+            # graph['y'].append(k_value[2])
+
         except Exception as e:
             print(k)
             input('...')
+
+    # json_str = json.dumps(graph, cls=NumpyEncoder)
+    # f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/graph.json".format(model_name), "w")
+    # f.write(json_str)
+    # f.close()
 
     heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
 
@@ -327,6 +338,7 @@ if __name__ == '__main__':
             #     reward_model.load_model(reward_model_name)
         except Exception as e:
             reward_model = None
+            motivation = None
             print(e)
 
 
@@ -343,13 +355,13 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 40
+            desired_point_y = 1
 
-            goal_area_x = 15
-            goal_area_z = 461
+            goal_area_x = 466
+            goal_area_z = 460
             goal_area_y = 21
-            goal_area_height = 39
-            goal_area_width = 62
+            goal_area_height = 25
+            goal_area_width = 26
 
             threshold = 4
 
@@ -364,7 +376,6 @@ if __name__ == '__main__':
 
             plt.figure()
 
-            traj_len = 281
             max_length = -9999
             mean_length = 0
 
@@ -373,19 +384,19 @@ if __name__ == '__main__':
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(trajectories.keys(), trajectories.values()):
 
-                to_observe = False
-                for point in traj:
-                    de_point = np.zeros(3)
-                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
-                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                    de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
-                    if np.abs(de_point[0] - 10) < threshold and \
-                            np.abs(de_point[1] - 463) < threshold and \
-                            np.abs(de_point[2] - 40) < threshold:
-                        to_observe = True
-                        break
-
-                if to_observe:
+                # to_observe = False
+                # for point in traj:
+                #     de_point = np.zeros(3)
+                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                #     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                #     if np.abs(de_point[0] - 10) < threshold and \
+                #             np.abs(de_point[1] - 463) < threshold and \
+                #             np.abs(de_point[2] - 40) < threshold:
+                #         to_observe = True
+                #         break
+                #
+                # if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
@@ -393,12 +404,11 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                        #          goal_area_z < de_point[1] < (goal_area_z + goal_area_height):# and \
-                                    # np.abs(de_point[2] - desired_point_y) < threshold :
-                                        #point[-1] <= 0.5:
-                        if True:
-
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                                    np.abs(de_point[2] - desired_point_y) < threshold: #and \
+                        # if                point[-1] < 0.5:
+                            traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
 

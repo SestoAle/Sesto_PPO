@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='questoeimpossibile_rc')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -52,7 +52,7 @@ parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=False)
+parser.set_defaults(use_motivation=True)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 

@@ -190,8 +190,8 @@ class Runner:
                 # - The intrinsic reward will be added later -
                 if self.motivation is not None:
 
-                    # motivation_reward = self.motivation.eval([state_n])
-                    # print(motivation_reward)
+                    motivation_reward = self.motivation.eval([state_n])
+                    print(motivation_reward)
                     self.motivation.add_to_buffer(state_n)
 
                 # Inverse Reinforcement Learning
