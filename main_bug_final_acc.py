@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2_more')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)

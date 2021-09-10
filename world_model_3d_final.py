@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final'
+model_name = 'final_im_2_more'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -92,7 +92,7 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
             position = np.asarray(state[:3])
             position[0] = (((position[0] + 1) / 2) * 500)
             position[1] = (((position[1] + 1) / 2) * 500)
-            position[2] = (((position[2] + 1) / 2) * 40)
+            position[2] = (((position[2] + 1) / 2) * 60)
             position = position.astype(int)
             pos_key = ' '.join(map(str, position))
             if pos_key in pos_buffer.keys():
@@ -355,13 +355,13 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 1
+            desired_point_y = 40
 
-            goal_area_x = 466
-            goal_area_z = 460
+            goal_area_x = 15
+            goal_area_z = 461
             goal_area_y = 21
-            goal_area_height = 25
-            goal_area_width = 26
+            goal_area_height = 39
+            goal_area_width = 62
 
             threshold = 4
 
@@ -401,19 +401,19 @@ if __name__ == '__main__':
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
                         de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                        de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                        de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                                    np.abs(de_point[2] - desired_point_y) < threshold: #and \
-                        # if                point[-1] < 0.5:
+                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                        #          goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                        #             np.abs(de_point[2] - desired_point_y) < threshold and \
+                        if               point[-1] == 0.5:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
 
                             # for j in range(i + 1, traj_len):
-                            #     traj[j] = traj[i + 1]
+                            #     traj[j] = traj[i]
 
                             # for pos_point in traj:
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
@@ -453,7 +453,7 @@ if __name__ == '__main__':
                     de_point = np.zeros(3)
                     de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 500
                     de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 500
-                    de_point[2] = ((np.asarray(state['global_in'][2]) + 1) / 2) * 40
+                    de_point[2] = ((np.asarray(state['global_in'][2]) + 1) / 2) * 60
 
                     # pos_key = ' '.join(map(str, state[:3]))
                     # counter = pos_buffer[pos_key]

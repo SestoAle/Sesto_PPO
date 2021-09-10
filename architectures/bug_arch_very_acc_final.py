@@ -73,7 +73,7 @@ def network_spec_rnd_predictor(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
@@ -123,7 +123,7 @@ def network_spec_rnd_target(states):
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
 
-    agent_jump = ((agent_jump + 1) / 2) * 40
+    agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)

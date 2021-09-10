@@ -176,9 +176,9 @@ class Runner:
 
                 action = action[0]
                 # Manual input
-                action = 99
-                while (action == 99):
-                    action = self.env.command_to_action(input(': '))
+                # action = 99
+                # while (action == 99):
+                #     action = self.env.command_to_action(input(': '))
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
