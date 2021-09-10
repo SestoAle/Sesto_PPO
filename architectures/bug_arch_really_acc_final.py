@@ -20,8 +20,8 @@ def network_spec(states):
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
+    inventory, _, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 1, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -42,6 +42,7 @@ def network_spec(states):
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
 
+    goal_weight = tf.concat([target_distances, goal_weight], axis=1)
     goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
 
     threedgrid = tf.cast(tf.reshape(threedgrid, [-1, 21, 21, 21]), tf.int32)
