@@ -519,7 +519,7 @@ class Runner:
 
                 self.agent.train()
 
-            # If frequency episodes are passed, update the policy
+            # If frequency timesteps are passed, update the policy
             if not self.evaluation and self.frequency_mode == 'timesteps' and \
                     self.total_step > 0 and self.total_step % (self.reward_frequency * len(self.envs)) == 0:
 

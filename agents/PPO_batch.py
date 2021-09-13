@@ -16,7 +16,7 @@ eps = 1e-5
 class PPO:
     # PPO agent
     def __init__(self, sess, input_spec, network_spec, obs_to_state, p_lr=5e-6, p_epochs=3,
-                 v_lr=5e-4, p_mini_batch=1024, v_epochs=3, v_mini_batch=1024, previous_act=False,
+                 v_lr=5e-4, p_mini_batch=512, v_epochs=3, v_mini_batch=512, previous_act=False,
                  distribution='gaussian', action_type='continuous', action_size=2, action_min_value=-1,
                  action_max_value=1, frequency_mode='episodes',
                  epsilon=0.2, c1=0.5, c2=0.01, discount=0.95, lmbda=1.0, name='ppo', memory=10, norm_reward=False,
@@ -343,8 +343,6 @@ class PPO:
         losses = []
         v_losses = []
 
-        # Get batch size based on batch_fraction
-        batch_size = int(len(self.buffer['states']) * self.v_batch_fraction)
         if self.recurrent_baseline:
             batch_size = int(len(self.buffer['states']) * self.v_batch_fraction)
 
@@ -353,12 +351,13 @@ class PPO:
 
         # Train the value function
         for it in range(self.v_epochs):
-            num_minibatches = len(self.buffer['states'])/self.v_mini_batch
+            all_idxs = np.arange(len(self.buffer['states']))
+            np.random.shuffle(all_idxs)
+            num_minibatches = int(np.ceil(len(self.buffer['states'])/self.v_mini_batch))
             for i in range(num_minibatches):
                 if not self.recurrent_baseline:
                     # Take a mini-batch of batch_size experience
-                    mini_batch_idxs = self.buffer['states'][
-                                      i * self.v_mini_batch: i * self.v_mini_batch + self.v_mini_batch]
+                    mini_batch_idxs = all_idxs[i * self.v_mini_batch: i * self.v_mini_batch + self.v_mini_batch]
                     states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
                 else:
                     # Take the idxs of the sequences AND the idx of the last state of the sequence
@@ -426,19 +425,15 @@ class PPO:
 
         discounted_rewards = self.compute_gae(v_values)
 
-        # Get batch size based on batch_fraction
-        batch_size = int(len(self.buffer['states']) * self.batch_fraction)
-        if self.recurrent:
-            batch_size = int(len(self.buffer['states']) * self.batch_fraction)
-
         # Train the policy
         for it in range(self.p_epochs):
-            num_minibatches = len(self.buffer['states']) / self.p_mini_batch
+            all_idxs = np.arange(len(self.buffer['states']))
+            np.random.shuffle(all_idxs)
+            num_minibatches = int(np.ceil(len(self.buffer['states']) / self.p_mini_batch))
             for i in range(num_minibatches):
                 if not self.recurrent:
                     # Take a mini-batch of batch_size experience
-                    mini_batch_idxs = self.buffer['states'][
-                                      i * self.p_mini_batch: i * self.p_mini_batch + self.p_mini_batch]
+                    mini_batch_idxs = all_idxs[i * self.p_mini_batch: i * self.p_mini_batch + self.p_mini_batch]
                     states_mini_batch = [self.buffer['states'][id] for id in mini_batch_idxs]
                 else:
                     # Take the idxs of the sequences AND the idx of the last state of the sequence

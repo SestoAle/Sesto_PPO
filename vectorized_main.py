@@ -1,7 +1,8 @@
-from agents.PPO import PPO
+from agents.PPO_batch import PPO
 from architectures.playtesting_arch import *
 from runner.runner import Runner
 from runner.parallel_runner import Runner as ParallelRunner
+from runner.vectorized_runner import Runner as VectorizedRunner
 from motivation.random_network_distillation import RND
 import os
 import tensorflow as tf
@@ -25,12 +26,12 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2_more')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/Vectorized")
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
-parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=500)
+parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=30)
+parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=1)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=300)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -65,6 +66,7 @@ class BugEnvironment:
     def __init__(self, game_name, no_graphics, worker_id, max_episode_timesteps, pos_already_normed=True):
         self.no_graphics = no_graphics
         self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=worker_id, worker_id=worker_id)
+        self.unity_env.reset()
         self._max_episode_timesteps = max_episode_timesteps
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
@@ -78,11 +80,16 @@ class BugEnvironment:
         self.tau = 1 / 40
         self.standard_position = [14, 14, 1]
         self.coverage_of_points = []
+        self.num_agents = 100
 
         # Dict to store the trajectories at each episode
-        self.trajectories_for_episode = dict()
+        self.trajectories_for_episode = []
+        self.actions_for_episode = []
+        for a in range(self.num_agents):
+            self.trajectories_for_episode.append(dict())
+            self.actions_for_episode.append(dict())
         # Dict to store the actions at each episode
-        self.actions_for_episode = dict()
+
         self.episode = -1
 
         # Defined the values to sample for goal-conditioned policy
@@ -95,19 +102,20 @@ class BugEnvironment:
         #     actions = self.command_to_action(input(': '))
 
         env_info = self.unity_env.step([actions])[self.default_brain]
-        reward = env_info.rewards[0]
-        done = env_info.local_done[0]
-
-        self.actions_for_episode[self.episode].append(actions)
+        reward = env_info.rewards
+        done = env_info.local_done
 
         self.previous_action = actions
-        state = dict(global_in=env_info.vector_observations[0])
-        # Append the value of the motivation weight
-        state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
+        # Since it is a vectorized env, we have multiple agents in the same environment
+        state = []
+        for i, obs in enumerate(env_info.vector_observations):
+            # Append the value of the motivation weight
+            state.append(dict(global_in=np.concatenate([obs, self.sample_weights[i]])))
 
-        # Get the agent position from the state to compute reward
-        position = state['global_in'][:3]
-        self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
+            # Get the agent position from the state to compute reward
+            position = obs[:3]
+            self.trajectories_for_episode[i][self.episode].append(np.concatenate([position, self.sample_weights[i][1:]]))
+            self.actions_for_episode[i][self.episode].append(actions[i])
         # Get the counter of that position and compute reward
         # counter = self.insert_to_pos_table(position[:2])
         # reward = self.compute_intrinsic_reward(counter)
@@ -139,9 +147,11 @@ class BugEnvironment:
         # Sample a motivation reward weight
         self.reward_weights = self.config['reward_weights']
         self.win_weight = self.config['win_weight']
-        self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
-        self.sample_win = self.win_weight[np.random.randint(len(self.win_weight))]
-        self.sample_weights = [self.sample_win, self.sample_weights, 1-self.sample_weights]
+        self.sample_weights = []
+        for a in range(self.num_agents):
+            sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
+            sample_win = self.win_weight[np.random.randint(len(self.win_weight))]
+            self.sample_weights.append([sample_win, sample_weights, 1-sample_weights])
 
         # Change config to be fed to Unity (no list)
         unity_config = dict()
@@ -153,16 +163,20 @@ class BugEnvironment:
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
         self.coverage_of_points.append(len(self.pos_buffer.keys()))
         self.episode += 1
-        self.trajectories_for_episode[self.episode] = []
-        self.actions_for_episode[self.episode] = []
         # self.set_spawn_position()
 
         env_info = self.unity_env.reset(train_mode=True, config=unity_config)[self.default_brain]
-        state = dict(global_in=env_info.vector_observations[0])
-        # Append the value of the motivation weight
-        state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
-        position = state['global_in'][:3]
-        self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
+
+        state = []
+        for i, obs in enumerate(env_info.vector_observations):
+            self.trajectories_for_episode[i][self.episode] = []
+            self.actions_for_episode[i][self.episode] = []
+            # Append the value of the motivation weight
+            state.append(dict(global_in=np.concatenate([obs, self.sample_weights[i]])))
+
+            # Get the agent position from the state to compute reward
+            position = obs[:3]
+            self.trajectories_for_episode[i][self.episode].append(np.concatenate([position, self.sample_weights[i][1:]]))
         # print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
         return state
 
@@ -242,8 +256,11 @@ class BugEnvironment:
         return self.pos_buffer[pos_key]
 
     def clear_buffers(self):
-        self.trajectories_for_episode = dict()
-        self.actions_for_episode = dict()
+        self.trajectories_for_episode = []
+        self.actions_for_episode = []
+        for a in range(self.num_agents):
+            self.trajectories_for_episode.append(dict())
+            self.actions_for_episode.append(dict())
 
     def command_to_action(self, command):
 
@@ -280,25 +297,21 @@ class BugEnvironment:
 def callback(agent, env, runner):
 
     global last_key
-    save_frequency = 100
+    save_frequency = 1
 
     if runner.ep % save_frequency == 0:
-        if isinstance(env, list):
+        trajectories_for_episode = dict()
+        actions_for_episode = dict()
 
-            trajectories_for_episode = dict()
-            actions_for_episode = dict()
+        for a in range(env.num_agents):
+            for traj, acts in zip(env.trajectories_for_episode[a].values(), env.actions_for_episode[a].values()):
+                trajectories_for_episode[last_key] = traj
+                actions_for_episode[last_key] = acts
+                last_key += 1
 
-            for e in env:
-                for traj, acts in zip(e.trajectories_for_episode.values(), e.actions_for_episode.values()):
-                    trajectories_for_episode[last_key] = traj
-                    actions_for_episode[last_key] = acts
-                    last_key += 1
-                e.clear_buffers()
-            positions = 0
-        else:
-            positions = len(env.pos_buffer.keys())
-            trajectories_for_episode = env.trajectories_for_episode
-            actions_for_episode = env.actions_for_episode
+        env.clear_buffers()
+        positions = 0
+
 
         print('Coverage of points: {}'.format(positions))
 
@@ -338,24 +351,11 @@ if __name__ == "__main__":
     reward_frequency = int(args.reward_frequency)
 
     # Central buffer for parallel execution
-    if parallel:
-        last_key = 0
-        if os.path.exists('arrays/{}'.format(model_name)):
-            os.rmdir('arrays/{}'.format(model_name))
-        os.makedirs('arrays/{}'.format(model_name))
-        # trajectories_for_episode = dict()
-        # actions_for_episode = dict()
-        # # Save the trajectories
-        # json_str = json.dumps(trajectories_for_episode, cls=NumpyEncoder)
-        # f = open("arrays/{}_trajectories.json".format(model_name), "w")
-        # f.write(json_str)
-        # f.close()
-        #
-        # # Save the actions
-        # json_str = json.dumps(actions_for_episode, cls=NumpyEncoder)
-        # f = open("arrays/{}_actions.json".format(model_name), "w")
-        # f.write(json_str)
-        # f.close()
+
+    last_key = 0
+    if os.path.exists('arrays/{}'.format(model_name)):
+        os.rmdir('arrays/{}'.format(model_name))
+    os.makedirs('arrays/{}'.format(model_name))
 
 
     # Curriculum structure; here you can specify also the agent statistics (ATK, DES, DEF and HP)
@@ -376,9 +376,9 @@ if __name__ == "__main__":
     # Units of training (episodes or timesteps)
     frequency_mode = 'episodes'
     # Frequency of training (in episode)
-    frequency = 10
+    frequency = 1
     # Memory of the agent (in episode)
-    memory = 10
+    memory = 100
 
     # Create agent
     graph = tf.compat.v1.Graph()
@@ -437,7 +437,7 @@ if __name__ == "__main__":
 
     # Create runner
     if not parallel:
-        runner = Runner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
+        runner = VectorizedRunner(agent=agent, frequency=frequency, env=env, save_frequency=save_frequency,
                         logging=logging, total_episode=total_episode, curriculum=curriculum,
                         frequency_mode=frequency_mode, curriculum_mode='episodes', callback_function=callback,
                         reward_model=reward_model, reward_frequency=reward_frequency, dems_name=dems_name,
