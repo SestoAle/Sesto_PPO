@@ -78,9 +78,8 @@ def network_spec_rnd_predictor(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, threedgrid, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 9261, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -129,9 +128,8 @@ def network_spec_rnd_target(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2, 3], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, threedgrid, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 9261, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -188,9 +186,8 @@ def network_spec_irl(states, states_n, act, with_action, actions_size):
     action_state = tf.cast(act, tf.int32)
 
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, target_distances, goal, threedgrid, rotation, rays, \
-    inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3, 2, 9261, 4, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, threedgrid = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 9261], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
