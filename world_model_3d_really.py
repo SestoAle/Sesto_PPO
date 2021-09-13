@@ -403,9 +403,9 @@ if __name__ == '__main__':
 
             # Cluster trajectories to reduce the number of trajectories to observe
             traj_to_observe = np.asarray(traj_to_observe)
-            with open('traj_to_observe.npy', 'wb') as f:
-                np.save(f, traj_to_observe)
-            input('...')
+            # with open('traj_to_observe.npy', 'wb') as f:
+            #     np.save(f, traj_to_observe)
+            # input('...')
             # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/impossible')
             # cluster_indices = [4229,  239, 9062, 6959, 7693, 2169,  389,  153,   28, 2475]
             # traj_to_observe = traj_to_observe[cluster_indices]

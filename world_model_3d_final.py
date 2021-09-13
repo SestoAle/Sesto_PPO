@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_im_2_more'
+model_name = 'final_im_2_grav'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -157,7 +157,7 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
         color = 'k'
 
-    # print(ep_trajectory[-1, 3:5])
+    print(ep_trajectory[-1, 3:5])
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
@@ -355,13 +355,13 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 40
+            desired_point_y = 22
 
-            goal_area_x = 15
-            goal_area_z = 461
-            goal_area_y = 21
-            goal_area_height = 39
-            goal_area_width = 62
+            goal_area_x = 20
+            goal_area_z = 460
+            goal_area_y = 22
+            goal_area_height = 40
+            goal_area_width = 70
 
             threshold = 4
 
@@ -404,10 +404,10 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                        #          goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                        #             np.abs(de_point[2] - desired_point_y) < threshold and \
-                        if               point[-1] == 0.5:
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                                    np.abs(de_point[2] - desired_point_y) < threshold: # and \
+                        #if               point[-1] == 0.5:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
