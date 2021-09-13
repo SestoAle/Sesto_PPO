@@ -76,16 +76,16 @@ def network_spec_rnd_predictor(states):
     agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
-    agent_plane= tf.concat([agent_plane_x, agent_plane_z], axis=1)
-    agent_plane = embedding(agent_plane, indices=501, size=32, name='agent_embs_plane')
-
-    agent_gravity = embedding(agent_jump, indices=61, size=32, name='agent_embs_grav')
-    agent= tf.concat([agent_plane, agent_gravity], axis=1)
-    global_state = agent
-
-    # agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+    # agent_plane= tf.concat([agent_plane_x, agent_plane_z], axis=1)
+    # agent_plane = embedding(agent_plane, indices=501, size=32, name='agent_embs_plane')
+    #
+    # agent_gravity = embedding(agent_jump, indices=61, size=32, name='agent_embs_grav')
+    # agent= tf.concat([agent_plane, agent_gravity], axis=1)
     # global_state = agent
-    # global_state = embedding(global_state, indices=501, size=32, name='embs')
+
+    agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
+    global_state = agent
+    global_state = embedding(global_state, indices=501, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
@@ -131,17 +131,17 @@ def network_spec_rnd_target(states):
     agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
 
-    agent_plane= tf.concat([agent_plane_x, agent_plane_z], axis=1)
-    agent_plane = embedding(agent_plane, indices=501, size=32, name='agent_embs_plane')
+    # agent_plane= tf.concat([agent_plane_x, agent_plane_z], axis=1)
+    # agent_plane = embedding(agent_plane, indices=501, size=32, name='agent_embs_plane')
+    #
+    # agent_gravity = embedding(agent_jump, indices=61, size=32, name='agent_embs_grav')
+    # agent= tf.concat([agent_plane, agent_gravity], axis=1)
+    # global_state = agent
 
-    agent_gravity = embedding(agent_jump, indices=61, size=32, name='agent_embs_grav')
-    agent= tf.concat([agent_plane, agent_gravity], axis=1)
+
+    agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
-
-
-    #agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
-    #global_state = agent
-    #global_state = embedding(global_state, indices=501, size=32, name='embs')
+    global_state = embedding(global_state, indices=501, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
