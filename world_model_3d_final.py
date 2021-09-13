@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_2_lstm'
+model_name = 'model'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -404,10 +404,11 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                                    np.abs(de_point[2] - desired_point_y) < threshold: # and \
+                        # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                        #          goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                        #             np.abs(de_point[2] - desired_point_y) < threshold: # and \
                         #if               point[-1] == 0.5:
+                        if True:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)

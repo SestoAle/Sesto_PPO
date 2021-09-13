@@ -11,7 +11,7 @@ eps = 1e-12
 class RND:
     # Random Network Distillation class
     def __init__(self, sess, input_spec, network_spec_target, network_spec_predictor, obs_to_state, lr=7e-5,
-                 buffer_size=1e5, batch_size=128,
+                 buffer_size=1e5, batch_size=128, num_epoch=1,
                  motivation_weight=1., obs_normalization=False,
                  num_itr=3, name='rnd', **kwargs):
 
@@ -35,6 +35,8 @@ class RND:
         self.obs_to_state = obs_to_state
         # Weight of the reward output by the motivation model
         self.motivation_weight = motivation_weight
+
+        self.num_epoch = num_epoch
 
         # Buffer of experience
         self.buffer = []
@@ -76,32 +78,35 @@ class RND:
         if self.obs_normalization:
             self.normalize_buffer()
 
-        for it in range(self.num_itr):
+        num_batch = int(np.ceil(len(self.buffer) / self.batch_size))
+        for e in range(self.num_epoch):
+            all_idxs = np.arange(len(self.buffer))
+            np.random.shuffle(all_idxs)
+            for it in range(num_batch):
 
-            # Take a mini-batch of batch_size experience
-            mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
+                # Take a mini-batch of batch_size experience
+                #mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
+                mini_batch_idxs = all_idxs[it*num_batch:it*num_batch + num_batch]
 
-            mini_batch = [self.buffer[id] for id in mini_batch_idxs]
+                mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 
-            # Convert the observation to states
-            states = self.obs_to_state(mini_batch)
+                # Convert the observation to states
+                states = self.obs_to_state(mini_batch)
 
-            #
+                # Create the feed dict for the target network
+                feed_target = self.create_state_feed_dict(states)
 
-            # Create the feed dict for the target network
-            feed_target = self.create_state_feed_dict(states)
+                # Get the target prediction (without training it)
+                target_labels = self.sess.run([self.target], feed_target)[0]
 
-            # Get the target prediction (without training it)
-            target_labels = self.sess.run([self.target], feed_target)[0]
+                # Get the predictor estimation
+                feed_predictor = self.create_state_feed_dict(states)
+                feed_predictor[self.target_labels] = target_labels
 
-            # Get the predictor estimation
-            feed_predictor = self.create_state_feed_dict(states)
-            feed_predictor[self.target_labels] = target_labels
+                # Update the predictor networks
+                loss, step, rews = self.sess.run([self.reward_loss, self.step, self.rewards], feed_predictor)
 
-            # Update the predictor networks
-            loss, step, rews = self.sess.run([self.reward_loss, self.step, self.rewards], feed_predictor)
-
-            losses.append(loss)
+                losses.append(loss)
 
         # Update Dynamic Running Stat
         if isinstance(self.r_norm, DynamicRunningStat):
