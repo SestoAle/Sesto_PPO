@@ -10,13 +10,14 @@ eps = 1e-12
 
 class RND:
     # Random Network Distillation class
-    def __init__(self, sess, input_spec, network_spec_target, network_spec_predictor, obs_to_state, lr=7e-5, buffer_size=1e5, batch_size=128,
+    def __init__(self, sess, input_spec, network_spec_target, network_spec_predictor, obs_to_state, lr=7e-5,
+                 buffer_size=1e5, batch_size=128,
                  motivation_weight=1., obs_normalization=False,
                  num_itr=3, name='rnd', **kwargs):
 
         # Used to normalize the intrinsic reward due to arbitrary scale
         self.r_norm = RunningStat()
-        self.obs_norm = RunningStat(shape=(9292))
+        self.obs_norm = RunningStat(shape=(9269))
         self.obs_normalization = obs_normalization
 
         # The tensorflow session
@@ -195,7 +196,8 @@ class RND:
             else:
                 del self.buffer[0]
 
-        self.obs_norm.push(obs['global_in'])
+        if self.obs_normalization:
+            self.obs_norm.push(obs['global_in'])
 
         self.buffer.append(obs)
 
