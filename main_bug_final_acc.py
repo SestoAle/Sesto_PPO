@@ -17,7 +17,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2_more')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='final_im_2')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -52,7 +52,7 @@ parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=False)
+parser.set_defaults(use_motivation=True)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 
@@ -65,6 +65,7 @@ class BugEnvironment:
     def __init__(self, game_name, no_graphics, worker_id, max_episode_timesteps, pos_already_normed=True):
         self.no_graphics = no_graphics
         self.unity_env = UnityEnvironment(game_name, no_graphics=no_graphics, seed=worker_id, worker_id=worker_id)
+        self.unity_env.reset()
         self._max_episode_timesteps = max_episode_timesteps
         self.default_brain = self.unity_env.brain_names[0]
         self.config = None
@@ -89,7 +90,7 @@ class BugEnvironment:
         self.reward_weights = [0, 0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1]
 
 
-    def execute(self, actions):
+    def execute(self, actions, visualize=False):
         # actions = 99
         # while(actions == 99):
         #     actions = self.command_to_action(input(': '))
@@ -117,15 +118,15 @@ class BugEnvironment:
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
-        # threedgrid = np.reshape(state['global_in'][10:10 + 9261], [21, 21, 21])
-        # fig = plt.figure()
-        # ax = fig.gca(projection='3d')
-        # filled = (1 - (threedgrid == 0))
-        # cmap = plt.get_cmap("viridis")
-        # norm = plt.Normalize(threedgrid.min(), threedgrid.max())
-        # ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")
-        # plt.show()
-        # plt.waitforbuttonpress()
+        if visualize:
+            threedgrid = np.reshape(state['global_in'][10:10 + 9261], [21, 21, 21])
+            fig = plt.figure()
+            ax = fig.gca(projection='3d')
+            filled = (1 - (threedgrid == 0))
+            cmap = plt.get_cmap("viridis")
+            norm = plt.Normalize(threedgrid.min(), threedgrid.max())
+            ax.voxels(filled, facecolors=cmap(norm(threedgrid)), edgecolor="black")
+            plt.show()
 
         # print(state['global_in'][-2:])
         # print(state['global_in'][7:7+12])

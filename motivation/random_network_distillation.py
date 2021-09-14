@@ -11,7 +11,7 @@ eps = 1e-12
 class RND:
     # Random Network Distillation class
     def __init__(self, sess, input_spec, network_spec_target, network_spec_predictor, obs_to_state, lr=7e-5,
-                 buffer_size=1e5, batch_size=128, num_epoch=1,
+                 buffer_size=1e5, batch_size=512, num_epoch=3,
                  motivation_weight=1., obs_normalization=False,
                  num_itr=3, name='rnd', **kwargs):
 
@@ -83,11 +83,9 @@ class RND:
             all_idxs = np.arange(len(self.buffer))
             np.random.shuffle(all_idxs)
             for it in range(num_batch):
-
                 # Take a mini-batch of batch_size experience
                 #mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
-                mini_batch_idxs = all_idxs[it*num_batch:it*num_batch + num_batch]
-
+                mini_batch_idxs = all_idxs[it*self.batch_size:it*self.batch_size + self.batch_size]
                 mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 
                 # Convert the observation to states

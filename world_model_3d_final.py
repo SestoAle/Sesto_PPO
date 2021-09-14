@@ -14,14 +14,14 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.clustering_ae import cluster
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'model'
+model_name = 'final_2'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -36,8 +36,8 @@ def plot_map(map):
     for edge, spine in ax.spines.items():
         spine.set_visible(False)
 
-    ax.set_xticks(np.arange(heatmap.shape[1] + 1) - .5, minor=True)
-    ax.set_yticks(np.arange(heatmap.shape[0] + 1) - .5, minor=True)
+    ax.set_xticks(np.arange(map.shape[1] + 1) - .5, minor=True)
+    ax.set_yticks(np.arange(map.shape[0] + 1) - .5, minor=True)
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
 
@@ -311,7 +311,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                #model_name = "final_im"
+                model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -355,7 +355,7 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 22
+            desired_point_y = 1
 
             goal_area_x = 20
             goal_area_z = 460

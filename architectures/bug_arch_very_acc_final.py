@@ -98,17 +98,16 @@ def network_spec_rnd_predictor(states):
 
                           )
 
-    global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_3', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 128, name='latent_4', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_4', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 64, name='out',
+    global_state = linear(global_state, 512, name='out',
                           )
-
 
     return global_state
 
@@ -154,9 +153,8 @@ def network_spec_rnd_target(states):
 
                           )
 
-    global_state = linear(global_state, 64, name='out',
+    global_state = linear(global_state, 512, name='out',
                           )
-
     return global_state
 
 def network_spec_rnd(states):

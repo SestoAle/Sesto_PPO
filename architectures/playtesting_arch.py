@@ -83,6 +83,8 @@ def network_spec_rnd_predictor(states):
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
+    agent_plane_x = positional_encoding(agent_plane_x, 32)
+    input('...')
 
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
@@ -107,15 +109,15 @@ def network_spec_rnd_predictor(states):
 
                           )
 
-    global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_3', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 128, name='latent_4', activation=tf.nn.relu,
+    global_state = linear(global_state, 512, name='latent_4', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 64, name='out',
+    global_state = linear(global_state, 512, name='out',
                           )
 
 
@@ -157,7 +159,7 @@ def network_spec_rnd_target(states):
 
                           )
 
-    global_state = linear(global_state, 64, name='out',
+    global_state = linear(global_state, 512, name='out',
                           )
 
     return global_state
