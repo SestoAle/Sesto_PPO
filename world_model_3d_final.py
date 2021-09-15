@@ -88,7 +88,7 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
     count = 0
     for traj in list(trajectories.values())[:]:
         count += 1
-        if 0.4 < traj[-1][-1] < 0.2:
+        if traj[-1][-1] < 0.2 or traj[-1][-1] > 0.4:
             continue
         for state in traj:
             position = np.asarray(state[:3])
@@ -357,13 +357,13 @@ if __name__ == '__main__':
             # I will get all the saved trajectories that touch one of these points at least once
             desired_point_x = 35
             desired_point_z = 500
-            desired_point_y = 1
+            desired_point_y = 21
 
-            goal_area_x = 100
-            goal_area_z = 370
-            goal_area_y = 22
-            goal_area_height = 20
-            goal_area_width = 20
+            goal_area_x = 22
+            goal_area_z = 461
+            goal_area_y = 21
+            goal_area_height = 39
+            goal_area_width = 66
 
             threshold = 4
 
@@ -515,7 +515,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
