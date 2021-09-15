@@ -80,23 +80,22 @@ def network_spec_rnd_predictor(states):
     # Jump
     agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, threedgrid, goal_weight = \
         tf.split(global_state, [1, 1, 1, 1, 1, 9261, 3], axis=1)
-
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
     agent_plane_x = positional_encoding(agent_plane_x, 32)
-    input('...')
 
     agent_plane_z = ((agent_plane_z + 1) / 2) * 500
     agent_plane_z = tf.cast(agent_plane_z, tf.int32)
+    agent_plane_z = positional_encoding(agent_plane_z, 32)
 
     agent_jump = ((agent_jump + 1) / 2) * 60
     agent_jump = tf.cast(agent_jump, tf.int32)
+    agent_jump = positional_encoding(agent_jump, 32)
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
 
-    global_state = agent
 
-    global_state = embedding(global_state, indices=501, size=32, name='embs')
+    global_state = agent
     global_state = tf.reshape(global_state, (-1, 3 * 32))
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
@@ -109,15 +108,15 @@ def network_spec_rnd_predictor(states):
 
                           )
 
-    global_state = linear(global_state, 512, name='latent_3', activation=tf.nn.relu,
+    global_state = linear(global_state, 128, name='latent_3', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 512, name='latent_4', activation=tf.nn.relu,
+    global_state = linear(global_state, 128, name='latent_4', activation=tf.nn.relu,
 
                           )
 
-    global_state = linear(global_state, 512, name='out',
+    global_state = linear(global_state, 64, name='out',
                           )
 
 
@@ -159,7 +158,7 @@ def network_spec_rnd_target(states):
 
                           )
 
-    global_state = linear(global_state, 512, name='out',
+    global_state = linear(global_state, 64, name='out',
                           )
 
     return global_state

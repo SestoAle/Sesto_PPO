@@ -7,7 +7,7 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='final_im_2')
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='questoe*con*3,play_2')
 parser.add_argument('-nm', '--num-mean', help="The number of the episode to compute the mean", default=100)
 parser.add_argument('-mr', '--num-mean-reward-loss', help="Same as nm, for reward loss", default=10)
 parser.add_argument('-sp', '--save-plot', help="If true save the plot in folder saved_plot", default=None)
@@ -77,8 +77,6 @@ for history in histories:
     mean_entropies = np.asarray(history.get("mean_entropies", list()))[:episodes][:-waste]
     std_entropies = np.asarray(history.get("std_entropies", list()))[:episodes][:-waste]
     episodes_success = episodes_reward > 0
-    print(np.sum(episodes_success))
-    input('...')
     episodes_timesteps = np.asarray(history.get("episode_timesteps", list()))[:episodes][:-waste]
     timesteps = np.asarray(history.get("episode_timesteps", list()))[:episodes][:-waste]
 

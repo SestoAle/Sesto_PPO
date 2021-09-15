@@ -177,12 +177,20 @@ def create_mask(input, value):
     return mask
 
 def positional_encoding(x, dimension):
-    i = tf.range(dimension)
-    i = tf.expand_dims(i, axis=1)
-    i = tf.cast(i, tf.float64)
+    d = tf.range(dimension)[tf.newaxis, ...]
+    def get_angles(pos, i, d_model):
+        pos = tf.cast(pos, tf.float32)
+        angle_rates = 1 / tf.pow(tf.cast(10000, tf.float32), tf.cast((2 * (i // 2)) / d_model, tf.float32))
+        return pos * angle_rates
 
-    x = tf.reshape(x, (1, -1))
-    x = tf.cast(x, tf.float32)
-    angle_rates = 1 / tf.math.pow(10000., tf.cast((2 * (i//2)) / dimension, tf.float32))
-    embs = x * angle_rates
-    embs[:, 0::2] = tf.math.sin(embs[:, 0::2])
+    angles = get_angles(x, d, dimension)
+    sins = tf.math.sin(angles[:,0::2])
+    coss = tf.math.cos(angles[:,1::2])
+
+    sins = tf.expand_dims(sins, 2)
+    coss = tf.expand_dims(coss, 2)
+
+    embs = tf.concat([sins, coss], 2)
+
+    embs = tf.reshape(embs, [-1, dimension])
+    return embs
