@@ -608,7 +608,7 @@ class Runner:
 
         # If we use IRL, save the reward model
         if self.reward_model is not None and not self.fixed_reward_model:
-            self.reward_model.save_model('{}_{}'.format(model_name, self.ep))
+            self.reward_model.save_model('{}'.format(model_name))
 
         print('Model saved with name: {}'.format(model_name))
 
