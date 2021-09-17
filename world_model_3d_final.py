@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'final_im_2'
+model_name = 'play_2_positional_sample'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -320,7 +320,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                model_name = "asdasdasd"
+                #model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -365,19 +365,19 @@ if __name__ == '__main__':
             desired_point_x = 35
             desired_point_z = 500
 
-            desired_point_y = 10
-            goal_area_x = 95
-            goal_area_z = 460
-            goal_area_y = 21
-            goal_area_height = 10
-            goal_area_width = 10
-
-            # desired_point_y = 21
-            # goal_area_x = 22
-            # goal_area_z = 461
+            # desired_point_y = 10
+            # goal_area_x = 95
+            # goal_area_z = 460
             # goal_area_y = 21
-            # goal_area_height = 39
-            # goal_area_width = 66
+            # goal_area_height = 10
+            # goal_area_width = 10
+
+            desired_point_y = 21
+            goal_area_x = 22
+            goal_area_z = 461
+            goal_area_y = 21
+            goal_area_height = 39
+            goal_area_width = 66
 
             threshold = 4
 
