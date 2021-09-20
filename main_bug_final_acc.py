@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_2_positional_sample')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_2_500')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -40,7 +40,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
 parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_6000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_playtest_2.pkl')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_playtest_2_fix.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
@@ -48,11 +48,11 @@ parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', ac
 # Parse arguments for Intrinsic Motivation
 parser.add_argument('-m', '--motivation', dest='use_motivation', action='store_true')
 
-parser.set_defaults(use_reward_model=False)
+parser.set_defaults(use_reward_model=True)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=False)
+parser.set_defaults(use_motivation=True)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 
@@ -114,12 +114,11 @@ class BugEnvironment:
         # reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 
-        # print(state['global_in'][:2])
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10+225:10+225 + 225], [15, 15])), 0))
         # Visualize 3D boxcast
         if visualize:
-            threedgrid = np.reshape(state['global_in'][10:10 + 9261], [21, 21, 21])
+            threedgrid = np.reshape(state['global_in'][4:4 + 9261], [21, 21, 21])
             fig = plt.figure()
             ax = fig.gca(projection='3d')
             filled = (1 - (threedgrid == 0))
@@ -171,6 +170,7 @@ class BugEnvironment:
         entr = 0
         for p in probs:
             entr += (p * np.log(p))
+        print(probs)
         return -entr
 
     def set_config(self, config):
@@ -368,7 +368,7 @@ if __name__ == "__main__":
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
             "win_weight": [[1], [1], [1]],
-            "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0]]
+            "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0.7]]
         }
     }
 
