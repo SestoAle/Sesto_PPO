@@ -14,14 +14,14 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.clustering_ae import cluster
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_3_500'
+model_name = 'play_3_500_fix'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -162,7 +162,7 @@ def print_traj(traj):
     elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
         color = 'k'
 
-    print(ep_trajectory[-1, 3:5])
+    # print(ep_trajectory[-1, 3:5])
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
@@ -379,12 +379,12 @@ if __name__ == '__main__':
             # goal_area_height = 300
             # goal_area_width = 15
 
-            # desired_point_y = 31
-            # goal_area_x = 20
-            # goal_area_z = 296
-            # goal_area_y = 20
-            # goal_area_height = 20
-            # goal_area_width = 20
+            # desired_point_y = 21
+            # goal_area_x = 22
+            # goal_area_z = 461
+            # goal_area_y = 21
+            # goal_area_height = 39
+            # goal_area_width = 66
 
             desired_point_y = 28
             goal_area_x = 35
@@ -400,6 +400,7 @@ if __name__ == '__main__':
             sum_moti_rews_dict = dict()
             sum_il_rews = []
             moti_rews = []
+            points = []
 
             step_moti_rews = []
             step_il_rews = []
@@ -410,10 +411,8 @@ if __name__ == '__main__':
             mean_length = 0
 
             pos_buffer = dict()
-            new_traj_to_observe = []
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
-
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -442,7 +441,8 @@ if __name__ == '__main__':
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
-                            print(keys)
+
+                            #print(keys)
                             # for j in range(i + 1, traj_len):
                             #     traj[j] = traj[i]
 
@@ -450,13 +450,12 @@ if __name__ == '__main__':
                             #     insert_to_pos_table(pos_buffer, np.asarray(pos_point[:3]), 1 / 40)
                             break
 
-            # print("pos buffer created!")
-
             # Cluster trajectories to reduce the number of trajectories to observe
-            traj_to_observe = np.asarray(traj_to_observe)
+            # traj_to_observe = np.asarray(traj_to_observe)
             # with open('traj_to_observe.npy', 'wb') as f:
             #     np.save(f, traj_to_observe)
             # input('...')
+
             # cluster_indices = cluster(traj_to_observe, 'clustering/autoencoders/jump')
             # cluster_indices = [4229,  239, 9062, 6959, 7693, 2169,  389,  153,   28, 2475]
             # traj_to_observe = traj_to_observe[cluster_indices]
@@ -492,10 +491,10 @@ if __name__ == '__main__':
                     # moti_rews.append(moti_rew)
                     # step_moti_rews.extend(moti_rew)
 
-                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold:
-                        break
+                    # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                    #         goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                    #         np.abs(de_point[2] - desired_point_y) < threshold:
+                    #     break
 
                 # The actions is one less than the states, so add the last state
                 state = traj[-1]
@@ -513,10 +512,25 @@ if __name__ == '__main__':
                 moti_rew = motivation.eval(states_batch)
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
+                points.extend([k['global_in'] for k in states_batch])
                 moti_rew = np.sum(moti_rew)
                 sum_moti_rews.append(moti_rew)
                 sum_moti_rews_dict[idx_traj] = moti_rew
 
+
+            # Try to print points that have high value of IM
+            indices = np.where(step_moti_rews > np.asarray(0.1))
+            indices = np.reshape(indices, -1)
+            points = np.asarray(points)
+            print(np.shape(points))
+            points_to_plot = points[indices]
+            points_to_plot = dict(x=points_to_plot[:, 0], z=points_to_plot[:, 1], y=points_to_plot[:, 2])
+            json_str = json.dumps(points_to_plot, cls=NumpyEncoder)
+            f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/graph.json".format(model_name), "w")
+            f.write(json_str)
+            f.close()
+
+            input('...')
             moti_mean = np.mean(sum_moti_rews)
             il_mean = np.mean(sum_il_rews)
             moti_max = np.max(sum_moti_rews)
@@ -542,8 +556,7 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            # moti_to_observe = np.where(moti_rews > np.asarray(0.30))
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
             moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
