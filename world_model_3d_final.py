@@ -14,7 +14,7 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.clustering_ae import cluster
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -372,13 +372,13 @@ if __name__ == '__main__':
             # goal_area_height = 10
             # goal_area_width = 10
 
-            # desired_point_y = 20
+            # desired_point_y = 39
             # goal_area_x = 0
             # goal_area_z = 300
             # goal_area_y = 21
             # goal_area_height = 300
             # goal_area_width = 15
-
+            #
             # desired_point_y = 21
             # goal_area_x = 22
             # goal_area_z = 461
@@ -491,10 +491,10 @@ if __name__ == '__main__':
                     # moti_rews.append(moti_rew)
                     # step_moti_rews.extend(moti_rew)
 
-                    # if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                    #         goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                    #         np.abs(de_point[2] - desired_point_y) < threshold:
-                    #     break
+                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                            np.abs(de_point[2] - desired_point_y) < threshold:
+                        break
 
                 # The actions is one less than the states, so add the last state
                 state = traj[-1]
@@ -513,24 +513,23 @@ if __name__ == '__main__':
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
                 points.extend([k['global_in'] for k in states_batch])
-                moti_rew = np.sum(moti_rew)
+                moti_rew = np.mean(moti_rew)
                 sum_moti_rews.append(moti_rew)
                 sum_moti_rews_dict[idx_traj] = moti_rew
 
 
-            # Try to print points that have high value of IM
-            indices = np.where(step_moti_rews > np.asarray(0.1))
-            indices = np.reshape(indices, -1)
-            points = np.asarray(points)
-            print(np.shape(points))
-            points_to_plot = points[indices]
-            points_to_plot = dict(x=points_to_plot[:, 0], z=points_to_plot[:, 1], y=points_to_plot[:, 2])
-            json_str = json.dumps(points_to_plot, cls=NumpyEncoder)
-            f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/graph.json".format(model_name), "w")
-            f.write(json_str)
-            f.close()
+            # # Try to print points that have high value of IM
+            # indices = np.where(step_moti_rews > np.asarray(0.1))
+            # indices = np.reshape(indices, -1)
+            # points = np.asarray(points)
+            # print(np.shape(points))
+            # points_to_plot = points[indices]
+            # points_to_plot = dict(x=points_to_plot[:, 0], z=points_to_plot[:, 1], y=points_to_plot[:, 2])
+            # json_str = json.dumps(points_to_plot, cls=NumpyEncoder)
+            # f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/graph.json".format(model_name), "w")
+            # f.write(json_str)
+            # f.close()
 
-            input('...')
             moti_mean = np.mean(sum_moti_rews)
             il_mean = np.mean(sum_il_rews)
             moti_max = np.max(sum_moti_rews)
@@ -556,8 +555,12 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=False)}
-            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            moti_to_observe = []
+            for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
+                if v > 0.04:
+                    moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
             il_to_observe = np.where(sum_il_rews > np.asarray(il_mean))
@@ -605,6 +608,10 @@ if __name__ == '__main__':
                 print('Demonstrations loaded! We have ' + str(
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
+            all_normalized_im_rews = []
+
+            plt.show()
+
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
@@ -628,43 +635,53 @@ if __name__ == '__main__':
                 #irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
                 irl_rew = np.zeros(len(states_batch))
                 im_rew = motivation.eval(states_batch)
-                plt.figure()
-                plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
+                # plt.figure()
+                # plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
                 irl_rew = savitzky_golay(irl_rew, 51, 3)
                 im_rew = savitzky_golay(im_rew, 51, 3)
 
                 irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
-                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
-                # diff = np.asarray(im_rew) - np.asarray(irl_rew)
+                print(idx)
+                all_normalized_im_rews.append(im_rew)
 
-                plt.plot(range(len(irl_rew)), irl_rew)
-                plt.plot(range(len(im_rew)), im_rew)
-                #plt.plot(range(len(im_rew)), diff)
-                plt.legend(['irl', 'im', 'diff'])
+                diff = np.asarray(im_rew) - np.asarray(irl_rew)
 
-                # TODO: save actions and trajectories, temporarely
-                actions_to_save = dict(actions=actions[key])
-                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
-                f = open("arrays/actions.json".format(model_name), "w")
-                f.write(json_str)
-                f.close()
+                # plt.plot(range(len(irl_rew)), irl_rew)
+                # plt.plot(range(len(im_rew)), im_rew)
+                # #plt.plot(range(len(im_rew)), diff)
+                # plt.legend(['irl', 'im', 'diff'])
+                #
+                # # TODO: save actions and trajectories, temporarely
+                # actions_to_save = dict(actions=actions[key])
+                # json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+                # f = open("arrays/actions.json".format(model_name), "w")
+                # f.write(json_str)
+                # f.close()
+                #
+                # traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
+                # json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+                # f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
+                # f.write(json_str)
+                # f.close()
+                #
+                # fig = plt.figure()
+                # print_traj_with_diff(traj, im_rew, thr)
+                # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
+                #                                 linewidth=5, edgecolor='r',
+                #                                 facecolor='none', zorder=100)
+                # fig.gca().add_patch(goal_region)
+                #
+                # plt.show()
+                # plt.waitforbuttonpress()
 
-                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
-                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
-                f.write(json_str)
-                f.close()
-
-                fig = plt.figure()
-                print_traj_with_diff(traj, im_rew, thr)
-                goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
-                                                linewidth=5, edgecolor='r',
-                                                facecolor='none', zorder=100)
-                fig.gca().add_patch(goal_region)
-
-                plt.show()
-                plt.waitforbuttonpress()
-
-    plt.show()
+    # # Cluster trajectories to reduce the number of trajectories to observe
+    traj_to_observe = np.asarray(traj_to_observe[idxs_to_observe])
+    with open('traj_to_observe.npy', 'wb') as f:
+        np.save(f, traj_to_observe)
+    all_normalized_im_rews = np.asarray(all_normalized_im_rews)
+    with open('im_rews.npy', 'wb') as f:
+        np.save(f, all_normalized_im_rews)
+    input('...')
 
