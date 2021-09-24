@@ -6,6 +6,7 @@ import time
 import tensorflow as tf
 from unity_env_wrapper import UnityEnvWrapper
 import argparse
+from architectures.deepcrawl_arch import *
 
 from reward_model.reward_model import RewardModel
 
@@ -18,9 +19,9 @@ if len(physical_devices) > 0:
 # Parse arguments for training
 parser = argparse.ArgumentParser()
 parser.add_argument('-mn', '--model-name', help="The name of the model", default='model')
-parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl-Procedural-4")
-parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
-parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=3000)
+parser.add_argument('-gn', '--game-name', help="The name of the game", default="envs/DeepCrawl")
+parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=999)
+parser.add_argument('-sf', '--save-frequency', help="How many episodes after save the model", default=1000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
 parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=100)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
@@ -110,7 +111,29 @@ if __name__ == "__main__":
     with graph.as_default():
         tf.compat.v1.disable_eager_execution()
         sess = tf.compat.v1.Session(graph=graph)
-        agent = PPO(sess=sess, memory=memory, model_name=model_name, recurrent=args.recurrent, frequency_mode=frequency_mode)
+        agent = PPO(
+                    sess=sess,
+                    input_spec=input_spec,
+                    network_spec=network_spec,
+                    obs_to_state=obs_to_state,
+                    action_type='discrete',
+                    action_size=19,
+                    model_name='npc',
+                    p_lr=5e-6,
+                    p_batch_fraction=0.33,
+                    v_batch_fraction=0.33,
+                    memory=10,
+                    discount=0.99,
+                    c2=0.01,
+                    epsilon=0.2,
+                    v_lr=5e-4,
+                    recurrent=False,
+                    frequency_mode='episodes',
+                    distribution='beta',
+                    previous_act=False,
+                    p_num_itr=20,
+                    v_num_itr=10
+                )
         # Initialize variables of models
         init = tf.compat.v1.global_variables_initializer()
         sess.run(init)

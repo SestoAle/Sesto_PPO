@@ -7,11 +7,11 @@ import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-mn', '--models-name', help="The name of the model", default='final_im_2,questoe*con*3,play_2,play_2_positional,play_2_positional_sample')
-parser.add_argument('-nm', '--num-mean', help="The number of the episode to compute the mean", default=1000)
+parser.add_argument('-mn', '--models-name', help="The name of the model", default='npc')
+parser.add_argument('-nm', '--num-mean', help="The number of the episode to compute the mean", default=100)
 parser.add_argument('-mr', '--num-mean-reward-loss', help="Same as nm, for reward loss", default=10)
 parser.add_argument('-sp', '--save-plot', help="If true save the plot in folder saved_plot", default=None)
-parser.add_argument('-ep', '--episodes', help="Number of the episodes to observe", default=18000)
+parser.add_argument('-ep', '--episodes', help="Number of the episodes to observe", default=None)
 
 parser.add_argument('-xa', '--x-axis', help="Number of the episodes to observe", default='episodes')
 args = parser.parse_args()

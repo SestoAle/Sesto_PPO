@@ -12,7 +12,7 @@ import numpy as np
 from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
-from clustering.clustering_ae import cluster
+from clustering.cluster_im import cluster
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_3_500'
+model_name = 'play_1_500'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -386,12 +386,19 @@ if __name__ == '__main__':
             # goal_area_height = 39
             # goal_area_width = 66
 
-            desired_point_y = 28
-            goal_area_x = 35
-            goal_area_z = 18
-            goal_area_y = 28
-            goal_area_height = 44
-            goal_area_width = 44
+            # desired_point_y = 28
+            # goal_area_x = 35
+            # goal_area_z = 18
+            # goal_area_y = 28
+            # goal_area_height = 44
+            # goal_area_width = 44
+
+            desired_point_y = 1
+            goal_area_x = 440
+            goal_area_z = 459
+            goal_area_y = 1
+            goal_area_height = 24
+            goal_area_width = 53
 
             threshold = 4
 
@@ -437,7 +444,7 @@ if __name__ == '__main__':
                                  goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
                                     np.abs(de_point[2] - desired_point_y) < threshold and \
                                           point[-1] <= 0.5:
-                        # if True:
+                #         if True:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
                             episodes_to_observe.append(keys)
@@ -583,6 +590,8 @@ if __name__ == '__main__':
             fig.gca().add_patch(goal_region)
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
+            plt.show()
+
             # Increase demonstartions with bugged trajectory
             if False:
 
@@ -609,9 +618,6 @@ if __name__ == '__main__':
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
             all_normalized_im_rews = []
-
-            plt.show()
-
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
@@ -632,56 +638,82 @@ if __name__ == '__main__':
                     states_batch.append(state)
                     actions_batch.append(action)
 
-                #irl_rew = reward_model.eval(states_batch, states_batch, actions_batch)
-                irl_rew = np.zeros(len(states_batch))
                 im_rew = motivation.eval(states_batch)
-                # plt.figure()
-                # plt.title("im: {}, il: {}".format(np.sum(im_rew), np.sum(irl_rew)))
-                irl_rew = savitzky_golay(irl_rew, 51, 3)
-                im_rew = savitzky_golay(im_rew, 51, 3)
-
-                irl_rew = (irl_rew - np.min(step_il_rews)) / (np.max(step_il_rews) - np.min(step_il_rews))
+                # im_rew = savitzky_golay(im_rew, 51, 3)
                 # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
-                print(idx)
                 all_normalized_im_rews.append(im_rew)
 
-                diff = np.asarray(im_rew) - np.asarray(irl_rew)
+            if len(all_normalized_im_rews) > 20:
+                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
+            else:
+                cluster_indices = np.arange(len(all_normalized_im_rews))
 
-                # plt.plot(range(len(irl_rew)), irl_rew)
-                # plt.plot(range(len(im_rew)), im_rew)
-                # #plt.plot(range(len(im_rew)), diff)
-                # plt.legend(['irl', 'im', 'diff'])
-                #
-                # # TODO: save actions and trajectories, temporarely
-                # actions_to_save = dict(actions=actions[key])
-                # json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
-                # f = open("arrays/actions.json".format(model_name), "w")
-                # f.write(json_str)
-                # f.close()
-                #
-                # traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew, il_values=irl_rew)
-                # json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                # f = open("../OpenWorldEnv/OpenWorld/Assets/Resources/traj.json".format(model_name), "w")
-                # f.write(json_str)
-                # f.close()
-                #
-                # fig = plt.figure()
-                # print_traj_with_diff(traj, im_rew, thr)
-                # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
-                #                                 linewidth=5, edgecolor='r',
-                #                                 facecolor='none', zorder=100)
-                # fig.gca().add_patch(goal_region)
-                #
-                # plt.show()
-                # plt.waitforbuttonpress()
+            new_episode_to_observe = []
+            episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
 
-    # # Cluster trajectories to reduce the number of trajectories to observe
-    traj_to_observe = np.asarray(traj_to_observe[idxs_to_observe])
-    with open('traj_to_observe.npy', 'wb') as f:
-        np.save(f, traj_to_observe)
-    all_normalized_im_rews = np.asarray(all_normalized_im_rews)
-    with open('im_rews.npy', 'wb') as f:
-        np.save(f, all_normalized_im_rews)
-    input('...')
+            fig = plt.figure()
+            thr = np.mean(step_moti_rews)
+            for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
+                print_traj(traj)
+            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+                                            facecolor='none', zorder=100)
+            fig.gca().add_patch(goal_region)
+            plt.show()
+            traj_to_observe = traj_to_observe[idxs_to_observe][cluster_indices]
 
+            for traj, key in zip(traj_to_observe, episodes_to_observe):
+                states_batch = []
+                actions_batch = []
+                #key = episodes_to_observe[idx]
+
+                for state, action in zip(traj, actions[key]):
+                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                    # TODO: correct form
+                    state = np.asarray(state)
+                    # state[:3] = 2 * (state[:3] / 40) - 1
+                    state = np.concatenate([state, filler])
+                    state[-2:] = state[3:5]
+
+                    # Create the states batch to feed the models
+                    state = dict(global_in=state)
+                    states_batch.append(state)
+                    actions_batch.append(action)
+
+                im_rew = motivation.eval(states_batch)
+                plt.figure()
+                plt.title("im: {}".format(np.sum(im_rew)))
+                im_rew = savitzky_golay(im_rew, 51, 3)
+                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+
+                print(key)
+                all_normalized_im_rews.append(im_rew)
+                plt.plot(range(len(im_rew)), im_rew)
+                #plt.plot(range(len(im_rew)), diff)
+                plt.legend(['irl', 'im', 'diff'])
+
+                # TODO: save actions and trajectories, temporarely
+                actions_to_save = dict(actions=actions[key])
+                json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+                f = open("arrays/actions.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
+                traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew,
+                                    il_values=np.zeros(len(states_batch)))
+                json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+                f = open("../Playtesting-Env/Assets/Resources/traj.json".format(model_name), "w")
+                f.write(json_str)
+                f.close()
+
+                fig = plt.figure()
+                print_traj_with_diff(traj, im_rew, thr)
+                goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
+                                                linewidth=5, edgecolor='r',
+                                                facecolor='none', zorder=100)
+                fig.gca().add_patch(goal_region)
+
+                plt.show()
+                plt.waitforbuttonpress()
+
+        plt.show()

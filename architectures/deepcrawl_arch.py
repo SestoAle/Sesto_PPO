@@ -27,10 +27,10 @@ def obs_to_state(obs):
 def network_spec(states, baseline=False):
 
     global_state = states[0]
-    local_state = states[0]
-    local_two_state = states[0]
-    agent_stats = states[0]
-    target_stats = states[0]
+    local_state = states[1]
+    local_two_state = states[2]
+    agent_stats = states[3]
+    target_stats = states[4]
 
     conv_10 = conv_layer_2d(global_state, 32, [1, 1], name='conv_10', activation=tf.nn.tanh, bias=False)
     conv_11 = conv_layer_2d(conv_10, 32, [3, 3], name='conv_11', activation=tf.nn.relu)
