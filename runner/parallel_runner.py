@@ -764,7 +764,7 @@ class Runner:
             # intrinsic_rews -= self.motivation.r_norm.mean
             # intrinsic_rews /= self.motivation.r_norm.std
             intrinsic_rews -= np.mean(intrinsic_rews)
-            intrinsic_rews /= np.std(intrinsic_rews)
+            intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
             intrinsic_rews *= self.motivation.motivation_weight
 
             # Weight of win
