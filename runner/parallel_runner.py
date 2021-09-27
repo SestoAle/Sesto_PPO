@@ -845,9 +845,6 @@ class Runner:
                     rewards.append(self.envs[0].compute_intrinsic_reward(all_pos_buffer[k]))
                     break
 
-        for e in self.envs:
-            e.pos_buffer = all_pos_buffer
-
         return rewards
 
     # Method for count time after each episode
