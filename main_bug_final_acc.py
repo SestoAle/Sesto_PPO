@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_4_500')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_4_500_2')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -76,7 +76,7 @@ class BugEnvironment:
         self.pos_already_normed = pos_already_normed
         self.r_max = 0.5
         self.max_counter = 500
-        self.tau = 1 / 40
+        self.tau = 5
         self.standard_position = [14, 14, 1]
         self.coverage_of_points = []
 
@@ -110,8 +110,8 @@ class BugEnvironment:
         position = state['global_in'][:3]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # Get the counter of that position and compute reward
-        # counter = self.insert_to_pos_table(position[:2])
-        # reward = self.compute_intrinsic_reward(counter)
+        counter = self.insert_to_pos_table(position[:3])
+        # motivation_reward = self.compute_intrinsic_reward(counter)
         # reward = 0
 
         # print(np.flip(np.transpose(np.reshape(state['global_in'][10:10+225], [15, 15])), 0))
@@ -132,7 +132,7 @@ class BugEnvironment:
         # print(reward)
         # print(done)
 
-        return state, done, reward
+        return state, done, reward, 0
 
     def reset(self):
 
@@ -151,6 +151,7 @@ class BugEnvironment:
 
         self.previous_action = [0, 0]
         logs.getLogger("mlagents.envs").setLevel(logs.WARNING)
+
         self.coverage_of_points.append(len(self.pos_buffer.keys()))
         self.episode += 1
         self.trajectories_for_episode[self.episode] = []
@@ -223,6 +224,11 @@ class BugEnvironment:
     # Return the counter of that position
     def insert_to_pos_table(self, position):
 
+        de_point = np.zeros(3)
+        de_point[0] = int(((position[0] + 1) / 2) * 500)
+        de_point[1] = int(((position[1] + 1) / 2) * 500)
+        de_point[2] = int(((position[2] + 1) / 2) * 60)
+
         # Check if the position is already in the buffer
         for k in self.pos_buffer.keys():
             # If position - k < tau, then the position is already in the buffer
@@ -231,14 +237,14 @@ class BugEnvironment:
             # The position are already normalized by the environment
             k_value = list(map(float, k.split(" ")))
             k_value = np.asarray(k_value)
-            position = np.asarray(position)
+            de_point = np.asarray(de_point)
 
-            distance = np.linalg.norm(k_value - position)
+            distance = np.linalg.norm(k_value - de_point)
             if distance < self.tau:
                 self.pos_buffer[k] += 1
                 return self.pos_buffer[k]
 
-        pos_key = ' '.join(map(str, position))
+        pos_key = ' '.join(map(str, de_point))
         self.pos_buffer[pos_key] = 1
         return self.pos_buffer[pos_key]
 
@@ -390,7 +396,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state, batch_fraction=0.2,
                     action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=0.2,
-                    v_num_itr=10, memory=memory, c2=0.5,
+                    v_num_itr=10, memory=memory, c2=0.1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models

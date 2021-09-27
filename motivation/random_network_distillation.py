@@ -85,7 +85,7 @@ class RND:
             for b in range(num_batches):
                 # Take a mini-batch of batch_size experience
                 # mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
-                mini_batch_idxs = all_index[i*self.batch_size: i*self.batch_size + self.batch_size]
+                mini_batch_idxs = all_index[b*self.batch_size: b*self.batch_size + self.batch_size]
 
                 mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 

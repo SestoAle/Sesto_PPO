@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_500_2'
+model_name = 'play_4_500'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -87,7 +87,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:]:
+    for traj in list(trajectories.values())[:14000]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -320,7 +320,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasd"
+                model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -573,7 +573,7 @@ if __name__ == '__main__':
             #moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.05:
+                if v > 0.03:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
