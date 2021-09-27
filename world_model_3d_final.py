@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_500'
+model_name = 'play_4_500_2'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -87,7 +87,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[-10:]:
+    for traj in list(trajectories.values())[:]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -393,19 +393,19 @@ if __name__ == '__main__':
             # goal_area_height = 44
             # goal_area_width = 44
 
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
-
             desired_point_y = 1
-            goal_area_x = 447
-            goal_area_z = 466
+            goal_area_x = 442
+            goal_area_z = 38
             goal_area_y = 1
-            goal_area_height = 20
-            goal_area_width = 44
+            goal_area_height = 65
+            goal_area_width = 46
+
+            # desired_point_y = 1
+            # goal_area_x = 447
+            # goal_area_z = 466
+            # goal_area_y = 1
+            # goal_area_height = 20
+            # goal_area_width = 44
 
             threshold = 4
 
@@ -426,7 +426,7 @@ if __name__ == '__main__':
 
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[-1000:], list(trajectories.values())[-1000:]):
+            for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -447,10 +447,10 @@ if __name__ == '__main__':
                         de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                 #         # if np.abs(de_point[0] - desired_point_x) < threshold and \
                 #         #         np.abs(de_point[1] - desired_point_z) < threshold :
-                #         if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                #                  goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                #                     np.abs(de_point[2] - desired_point_y) < threshold and \
-                        if               point[-1] == 0.5:
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                 goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                                    np.abs(de_point[2] - desired_point_y) < threshold and \
+                                       point[-1] <= 0.5:
                 #         if True:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
@@ -570,11 +570,11 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
-            # moti_to_observe = []
-            # for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-            #     if v > 0.06:
-            #         moti_to_observe.append(k)
+            #moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            moti_to_observe = []
+            for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
+                if v > 0.05:
+                    moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
             il_to_observe = np.where(sum_il_rews > np.asarray(il_mean))
@@ -651,9 +651,8 @@ if __name__ == '__main__':
 
                 all_normalized_im_rews.append(im_rew)
 
-            if False:
-            # if len(all_normalized_im_rews) > 20:
-                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
+            if len(all_normalized_im_rews) > 20:
+                cluster_indices = cluster(all_normalized_im_rews, clusters=30)
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
 
