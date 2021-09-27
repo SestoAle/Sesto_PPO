@@ -228,6 +228,9 @@ class BugEnvironment:
         de_point[0] = int(((position[0] + 1) / 2) * 500)
         de_point[1] = int(((position[1] + 1) / 2) * 500)
         de_point[2] = int(((position[2] + 1) / 2) * 60)
+        pos_key = ' '.join(map(str, de_point))
+        if pos_key in self.pos_buffer.keys():
+            return self.pos_buffer[pos_key]
 
         # Check if the position is already in the buffer
         for k in self.pos_buffer.keys():

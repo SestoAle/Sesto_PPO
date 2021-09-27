@@ -845,6 +845,8 @@ class Runner:
                     rewards.append(self.envs[0].compute_intrinsic_reward(all_pos_buffer[k]))
                     break
 
+        print("Coverage of point: ".format(len(list(all_pos_buffer.keys()))))
+
         return rewards
 
     # Method for count time after each episode
