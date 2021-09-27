@@ -132,7 +132,7 @@ class BugEnvironment:
         # print(reward)
         # print(done)
 
-        return state, done, reward, 0
+        return state, done, reward
 
     def reset(self):
 

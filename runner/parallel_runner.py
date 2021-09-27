@@ -129,7 +129,7 @@ class EpisodeThreaded(Thread):
                     actions, logprobs, probs, internal_n, v_internal_n = self.agent.eval_recurrent([state], internal,
                                                                                                  v_internal)
                 actions = actions[0]
-                state_n, done, reward, motivation_reward = self.env.execute(actions)
+                state_n, done, reward = self.env.execute(actions)
 
                 #reward = reward[0]
                 #done = done[0]
@@ -154,7 +154,6 @@ class EpisodeThreaded(Thread):
 
                 if self.motivation:
                     self.parallel_buffer['motivation'][self.index]['state_n'].append(state_n)
-                    self.parallel_buffer['motivation'][self.index]['motivation_reward'].append(motivation_reward)
 
                 if self.reward_model:
                     self.parallel_buffer['reward_model'][self.index]['state'].append(state)
@@ -361,7 +360,7 @@ class Runner:
             parallel_buffer['v_internal'].append([])
             # Motivation
             parallel_buffer['motivation'].append(
-                dict(state_n=[], motivation_reward=[])
+                dict(state_n=[])
             )
             # Reward Model
             parallel_buffer['reward_model'].append(
@@ -382,9 +381,6 @@ class Runner:
         # Start training
         start_time = time.time()
         # If parallel act is in use, reset all environments at beginning of training
-
-        # TODO: CANCELLARE
-        self.motivation_rewards = []
 
         if self.frequency_mode == 'timesteps':
             states = []
@@ -487,9 +483,6 @@ class Runner:
                     for state_n in self.parallel_buffer['motivation'][i]['state_n']:
                         # We need deepcopy because the state will be normalized (and not for the policy)
                         self.motivation.add_to_buffer(deepcopy(state_n))
-                    for m_r in self.parallel_buffer['motivation'][i]['motivation_reward']:
-                        # We need deepcopy because the state will be normalized (and not for the policy)
-                        self.motivation_rewards.append(m_r)
 
                 if self.reward_model is not None:
                     self.reward_model.add_to_policy_buffer(self.parallel_buffer['reward_model'][i]['state'],
@@ -783,7 +776,6 @@ class Runner:
             intrinsic_rews *= weights[:, 1]
 
             self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
-            self.motivation_rewards = []
 
         if self.reward_model is not None:
 
