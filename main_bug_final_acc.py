@@ -36,6 +36,7 @@ parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
 parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true')
 
+
 # Parse arguments for Inverse Reinforcement Learning
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
@@ -52,7 +53,7 @@ parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=False)
+parser.set_defaults(use_motivation=True)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 
@@ -378,7 +379,7 @@ if __name__ == "__main__":
             "agent_spawn_y": [1.7, 1.7, 1.7],
             "win_weight": [[1], [1], [1]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
-                               [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
+                               [0]],
             "goal_area": [4, 4, 4]
         }
     }
