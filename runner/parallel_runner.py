@@ -6,6 +6,7 @@ import time
 from threading import Thread
 import sys
 from copy import deepcopy
+from scipy.spatial import distance_matrix
 
 # Act thread
 class ActThreaded(Thread):
@@ -192,6 +193,10 @@ class Runner:
         self.envs = envs
         self.curriculum_mode = curriculum_mode
         self.evaluation = evaluation
+
+        # TODO: CANCELLARE
+        self.all_points = []
+        self.all_counters = []
 
         # TODO: pass this as an argument
         self.motivation_frequency = 10
@@ -811,8 +816,51 @@ class Runner:
 
             self.agent.buffer['rewards'] = list(intrinsic_rews + np.asarray(self.agent.buffer['rewards']))
 
-
     def compute_hard_motivation(self, states):
+
+        rewards = []
+
+        # Update buffer
+        tmp_all_points = [state['global_in'][:3] for state in states]
+        tmp_all_points = np.asarray(tmp_all_points)
+
+        tmp_all_points[:, 0] = ((tmp_all_points[:, 0] + 1) / 2) * 500
+        tmp_all_points[:, 1] = ((tmp_all_points[:, 1] + 1) / 2) * 500
+        tmp_all_points[:, 2] = ((tmp_all_points[:, 2] + 1) / 2) * 60
+
+        tmp_all_points = tmp_all_points.astype(int)
+        tmp_all_points = tmp_all_points.astype(float)
+
+        for p in tmp_all_points:
+            # First point of all
+            if len(self.all_points) == 0:
+                self.all_points.append(p)
+                self.all_counters.append(1)
+                rewards.append(self.envs[0].compute_intrinsic_reward(1))
+                continue
+
+            p = np.reshape(p, (1,3))
+            np_all_points = np.asarray(self.all_points)
+            np_all_points = np.reshape(np_all_points, (-1,3))
+            distances = distance_matrix(p, np_all_points)
+
+            # New point
+            if np.min(distances) > 5:
+                p = np.reshape(p, (3,))
+                self.all_points.append(p)
+                self.all_counters.append(1)
+                rewards.append(self.envs[0].compute_intrinsic_reward(1))
+            else:
+                index = np.argmin(distances)
+                self.all_counters[index] += 1
+                rewards.append(self.envs[0].compute_intrinsic_reward(self.all_counters[index]))
+        return rewards
+
+
+
+
+    def compute_hard_motivation_old(self, states):
+
         all_pos_buffer = self.envs[0].pos_buffer
         for i in range(1, len(self.envs)):
             for k in self.envs[i].pos_buffer:
