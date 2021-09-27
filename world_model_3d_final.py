@@ -298,7 +298,7 @@ if __name__ == '__main__':
     # f.write(json_str)
     # f.close()
 
-    heatmap = np.clip(heatmap, 0, np.max(heatmap)/5)
+    heatmap = np.clip(heatmap, 0, np.max(heatmap)/50)
 
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
@@ -320,7 +320,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasd"
+                model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -386,19 +386,19 @@ if __name__ == '__main__':
             # goal_area_height = 39
             # goal_area_width = 66
 
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 1
             # goal_area_x = 447
@@ -573,7 +573,7 @@ if __name__ == '__main__':
             #moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.05:
+                if v > 0.04:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
