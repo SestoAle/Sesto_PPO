@@ -774,7 +774,6 @@ class Runner:
             intrinsic_rews -= np.mean(intrinsic_rews)
             intrinsic_rews /= (np.std(intrinsic_rews) + 1e-5)
             intrinsic_rews *= self.motivation.motivation_weight
-
             # Weight of win
             self.agent.buffer['rewards'] = np.asarray(self.agent.buffer['rewards']) * weights[:, 0]
 
@@ -854,6 +853,7 @@ class Runner:
                 index = np.argmin(distances)
                 self.all_counters[index] += 1
                 rewards.append(self.envs[0].compute_intrinsic_reward(self.all_counters[index]))
+        print("Coverage of point: {}".format(len(self.all_points)))
         return rewards
 
 
