@@ -37,7 +37,7 @@ def network_spec(states):
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     agent = tf.reshape(agent, (-1, 3 * 32))
     # agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)
-    agent = linear(agent, 1024, name='global_embs', activation=tf.nn.relu)
+    agent = linear(agent, 2048, name='global_embs', activation=tf.nn.relu)
     is_grounded = linear(is_grounded, 1024, name='grounded_embs', activation=tf.nn.relu)
     can_double_jump = linear(can_double_jump, 1024, name='double_embs', activation=tf.nn.relu)
     agent = tf.concat([agent, is_grounded, can_double_jump], axis=1)

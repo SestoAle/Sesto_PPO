@@ -17,7 +17,7 @@ import logging as logs
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -25,7 +25,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_4_500')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_1_500')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -52,7 +52,7 @@ parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=False)
+parser.set_defaults(use_motivation=True)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 
@@ -367,7 +367,7 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
-            "win_weight": [[1], [1], [1]],
+            "win_weight": [[.3], [.3], [.3]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
                                [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
             "goal_area": [4, 4, 4]
@@ -390,7 +390,7 @@ if __name__ == "__main__":
         sess = tf.compat.v1.Session(graph=graph)
         agent = PPO(sess, input_spec=input_spec, network_spec=network_spec, obs_to_state=obs_to_state, batch_fraction=0.2,
                     action_type='discrete', action_size=10, model_name=model_name, p_lr=7e-5, v_batch_fraction=0.2,
-                    v_num_itr=10, memory=memory, c2=0.5,
+                    v_num_itr=10, memory=memory, c2=0.1,
                     v_lr=7e-5, recurrent=args.recurrent, frequency_mode=frequency_mode, distribution='gaussian',
                     p_num_itr=10, with_circular=True)
         # Initialize variables of models

@@ -77,15 +77,15 @@ class RND:
         if self.obs_normalization:
             self.normalize_buffer()
 
-        #for it in range(self.num_itr):
-        for e in range(self.num_epochs):
-            num_batches = int(np.ceil(len(self.buffer)/self.batch_size))
-            all_index = np.arange(len(self.buffer))
-            np.random.shuffle(all_index)
-            for b in range(num_batches):
+        for it in range(self.num_itr):
+        # for e in range(self.num_epochs):
+        #     num_batches = int(np.ceil(len(self.buffer)/self.batch_size))
+        #     all_index = np.arange(len(self.buffer))
+        #     np.random.shuffle(all_index)
+            # for b in range(num_batches):
                 # Take a mini-batch of batch_size experience
-                # mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
-                mini_batch_idxs = all_index[i*self.batch_size: i*self.batch_size + self.batch_size]
+                mini_batch_idxs = np.random.choice(len(self.buffer), self.batch_size, replace=False)
+                # mini_batch_idxs = all_index[i*self.batch_size: i*self.batch_size + self.batch_size]
 
                 mini_batch = [self.buffer[id] for id in mini_batch_idxs]
 
