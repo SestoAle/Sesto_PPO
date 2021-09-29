@@ -10,7 +10,7 @@ from architectures.deepcrawl_arch import *
 
 from reward_model.reward_model import RewardModel
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -118,7 +118,7 @@ if __name__ == "__main__":
                     obs_to_state=obs_to_state,
                     action_type='discrete',
                     action_size=19,
-                    model_name='npc',
+                    model_name=model_name,
                     p_lr=5e-6,
                     p_batch_fraction=0.33,
                     v_batch_fraction=0.33,

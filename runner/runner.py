@@ -94,6 +94,9 @@ class Runner:
                     print('Loading demonstrations...')
                     dems, vals = self.reward_model.load_demonstrations(self.dems_name)
 
+                # Set demonstrations for the environment
+                self.env.set_demonstrations(dems)
+
                 print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
                 #print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
 
@@ -177,12 +180,12 @@ class Runner:
                 action = action[0]
                 visualize = False
                 # Manual input
-                action = 99
-                while (action == 99):
-                    action = input(': ')
-                    if action == 'v':
-                        visualize = True
-                    action = self.env.command_to_action(action)
+                # action = 99
+                # while (action == 99):
+                #     action = input(': ')
+                #     if action == 'v':
+                #         visualize = True
+                #     action = self.env.command_to_action(action)
                 # Save probabilities for entropy
                 local_entropies.append(self.env.entropy(probs[0]))
 
@@ -522,7 +525,7 @@ class Runner:
                 else:
                     action, _, c_probs = self.agent.eval([state])
                 state_n, terminal, step_reward = env.execute(actions=action)
-                self.reward_model.add_to_policy_buffer(state, state_n, action)
+                self.reward_model.add_to_policy_buffer([state], [state_n], [action])
 
                 state = state_n
                 reward += step_reward

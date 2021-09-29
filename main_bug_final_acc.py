@@ -14,10 +14,11 @@ import gym
 from mlagents.envs import UnityEnvironment
 import matplotlib.pyplot as plt
 import logging as logs
+from copy import deepcopy
 
 from reward_model.reward_model import GAIL
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -25,7 +26,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_1_500')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_2_fix')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -40,7 +41,7 @@ parser.add_argument('-ev', '--evaluation', dest='evaluation', action='store_true
 parser.add_argument('-irl', '--inverse-reinforcement-learning', dest='use_reward_model', action='store_true')
 parser.add_argument('-rf', '--reward-frequency', help="How many episode before update the reward model", default=1)
 parser.add_argument('-rm', '--reward-model', help="The name of the reward model", default='vaffanculo_6000')
-parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_playtest_3.pkl')
+parser.add_argument('-dn', '--dems-name', help="The name of the demonstrations file", default='dem_playtest_2.pkl')
 parser.add_argument('-fr', '--fixed-reward-model', help="Whether to use a trained reward model",
                     dest='fixed_reward_model', action='store_true')
 parser.add_argument('-gd', '--get-demonstrations', dest='get_demonstrations', action='store_true')
@@ -52,7 +53,7 @@ parser.set_defaults(use_reward_model=False)
 parser.set_defaults(fixed_reward_model=False)
 parser.set_defaults(recurrent=False)
 parser.set_defaults(parallel=False)
-parser.set_defaults(use_motivation=True)
+parser.set_defaults(use_motivation=False)
 parser.set_defaults(get_demonstrations=False)
 parser.set_defaults(evaluation=False)
 
@@ -85,6 +86,8 @@ class BugEnvironment:
         # Dict to store the actions at each episode
         self.actions_for_episode = dict()
         self.episode = -1
+
+        self.dems = None
 
         # Defined the values to sample for goal-conditioned policy
         self.reward_weights = [0, 0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1]
@@ -134,6 +137,10 @@ class BugEnvironment:
 
         return state, done, reward
 
+    def set_demonstrations(self, demonstrations):
+
+        self.dems = demonstrations
+
     def reset(self):
 
         # Sample a motivation reward weight
@@ -142,6 +149,9 @@ class BugEnvironment:
         self.sample_weights = self.reward_weights[np.random.randint(len(self.reward_weights))]
         self.sample_win = self.win_weight[np.random.randint(len(self.win_weight))]
         self.sample_weights = [self.sample_win, self.sample_weights, 1-self.sample_weights]
+
+        if self.dems is not None:
+            self.sample_position_from_dems()
 
         # Change config to be fed to Unity (no list)
         unity_config = dict()
@@ -218,6 +228,18 @@ class BugEnvironment:
         else:
             self.config['agent_spawn_x'] = self.standard_position[0]
             self.config['agent_spawn_z'] = self.standard_position[1]
+
+    def sample_position_from_dems(self):
+        sample_index = np.random.randint(len(self.dems['obs']))
+        spawn_position = deepcopy(self.dems['obs'][sample_index]['global_in'][:3])
+        spawn_position[0] = (((spawn_position[0] + 1) / 2) * 500) - 250
+        spawn_position[1] = (((spawn_position[1] + 1) / 2) * 500) - 250
+        spawn_position[2] = (((spawn_position[2] + 1) / 2) * 59) - 1
+        self.config['agent_spawn_x'] = spawn_position[0]
+        self.config['agent_spawn_z'] = spawn_position[1]
+        self.config['agent_spawn_y'] = spawn_position[2]
+        print(spawn_position)
+        input('...')
 
     # Insert to the table. Position must be a 2 element vector
     # Return the counter of that position
@@ -370,7 +392,7 @@ if __name__ == "__main__":
             "win_weight": [[.3], [.3], [.3]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
                                [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
-            "goal_area": [4, 4, 4]
+            "goal_area": [2, 2, 2]
         }
     }
 
