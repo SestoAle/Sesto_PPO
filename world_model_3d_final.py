@@ -14,7 +14,7 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -28,9 +28,14 @@ def plot_map(map):
     """
     Method that will plot the heatmap
     """
-    ax = plt.gca()
+    ax = plt.gca(projection='3d')
+    cmap = plt.get_cmap("viridis")
+    norm = plt.Normalize(map.min(), map.max())
+    ax.voxels(map, facecolors=cmap(norm(map)), edgecolor="black")
+    plt.show()
+
     # Plot the heatmap
-    im = ax.imshow(map)
+    # im = ax.imshow(map)
 
     # Turn spines off and create white grid.
     for edge, spine in ax.spines.items():
@@ -275,7 +280,7 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories)
 
     # Create Heatmap
-    heatmap = np.zeros((800, 800))
+    heatmap = np.zeros((800, 800, 800))
     covmap = np.zeros((800, 800))
     # graph = dict(x=[], y=[], z=[])
     for k in buffer.keys():
@@ -283,7 +288,7 @@ if __name__ == '__main__':
         k_value = list(map(float, k.split(" ")))
         k_value = np.asarray(k_value).astype(int)
         try:
-            heatmap[k_value[0], k_value[1]] += buffer[k]
+            heatmap[k_value[0], k_value[1], k_value[2]] += buffer[k]
             covmap[k_value[0], k_value[1]] = 1
             # graph['x'].append(k_value[0])
             # graph['z'].append(k_value[1])
@@ -320,7 +325,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasd"
+                model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -581,10 +586,10 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.045:
+                if v > 0.04:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
@@ -662,8 +667,8 @@ if __name__ == '__main__':
 
                 all_normalized_im_rews.append(im_rew)
 
-            # if False:
-            if len(all_normalized_im_rews) > 20:
+            if False:
+            # if len(all_normalized_im_rews) > 20:
                 cluster_indices = cluster(all_normalized_im_rews, clusters=20)
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
@@ -707,9 +712,9 @@ if __name__ == '__main__':
 
                 print(key)
                 all_normalized_im_rews.append(im_rew)
-                plt.plot(range(len(im_rew)), im_rew)
+                # plt.plot(range(len(im_rew)), im_rew)
                 #plt.plot(range(len(im_rew)), diff)
-                plt.legend(['irl', 'im', 'diff'])
+                # plt.legend(['irl', 'im', 'diff'])
 
                 # TODO: save actions and trajectories, temporarely
                 actions_to_save = dict(actions=actions[key])
@@ -721,18 +726,18 @@ if __name__ == '__main__':
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew,
                                     il_values=np.zeros(len(states_batch)))
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../Playtesting-Env/Assets/Resources/traj.json".format(model_name), "w")
+                f = open("../Playtesting-Env/Assets/Resources/traj_{}.json".format(key), "w")
                 f.write(json_str)
                 f.close()
 
-                fig = plt.figure()
-                print_traj_with_diff(traj, im_rew, thr)
-                goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
-                                                linewidth=5, edgecolor='r',
-                                                facecolor='none', zorder=100)
-                fig.gca().add_patch(goal_region)
-
-                plt.show()
-                plt.waitforbuttonpress()
+                # fig = plt.figure()
+                # print_traj_with_diff(traj, im_rew, thr)
+                # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
+                #                                 linewidth=5, edgecolor='r',
+                #                                 facecolor='none', zorder=100)
+                # fig.gca().add_patch(goal_region)
+                #
+                # plt.show()
+                # plt.waitforbuttonpress()
 
         plt.show()

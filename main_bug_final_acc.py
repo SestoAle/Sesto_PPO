@@ -110,7 +110,7 @@ class BugEnvironment:
         state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
 
         # Get the agent position from the state to compute reward
-        position = state['global_in'][:3]
+        position = state['global_in'][:5]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # Get the counter of that position and compute reward
         # counter = self.insert_to_pos_table(position[:2])
@@ -234,12 +234,10 @@ class BugEnvironment:
         spawn_position = deepcopy(self.dems['obs'][sample_index]['global_in'][:3])
         spawn_position[0] = (((spawn_position[0] + 1) / 2) * 500) - 250
         spawn_position[1] = (((spawn_position[1] + 1) / 2) * 500) - 250
-        spawn_position[2] = (((spawn_position[2] + 1) / 2) * 59) - 1
+        spawn_position[2] = (((spawn_position[2] + 1) / 2) * 59) + 1
         self.config['agent_spawn_x'] = spawn_position[0]
         self.config['agent_spawn_z'] = spawn_position[1]
         self.config['agent_spawn_y'] = spawn_position[2]
-        print(spawn_position)
-        input('...')
 
     # Insert to the table. Position must be a 2 element vector
     # Return the counter of that position
@@ -389,10 +387,10 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
-            "win_weight": [[.3], [.3], [.3]],
+            "win_weight": [[.5], [.5], [.5]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
                                [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
-            "goal_area": [2, 2, 2]
+            "goal_area": [1, 1, 1]
         }
     }
 

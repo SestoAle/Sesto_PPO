@@ -267,6 +267,10 @@ class Runner:
                 print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
                 # print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
 
+                # # Set demonstrations for the environment
+                # for e in self.envs:
+                #     e.set_demonstrations(dems)
+
                 # Getting initial experience from the environment to do the first training epoch of the reward model
                 self.get_experience(self.envs[0], self.reward_frequency, random=True)
                 self.update_reward_model()
