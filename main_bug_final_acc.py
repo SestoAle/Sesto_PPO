@@ -171,7 +171,7 @@ class BugEnvironment:
         state = dict(global_in=env_info.vector_observations[0])
         # Append the value of the motivation weight
         state['global_in'] = np.concatenate([state['global_in'], self.sample_weights])
-        position = state['global_in'][:3]
+        position = state['global_in'][:5]
         self.trajectories_for_episode[self.episode].append(np.concatenate([position, state['global_in'][-2:]]))
         # print(np.reshape(state['global_in'][7:7 + 225], [15, 15]))
         return state
@@ -387,10 +387,10 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
-            "win_weight": [[.5], [.5], [.5]],
+            "win_weight": [[.3], [.3], [.3]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
                                [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
-            "goal_area": [1, 1, 1]
+            "goal_area": [4, 4, 4]
         }
     }
 

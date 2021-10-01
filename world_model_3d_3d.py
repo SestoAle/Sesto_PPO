@@ -14,6 +14,8 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
 
+from vispy import app, visuals, scene
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
@@ -21,8 +23,10 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_2_500_sample_position'
+model_name = 'play_1_500_2'
 reward_model_name = "vaffanculo_im_9000"
+
+
 
 def plot_map(map):
     """
@@ -40,6 +44,78 @@ def plot_map(map):
     ax.set_yticks(np.arange(map.shape[0] + 1) - .5, minor=True)
     # ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
+
+def rgb(minimum, maximum, value):
+    minimum, maximum = float(minimum), float(maximum)
+    ratio = 2 * (value-minimum) / (maximum - minimum)
+    b = int(max(0, 255*(1 - ratio)))
+    r = int(max(0, 255*(ratio - 1)))
+    g = 255 - b - r
+    r /= 255
+    b /= 255
+    g /= 255
+    return r, g, b, 1
+
+import sys
+EPSILON = sys.float_info.epsilon
+def convert_to_rgb(minval, maxval, val, colors=[(150,0,0), (255,255,0), (255,255,255)]):
+    # "colors" is a series of RGB colors delineating a series of
+    # adjacent linear color gradients between each pair.
+    # Determine where the given value falls proportionality within
+    # the range from minval->maxval and scale that fractional value
+    # by the total number in the "colors" pallette.
+    i_f = float(val-minval) / float(maxval-minval) * (len(colors)-1)
+    # Determine the lower index of the pair of color indices this
+    # value corresponds and its fractional distance between the lower
+    # and the upper colors.
+    i, f = int(i_f // 1), i_f % 1  # Split into whole & fractional parts.
+    # Does it fall exactly on one of the color points?
+    if f < EPSILON:
+        return colors[i][0] / 255, colors[i][1] / 255, colors[i][2] / 255, 1
+    else:  # Otherwise return a color within the range between them.
+        (r1, g1, b1), (r2, g2, b2) = colors[i], colors[i+1]
+        return int(r1 + f*(r2-r1))/255, int(g1 + f*(g2-g1))/255, int(b1 + f*(b2-b1))/255, 1
+
+def plot_3d_map(map):
+    # build your visuals, that's all
+    Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
+    Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
+    # The real-things : plot using scene
+    # build canvas
+    canvas = scene.SceneCanvas(keys='interactive', show=True)
+
+    # Add a ViewBox to let the user zoom/rotate
+    view = canvas.central_widget.add_view()
+    view.camera = 'turntable'
+    view.camera.fov = 45
+    view.camera.distance = 500
+    view.camera.translate_speed = 100
+
+    min_value = np.min(map[:,3])
+    max_value = np.max(map[:,3])
+
+    colors = []
+    for c in map[:,3]:
+        colors.append(convert_to_rgb(min_value,max_value, c))
+
+    colors = np.asarray(colors)
+    p1 = Scatter3D(parent=view.scene)
+    p1.set_gl_state('additive', blend=True, depth_test=True)
+    p1.set_data(map[:, :3], face_color='red', symbol='o', size=1,
+                edge_width=0.5, edge_color='red')
+
+    return view
+
+# def plot_3d_map(map):
+#     """
+#     Method that will plot the heatmap
+#     """
+#     ax = plt.gca(projection='3d')
+#     ax.set_ylim(0, 500)
+#     ax.set_xlim(0, 500)
+#     ax.set_zlim(0, 60)
+#     # Plot the 3D heatmap
+#     ax.scatter(map[:,0], map[:,1], map[:,2], s=0.1)
 
 # Insert to the table. Position must be a 2 element vector
 # Return the counter of that position
@@ -84,15 +160,16 @@ def save_demonstrations(demonstrations, validations=None, name='dems_acc.pkl'):
 # Since saving the pos buffer is very expensive, but the trajectories are mandatory,
 # let's not save the pos_buffer but extract this from trajectories
 import collections
-def trajectories_to_pos_buffer(trajectories, tau=1/40):
+def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:]:
+    for traj in list(trajectories.values())[-1000:]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
         for state in traj:
-            position = np.asarray(state[:3])
+
+            position = np.asarray(state[:5])
             position[0] = (((position[0] + 1) / 2) * 500)
             position[1] = (((position[1] + 1) / 2) * 500)
             position[2] = (((position[2] + 1) / 2) * 60)
@@ -102,6 +179,18 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
                 pos_buffer[pos_key] += 1
             else:
                 pos_buffer[pos_key] = 1
+
+            # if len(state) > 5:
+            #     if state[4] == 1:
+            #         world_model.append(position)
+
+    for k in pos_buffer.keys():
+        heat = pos_buffer[k]
+        k_value = list(map(float, k.split(" ")))
+        #     if state[4] == 1:
+        #         world_model.append(position)
+        if k_value[3] == 1:
+            world_model.append(k_value[:3] + [heat])
 
     print("Number of points covered by the agent: {}".format(len(list(pos_buffer.keys()))))
     return pos_buffer
@@ -141,6 +230,39 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
             demonstrations['acts'].extend([action])
 
     return demonstrations
+
+def print_3d_traj(traj, view):
+    """
+    Method that will plot the trajectory
+    """
+    ep_trajectory = np.asarray(traj)
+    color = 'c'
+
+    if (ep_trajectory[-1, 3:5] == [0.5, 0.5]).all():
+        color = 'g'
+    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
+        color = 'b'
+    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
+        color = 'y'
+    elif (ep_trajectory[-1, 3:5] == [0.3, 0.7]).all():
+        color = 'm'
+    elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
+        color = 'k'
+
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
+    ep_trajectory[:, 2] = ((np.asarray(ep_trajectory[:, 2]) + 1) / 2) * 60
+
+    # Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
+    # p1 = Scatter3D(parent=view.scene)
+    # p1.set_gl_state('additive', blend=True, depth_test=True)
+    # p1.set_data(ep_trajectory[:, :3], face_color='blue', symbol='o', size=2,
+    #             edge_width=0.5, edge_color='blue')
+    Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
+    p1 = Line3D(parent=view.scene)
+    p1.set_gl_state('opaque', blend=True, depth_test=True)
+    p1.set_data(ep_trajectory[:, :3], width=2, color=(255,255,255,1))
+
 
 def print_traj(traj):
     """
@@ -272,7 +394,13 @@ if __name__ == '__main__':
     #     pass
 
     # Create pos_buffer from trajectories
-    buffer = trajectories_to_pos_buffer(trajectories)
+    world_model = []
+    buffer = trajectories_to_pos_buffer(trajectories, world_model)
+    world_model = np.asarray(world_model)
+    # plt.figure()
+    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/250))
+    view = plot_3d_map(world_model)
+    # plt.show()
 
     # Create Heatmap
     heatmap = np.zeros((800, 800))
@@ -303,13 +431,13 @@ if __name__ == '__main__':
     heatmap = np.rot90(heatmap)
     covmap = np.rot90(covmap)
 
-    # Plot heatmap
-    plt.figure()
-    plot_map(heatmap)
-
-    # Plot coverage map
-    plt.figure()
-    plot_map(covmap)
+    # # Plot heatmap
+    # plt.figure()
+    # plot_map(heatmap)
+    #
+    # # Plot coverage map
+    # plt.figure()
+    # plot_map(covmap)
 
     # Compute the cumulative reward of the learnt RND and GAIL to compare trajectories
     if trajectories is not None and actions is not None:
@@ -366,20 +494,20 @@ if __name__ == '__main__':
             desired_point_z = 500
 
             # Goal Area 1
-            # desired_point_y = 1
-            # goal_area_x = 447
-            # goal_area_z = 466
-            # goal_area_y = 1
-            # goal_area_height = 20
-            # goal_area_width = 44
+            desired_point_y = 1
+            goal_area_x = 447
+            goal_area_z = 466
+            goal_area_y = 1
+            goal_area_height = 20
+            goal_area_width = 44
 
             # Goal Area 2
-            desired_point_y = 21
-            goal_area_x = 22
-            goal_area_z = 461
-            goal_area_y = 21
-            goal_area_height = 39
-            goal_area_width = 66
+            # desired_point_y = 21
+            # goal_area_x = 22
+            # goal_area_z = 461
+            # goal_area_y = 21
+            # goal_area_height = 39
+            # goal_area_width = 66
 
             # desired_point_y = 10
             # goal_area_x = 95
@@ -437,7 +565,7 @@ if __name__ == '__main__':
 
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
+            for keys, traj in zip(list(trajectories.keys())[-1000:], list(trajectories.values())[-1000:]):
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -581,7 +709,7 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
                 if v > 0.04:
@@ -601,15 +729,15 @@ if __name__ == '__main__':
             # Plot the trajectories
             fig = plt.figure()
             thr = np.mean(step_moti_rews)
-            for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
-                print_traj(traj)
-            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
-                                            facecolor='none', zorder=100)
-            fig.gca().add_patch(goal_region)
+            # for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
+            #     print_3d_traj(traj, view)
+                # print_traj(traj)
+            # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+            #                                 facecolor='none', zorder=100)
+            # fig.gca().add_patch(goal_region)
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
-            plt.show()
-
+            # plt.show()
             # Increase demonstartions with bugged trajectory
             if False:
 
@@ -671,15 +799,19 @@ if __name__ == '__main__':
             new_episode_to_observe = []
             episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
 
-            fig = plt.figure()
+            # fig = plt.figure()
             thr = np.mean(step_moti_rews)
             for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
-                print_traj(traj)
-            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
-                                            facecolor='none', zorder=100)
-            fig.gca().add_patch(goal_region)
-            plt.show()
+                print_3d_traj(traj, view)
+                # print_traj(traj)
+            # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+            #                                 facecolor='none', zorder=100)
+            # fig.gca().add_patch(goal_region)
+            # plt.show()
             traj_to_observe = traj_to_observe[idxs_to_observe][cluster_indices]
+            app.run()
+            input('...')
+
 
             for traj, key in zip(traj_to_observe, episodes_to_observe):
                 states_batch = []
@@ -707,7 +839,7 @@ if __name__ == '__main__':
 
                 print(key)
                 all_normalized_im_rews.append(im_rew)
-                plt.plot(range(len(im_rew)), im_rew)
+                # plt.plot(range(len(im_rew)), im_rew)
                 #plt.plot(range(len(im_rew)), diff)
                 # plt.legend(['irl', 'im', 'diff'])
 
@@ -721,18 +853,18 @@ if __name__ == '__main__':
                 traj_to_save = dict(x_s=traj[:, 0], z_s=traj[:, 1], y_s=traj[:, 2], im_values=im_rew,
                                     il_values=np.zeros(len(states_batch)))
                 json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
-                f = open("../Playtesting-Env/Assets/Resources/traj.json".format(key), "w")
+                f = open("../Playtesting-Env/Assets/Resources/traj_{}.json".format(key), "w")
                 f.write(json_str)
                 f.close()
 
-                fig = plt.figure()
-                print_traj_with_diff(traj, im_rew, thr)
-                goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
-                                                linewidth=5, edgecolor='r',
-                                                facecolor='none', zorder=100)
-                fig.gca().add_patch(goal_region)
-
-                plt.show()
-                plt.waitforbuttonpress()
+                # fig = plt.figure()
+                # print_traj_with_diff(traj, im_rew, thr)
+                # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
+                #                                 linewidth=5, edgecolor='r',
+                #                                 facecolor='none', zorder=100)
+                # fig.gca().add_patch(goal_region)
+                #
+                # plt.show()
+                # plt.waitforbuttonpress()
 
         plt.show()

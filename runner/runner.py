@@ -95,7 +95,7 @@ class Runner:
                     dems, vals = self.reward_model.load_demonstrations(self.dems_name)
 
                 # Set demonstrations for the environment
-                self.env.set_demonstrations(dems)
+                # self.env.set_demonstrations(dems)
 
                 print('Demonstrations loaded! We have ' + str(len(dems['obs'])) + " timesteps in these demonstrations")
                 #print('and ' + str(len(vals['obs'])) + " timesteps in these validations.")
