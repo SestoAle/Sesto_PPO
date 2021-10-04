@@ -3,7 +3,7 @@ from math import factorial
 import os
 import pickle
 from math import factorial
-from clustering.rdp import rdp_with_index
+from scipy.spatial import distance_matrix
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -13,6 +13,7 @@ from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
+from clustering.rdp import rdp_with_index
 
 from vispy import app, visuals, scene
 
@@ -23,10 +24,8 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_1_500_2'
+model_name = 'play_4_500_3'
 reward_model_name = "vaffanculo_im_9000"
-
-
 
 def plot_map(map):
     """
@@ -90,6 +89,7 @@ def plot_3d_map(map):
     view.camera.fov = 45
     view.camera.distance = 500
     view.camera.translate_speed = 100
+    view.camera.position = (255, 255, 60)
 
     min_value = np.min(map[:,3])
     max_value = np.max(map[:,3])
@@ -101,8 +101,8 @@ def plot_3d_map(map):
     colors = np.asarray(colors)
     p1 = Scatter3D(parent=view.scene)
     p1.set_gl_state('additive', blend=True, depth_test=True)
-    p1.set_data(map[:, :3], face_color='red', symbol='o', size=1,
-                edge_width=0.5, edge_color='red')
+    p1.set_data(map[:, :3], face_color=colors, symbol='o', size=1,
+                edge_width=0.5, edge_color=colors)
 
     return view
 
@@ -163,7 +163,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[-1000:]:
+    for traj in list(trajectories.values())[:30000]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -231,6 +231,35 @@ def saved_trajectories_to_demonstrations(trajectories, actions, demonstrations):
 
     return demonstrations
 
+def print_3d_agg_traj(traj, cells, view):
+    agg_traj = []
+
+    ep_trajectory = np.asarray(traj)
+    ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
+    ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
+    ep_trajectory[:, 2] = ((np.asarray(ep_trajectory[:, 2]) + 1) / 2) * 60
+
+    for i in range(0, len(traj) - 1):
+        p_t = traj[i][:3]
+        p_t1 = traj[i + 1][:3]
+
+        p_t = np.reshape(p_t, (1, 3))
+        p_t1 = np.reshape(p_t1, (1, 3))
+
+        cell_t = cells[np.argmin(distance_matrix(p_t, cells))]
+        cell_t1 = cells[np.argmin(distance_matrix(p_t1, cells))]
+
+        if cell_t != cell_t1:
+            if len(agg_traj) == 0:
+                agg_traj.append(cell_t)
+            agg_traj.append(cell_t1)
+
+    agg_traj = np.asarray(agg_traj)
+    Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
+    p1 = Line3D(parent=view.scene)
+    p1.set_gl_state('opaque', blend=True, depth_test=True)
+    p1.set_data(agg_traj[:, :3], width=0.1, color=(0, 0.90, 0.90, 1))
+
 def print_3d_traj(traj, view):
     """
     Method that will plot the trajectory
@@ -253,6 +282,9 @@ def print_3d_traj(traj, view):
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
     ep_trajectory[:, 2] = ((np.asarray(ep_trajectory[:, 2]) + 1) / 2) * 60
 
+    # ep_trajectory,_ = rdp_with_index(ep_trajectory[:, :3], range(len(ep_trajectory)), 100)
+    # ep_trajectory = np.asarray(ep_trajectory)
+
     # Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
     # p1 = Scatter3D(parent=view.scene)
     # p1.set_gl_state('additive', blend=True, depth_test=True)
@@ -261,7 +293,7 @@ def print_3d_traj(traj, view):
     Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
     p1 = Line3D(parent=view.scene)
     p1.set_gl_state('opaque', blend=True, depth_test=True)
-    p1.set_data(ep_trajectory[:, :3], width=2, color=(255,255,255,1))
+    p1.set_data(ep_trajectory[:, :3], width=0.1, color=(0, 0.90, 0.90, 1))
 
 
 def print_traj(traj):
@@ -398,8 +430,10 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories, world_model)
     world_model = np.asarray(world_model)
     # plt.figure()
-    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/250))
+    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/50))
     view = plot_3d_map(world_model)
+    #app.run()
+    #input('...')
     # plt.show()
 
     # Create Heatmap
@@ -494,12 +528,12 @@ if __name__ == '__main__':
             desired_point_z = 500
 
             # Goal Area 1
-            desired_point_y = 1
-            goal_area_x = 447
-            goal_area_z = 466
-            goal_area_y = 1
-            goal_area_height = 20
-            goal_area_width = 44
+            # desired_point_y = 1
+            # goal_area_x = 447
+            # goal_area_z = 466
+            # goal_area_y = 1
+            # goal_area_height = 20
+            # goal_area_width = 44
 
             # Goal Area 2
             # desired_point_y = 21
@@ -532,12 +566,12 @@ if __name__ == '__main__':
             # goal_area_width = 44
 
             # Goal Area 4
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -565,7 +599,7 @@ if __name__ == '__main__':
 
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[-1000:], list(trajectories.values())[-1000:]):
+            for keys, traj in zip(list(trajectories.keys())[:30000], list(trajectories.values())[:30000]):
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -709,10 +743,10 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            #moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.04:
+                if v > 0.035:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
@@ -792,7 +826,7 @@ if __name__ == '__main__':
 
             # if False:
             if len(all_normalized_im_rews) > 20:
-                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
+                cluster_indices = cluster(all_normalized_im_rews, clusters=40)
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
 
@@ -800,9 +834,24 @@ if __name__ == '__main__':
             episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
 
             # fig = plt.figure()
+
+            # # Aggregated trajectory
+            # # Create cells
+            # width = height = 500
+            # jump = 60
+            # agg_width = agg_height = 20
+            # agg_jump = 5
+            #
+            # cells = []
+            # for i in range(0, width, agg_width):
+            #     for j in range(0, height, agg_height):
+            #         for z in range(0, jump, agg_jump):
+            #             cells.append((agg_width / 2 + i, agg_height / 2 + j, agg_jump / 2 + z))
+
             thr = np.mean(step_moti_rews)
             for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
                 print_3d_traj(traj, view)
+                # print_3d_agg_traj(traj, cells, view)
                 # print_traj(traj)
             # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
             #                                 facecolor='none', zorder=100)
