@@ -14,8 +14,9 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
 from clustering.rdp import rdp_with_index
+import threading
 
-from vispy import app, visuals, scene
+from vispy import app, visuals, scene, gloo
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -24,8 +25,107 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_500_3'
+model_name = 'play_3_500_2'
 reward_model_name = "vaffanculo_im_9000"
+
+class WorlModelCanvas(scene.SceneCanvas):
+
+    def __init__(self, *args, **kwargs):
+        self.current_line = None
+        self.lines = None
+        self.line_visuals = []
+        self.im_rews = []
+        self.index = -1
+        self.timer = None
+        self.camera = None
+        self.actions = []
+        scene.SceneCanvas.__init__(self, *args, **kwargs)
+        self.title = 'App demo'
+
+    def on_key_press(self, event):
+        if event.key.name == 'L':
+            self.toggle_lines()
+
+        if event.key.name == 'R':
+            if self.timer is not None:
+                self.timer.cancel()
+                self.timer = None
+            else:
+                self.rotate()
+
+        try:
+            if event.key.name == 'Up' or event.key.name == 'Down':
+
+                if event.key.name == 'Up':
+                    self.index += 1
+
+                if event.key.name == 'Down':
+                    self.index -= 1
+
+                self.index = np.clip(self.index, -1, len(self.line_visuals))
+
+                if self.index == -1 or self.index == len(self.line_visuals):
+                    self.hide_all_lines()
+                    self.toggle_lines()
+                    return
+
+                line_index = self.index
+
+                self.hide_all_lines()
+
+                self.line_visuals[line_index].visible = True
+
+                plt.close('all')
+
+                if self.im_rews[line_index] is not None:
+                    plt.figure()
+                    plt.title("im: {}".format(np.sum(self.im_rews[line_index])))
+                    plot_data = savitzky_golay(self.im_rews[line_index], 51, 3)
+                    plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                    plt.plot(range(len(plot_data)), plot_data)
+
+                if self.actions[line_index] is not None:
+                    plt.figure()
+                    plt.hist(self.actions[line_index])
+
+                plt.show()
+
+
+
+        except Exception as e:
+            pass
+
+    def rotate(self):
+        self.timer = threading.Timer(1/60, self.rotate)
+        self.camera.azimuth = self.camera.azimuth + 1
+        self.timer.start()
+
+    def toggle_lines(self):
+        if self.index == -1 or self.index == len(self.line_visuals):
+            if self.line_visuals is not None and len(self.line_visuals) > 0:
+                for v in self.line_visuals:
+                    v.visible = not v.visible
+        else:
+            self.line_visuals[self.index].visible = not self.line_visuals[self.index].visible
+
+    def hide_all_lines(self):
+        if self.line_visuals is not None and len(self.line_visuals) > 0:
+            for v in self.line_visuals:
+                v.visible = False
+
+    def on_mouse_press(self, event):
+        return
+
+    def set_line(self, line):
+        self.current_line = line
+
+    def set_lines(self, lines):
+        self.lines = lines
+
+    def set_line_visuals(self, visual, im_rews=None, actions=None):
+        self.line_visuals.append(visual)
+        self.im_rews.append(im_rews)
+        self.actions.append(actions)
 
 def plot_map(map):
     """
@@ -78,10 +178,9 @@ def convert_to_rgb(minval, maxval, val, colors=[(150,0,0), (255,255,0), (255,255
 def plot_3d_map(map):
     # build your visuals, that's all
     Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
-    Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
     # The real-things : plot using scene
     # build canvas
-    canvas = scene.SceneCanvas(keys='interactive', show=True)
+    canvas = WorlModelCanvas(keys='interactive', show=True)
 
     # Add a ViewBox to let the user zoom/rotate
     view = canvas.central_widget.add_view()
@@ -89,7 +188,8 @@ def plot_3d_map(map):
     view.camera.fov = 45
     view.camera.distance = 500
     view.camera.translate_speed = 100
-    view.camera.position = (255, 255, 60)
+    view.camera.center = (255, 255, 60)
+    canvas.camera = view.camera
 
     min_value = np.min(map[:,3])
     max_value = np.max(map[:,3])
@@ -100,11 +200,15 @@ def plot_3d_map(map):
 
     colors = np.asarray(colors)
     p1 = Scatter3D(parent=view.scene)
+    # p1.events.add(mouse_double_click=scene.events.SceneMouseEvent('OHOH', p1))
     p1.set_gl_state('additive', blend=True, depth_test=True)
     p1.set_data(map[:, :3], face_color=colors, symbol='o', size=1,
                 edge_width=0.5, edge_color=colors)
 
-    return view
+    return view, canvas
+
+def print_event(event):
+    print('OOOHHHH')
 
 # def plot_3d_map(map):
 #     """
@@ -260,7 +364,7 @@ def print_3d_agg_traj(traj, cells, view):
     p1.set_gl_state('opaque', blend=True, depth_test=True)
     p1.set_data(agg_traj[:, :3], width=0.1, color=(0, 0.90, 0.90, 1))
 
-def print_3d_traj(traj, view):
+def print_3d_traj(traj, im_rews, view, canvas, actions):
     """
     Method that will plot the trajectory
     """
@@ -294,6 +398,7 @@ def print_3d_traj(traj, view):
     p1 = Line3D(parent=view.scene)
     p1.set_gl_state('opaque', blend=True, depth_test=True)
     p1.set_data(ep_trajectory[:, :3], width=0.1, color=(0, 0.90, 0.90, 1))
+    canvas.set_line_visuals(p1, im_rews, actions)
 
 
 def print_traj(traj):
@@ -430,10 +535,10 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories, world_model)
     world_model = np.asarray(world_model)
     # plt.figure()
-    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/50))
-    view = plot_3d_map(world_model)
-    #app.run()
-    #input('...')
+    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/550))
+    view, canvas = plot_3d_map(world_model)
+    # app.run()
+    # input('...')
     # plt.show()
 
     # Create Heatmap
@@ -558,20 +663,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -591,8 +696,6 @@ if __name__ == '__main__':
 
             step_moti_rews = []
             step_il_rews = []
-
-            plt.figure()
 
             max_length = -9999
             mean_length = 0
@@ -622,8 +725,8 @@ if __name__ == '__main__':
                 #         #         np.abs(de_point[1] - desired_point_z) < threshold :
                         if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
                                  goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                                    np.abs(de_point[2] - desired_point_y) < threshold and \
-                                       point[-1] <= 0.5:
+                                    np.abs(de_point[2] - desired_point_y) < threshold:# and \
+                                       # point[-1] <= 0.5:
                 #         if True:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
@@ -743,11 +846,11 @@ if __name__ == '__main__':
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-            #moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
-            moti_to_observe = []
-            for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.035:
-                    moti_to_observe.append(k)
+            moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
+            # moti_to_observe = []
+            # for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
+            #     if v > 0.03:
+            #         moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
             il_to_observe = np.where(sum_il_rews > np.asarray(il_mean))
@@ -760,42 +863,7 @@ if __name__ == '__main__':
             print(moti_to_observe)
             print(idxs_to_observe)
 
-            # Plot the trajectories
-            fig = plt.figure()
-            thr = np.mean(step_moti_rews)
-            # for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
-            #     print_3d_traj(traj, view)
-                # print_traj(traj)
-            # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
-            #                                 facecolor='none', zorder=100)
-            # fig.gca().add_patch(goal_region)
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
-
-            # plt.show()
-            # Increase demonstartions with bugged trajectory
-            if False:
-
-                actions_to_save = []
-                for i in idxs_to_observe:
-                    key = episodes_to_observe[i]
-                    actions_to_save.append(actions[key])
-
-                expert_traj = load_demonstrations('dems_acc_com_no_key.pkl')
-                with open("arrays/{}.json".format("{}_trajectories".format(model_name))) as f:
-                    saved_trajectories = json.load(f)
-
-                with open("arrays/{}.json".format("{}_actions".format(model_name))) as f:
-                    saved_actions = json.load(f)
-
-                print('Demonstrations loaded! We have ' + str(
-                    len(expert_traj['obs'])) + " timesteps in these demonstrations")
-
-                expert_traj = saved_trajectories_to_demonstrations(traj_to_observe[idxs_to_observe], actions_to_save,
-                                                                   expert_traj)
-
-                save_demonstrations(expert_traj, name='dems_acc_com_no_key_muted.pkl')
-                print('Demonstrations loaded! We have ' + str(
-                    len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
             all_normalized_im_rews = []
             # Plot the trajectories
@@ -819,19 +887,19 @@ if __name__ == '__main__':
                     actions_batch.append(action)
 
                 im_rew = motivation.eval(states_batch)
-                # im_rew = savitzky_golay(im_rew, 51, 3)
-                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
-
+                im_rew = savitzky_golay(im_rew, 51, 3)
+                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
                 all_normalized_im_rews.append(im_rew)
 
-            # if False:
-            if len(all_normalized_im_rews) > 20:
-                cluster_indices = cluster(all_normalized_im_rews, clusters=40)
+            if False:
+            # if len(all_normalized_im_rews) > 20:
+                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
 
             new_episode_to_observe = []
             episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
+            all_normalized_im_rews = np.asarray(all_normalized_im_rews)
 
             # fig = plt.figure()
 
@@ -849,17 +917,17 @@ if __name__ == '__main__':
             #             cells.append((agg_width / 2 + i, agg_height / 2 + j, agg_jump / 2 + z))
 
             thr = np.mean(step_moti_rews)
-            for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
-                print_3d_traj(traj, view)
-                # print_3d_agg_traj(traj, cells, view)
-                # print_traj(traj)
+            for i, traj, im_rews, key in zip(range(len(cluster_indices)), traj_to_observe[idxs_to_observe][cluster_indices],
+                                        all_normalized_im_rews[cluster_indices], episodes_to_observe):
+                print_3d_traj(traj, im_rews, view, canvas, actions[key])
+            app.run()
+            input('...')
             # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
             #                                 facecolor='none', zorder=100)
             # fig.gca().add_patch(goal_region)
             # plt.show()
             traj_to_observe = traj_to_observe[idxs_to_observe][cluster_indices]
-            app.run()
-            input('...')
+
 
 
             for traj, key in zip(traj_to_observe, episodes_to_observe):

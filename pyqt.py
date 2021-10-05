@@ -3,23 +3,94 @@
 
 import numpy as np
 import sys
+import threading
 
 from vispy import app, visuals, scene
 
+class Canvas(scene.SceneCanvas):
+
+    def __init__(self, *args, **kwargs):
+        self.visuals = []
+        self.line = None
+        self.index = 0
+        self.camera = None
+        self.timer = None
+        scene.SceneCanvas.__init__(self, *args, **kwargs)
+        self.title = 'App demo'
+
+    def set_line(self, line):
+        self.line = line
+
+    def set_visuals(self, visual):
+        self.visuals.append(visual)
+
+    # def on_close(self, event):
+    #     print('closing!')
+    #
+    # def on_resize(self, event):
+    #     print('Resize %r' % (event.size, ))
+    #
+    def on_key_press(self, event):
+        if self.timer is not None:
+            self.timer.cancel()
+            self.timer = None
+        else:
+            self.rotate()
+
+    def rotate(self):
+        self.timer = threading.Timer(1/60, self.rotate)
+        self.timer.start()
+        self.camera.azimuth = self.camera.azimuth + 10
+
+    #
+    # def on_key_release(self, event):
+    #     modifiers = [key.name for key in event.modifiers]
+    #     print('Key released - text: %r, key: %s, modifiers: %r' % (
+    #         event.text, event.key.name, modifiers))
+    #
+    def on_mouse_press(self, event):
+        self.print_mouse_event(event, 'Mouse press')
+    #
+    # def on_mouse_release(self, event):
+    #     self.print_mouse_event(event, 'Mouse release')
+    #
+    # def on_mouse_move(self, event):
+    #     self.print_mouse_event(event, 'Mouse move')
+    #
+    # def on_mouse_wheel(self, event):
+    #     self.print_mouse_event(event, 'Mouse wheel')
+
+    def print_mouse_event(self, event, what):
+        modifiers = ', '.join([key.name for key in event.modifiers])
+        print('%s - pos: %r, button: %s, modifiers: %s, delta: %r' %
+              (what, event.pos, event.button, modifiers, event.delta))
+
+        self.create_new_line(self.line)
+
+    def create_new_line(self, line):
+        Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
+        p2 = Line3d(parent=view.scene)
+        p2.set_data(line[self.index: self.index + 2])
+        print(line[self.index: self.index + 2])
+        self.index += 1
+    # def on_draw(self, event):
+    #     gloo.clear(color=True, depth=True)
 
 # build your visuals, that's all
 Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
-Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
+# Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
 
 # The real-things : plot using scene
 # build canvas
-canvas = scene.SceneCanvas(keys='interactive', show=True)
+canvas = Canvas(keys='interactive', show=True)
 
 # Add a ViewBox to let the user zoom/rotate
 view = canvas.central_widget.add_view()
 view.camera = 'turntable'
 view.camera.fov = 45
 view.camera.distance = 500
+
+canvas.camera = view.camera
 
 # data
 n = 500
@@ -57,8 +128,7 @@ p1.set_gl_state('translucent', blend=True, depth_test=True)
 p1.set_data(pos, face_color=colors, symbol='o', size=10,
             edge_width=0.5, edge_color=colors)
 
-p2 = Line3d(parent=view.scene)
-p2.set_data(pos)
+canvas.set_line(pos)
 
 # run
 if __name__ == '__main__':
