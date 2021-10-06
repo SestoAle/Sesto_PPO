@@ -124,7 +124,7 @@ try:
             tmp_r.append(np.sum(v))
         percentages.append(np.mean(tmp_r))
 
-    pal = sns.color_palette("Reds_d", len(percentages))
+    pal = sns.random_color("Reds_d", len(percentages))
     rank = data.argsort().argsort()
     x = np.array(range(len(percentages)))
     x2.legend('win rate')

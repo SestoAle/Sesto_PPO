@@ -173,9 +173,9 @@ try:
 
 
     if 'items' in filename:
-        pal = sns.color_palette("summer_r", len(percentages))
+        pal = sns.random_color("summer_r", len(percentages))
     else:
-        pal = sns.color_palette("Reds_d", len(percentages))
+        pal = sns.random_color("Reds_d", len(percentages))
     rank = data.argsort().argsort()
     x = np.array(range(len(percentages)))
     x2.legend('win rate')

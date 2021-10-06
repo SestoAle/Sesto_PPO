@@ -31,6 +31,9 @@ class Canvas(scene.SceneCanvas):
     #     print('Resize %r' % (event.size, ))
     #
     def on_key_press(self, event):
+
+        print(event.key.name)
+
         if self.timer is not None:
             self.timer.cancel()
             self.timer = None

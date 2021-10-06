@@ -81,7 +81,7 @@ try:
     #melees = (melees - np.min(melees)) / (np.max(melees) - np.min(melees))
     #ranges = (ranges - np.min(ranges)) / (np.max(ranges) - np.min(ranges))
 
-    pal = sns.color_palette("Reds_d", len(win_rates))
+    pal = sns.random_color("Reds_d", len(win_rates))
     rank = win_rates.argsort().argsort()
     labels = ["$\pi_0$", "$\pi_0 + \pi_1$", "$\pi_0 + \pi_1$\n$+ \pi_2$", "$\pi_0 + \pi_1$\n$+ \pi_2 + \pi_3$", "From\nScratch"]
     x = np.arange(len(win_rates))
