@@ -320,7 +320,7 @@ if __name__ == '__main__':
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasd"
+                model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
@@ -396,20 +396,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454

@@ -6,19 +6,15 @@ from math import factorial
 from scipy.spatial import distance_matrix
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-import numpy as np
 
 from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
-from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
-from clustering.rdp import rdp_with_index
 import threading
 
 from vispy import app, visuals, scene, gloo
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -56,44 +52,47 @@ class WorlModelCanvas(scene.SceneCanvas):
         if event.key.name == 'Space':
             self.reset_index()
 
-        try:
-            if event.key.name == 'Up' or event.key.name == 'Down':
+        if event.key.name == 'Up' or event.key.name == 'Down':
 
-                if event.key.name == 'Up':
-                    self.index += 1
+            if event.key.name == 'Up':
+                self.index += 1
 
-                if event.key.name == 'Down':
-                    self.index -= 1
+            if event.key.name == 'Down':
+                self.index -= 1
 
-                self.index = np.clip(self.index, -1, len(self.line_visuals))
+            self.index = np.clip(self.index, -1, len(self.line_visuals))
 
-                if self.index == -1 or self.index == len(self.line_visuals):
-                    self.hide_all_lines()
-                    self.toggle_lines()
-                    return
-
-                line_index = self.index
-
+            if self.index == -1 or self.index == len(self.line_visuals):
                 self.hide_all_lines()
+                self.toggle_lines()
+                return
 
-                self.line_visuals[line_index].visible = True
+            line_index = self.index
 
-                plt.close('all')
+            self.hide_all_lines()
 
-                if self.im_rews[line_index] is not None:
-                    plt.figure()
-                    plt.title("im: {}".format(np.sum(self.im_rews[line_index])))
-                    plot_data = savitzky_golay(self.im_rews[line_index], 51, 3)
-                    plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
-                    plt.plot(range(len(plot_data)), plot_data)
+            plt.close('all')
+            self.line_visuals[line_index].visible = True
 
-                if self.actions[line_index] is not None:
-                    plt.figure()
-                    plt.hist(self.actions[line_index])
+
+        if event.key.name == 'P':
+            plt.close('all')
+            if self.index == -1 or self.index == len(self.line_visuals):
+                return
+
+            if self.im_rews[self.index] is not None:
+                plt.figure()
+                plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
+                plot_data = savitzky_golay(self.im_rews[self.index], 51, 3)
+                plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                plt.plot(range(len(plot_data)), plot_data)
+
+            if self.actions[self.index] is not None:
+                plt.figure()
+                plt.hist(self.actions[self.index])
 
                 plt.show()
-        except Exception as e:
-            pass
+
 
     def rotate(self):
         self.timer = threading.Timer(1/60, self.rotate)
@@ -163,25 +162,15 @@ def rgb(minimum, maximum, value):
 def random_color(value):
     return (np.random.uniform(), np.random.uniform(), np.random.uniform(), 1)
 
-
-
 import sys
 EPSILON = sys.float_info.epsilon
-def convert_to_rgb(minval, maxval, val, colors=[(150,0,0), (255,255,0), (255,255,255), (105,189,210)]):
-    # "colors" is a series of RGB colors delineating a series of
-    # adjacent linear color gradients between each pair.
-    # Determine where the given value falls proportionality within
-    # the range from minval->maxval and scale that fractional value
-    # by the total number in the "colors" pallette.
+def convert_to_rgb(minval, maxval, val, colors=[(150,0,0), (255,255,0), (255,255,255)]):
+
     i_f = float(val-minval) / float(maxval-minval) * (len(colors)-1)
-    # Determine the lower index of the pair of color indices this
-    # value corresponds and its fractional distance between the lower
-    # and the upper colors.
-    i, f = int(i_f // 1), i_f % 1  # Split into whole & fractional parts.
-    # Does it fall exactly on one of the color points?
+    i, f = int(i_f // 1), i_f % 1
     if f < EPSILON:
         return colors[i][0] / 255, colors[i][1] / 255, colors[i][2] / 255, 1
-    else:  # Otherwise return a color within the range between them.
+    else:
         (r1, g1, b1), (r2, g2, b2) = colors[i], colors[i+1]
         return int(r1 + f*(r2-r1))/255, int(g1 + f*(g2-g1))/255, int(b1 + f*(b2-b1))/255, 1
 
@@ -212,8 +201,7 @@ def plot_3d_map(map):
     p1 = Scatter3D(parent=view.scene)
     # p1.events.add(mouse_double_click=scene.events.SceneMouseEvent('OHOH', p1))
     p1.set_gl_state('additive', blend=True, depth_test=True)
-    p1.set_data(map[:, :3], face_color=colors, symbol='o', size=1,
-                edge_width=0.5, edge_color=colors)
+    p1.set_data(map[:, :3], face_color=colors, symbol='o', size=1, edge_width=0, edge_color=colors, scaling=True)
 
     return view, canvas
 
@@ -542,10 +530,13 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories, world_model)
     world_model = np.asarray(world_model)
     # plt.figure()
-    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3]/50))
+    print(np.max(world_model[:,3]/550))
+    print(np.max(world_model[:,3])/550)
+    print(np.min(world_model[:,3]))
+    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3])/1550)
     view, canvas = plot_3d_map(world_model)
-    # app.run()
-    # input('...')
+    app.run()
+    input('...')
     # plt.show()
 
     # Create Heatmap
@@ -695,8 +686,12 @@ if __name__ == '__main__':
             threshold = 4
 
             # Save the motivation rewards and the imitation rewards
+            mean_moti_rews = []
+            mean_moti_rews_dict = dict()
+
             sum_moti_rews = []
             sum_moti_rews_dict = dict()
+
             sum_il_rews = []
             moti_rews = []
             points = []
@@ -810,9 +805,13 @@ if __name__ == '__main__':
                 moti_rews.append(moti_rew)
                 step_moti_rews.extend(moti_rew)
                 points.extend([k['global_in'] for k in states_batch])
-                moti_rew = np.mean(moti_rew)
-                sum_moti_rews.append(moti_rew)
-                sum_moti_rews_dict[idx_traj] = moti_rew
+                mean_moti_rew = np.mean(moti_rew)
+                mean_moti_rews.append(mean_moti_rew)
+                mean_moti_rews_dict[idx_traj] = mean_moti_rew
+
+                sum_moti_rew = np.sum(moti_rew)
+                sum_moti_rews.append(sum_moti_rew)
+                sum_moti_rews_dict[idx_traj] = sum_moti_rew
 
 
             # # Try to print points that have high value of IM
@@ -827,21 +826,25 @@ if __name__ == '__main__':
             # f.write(json_str)
             # f.close()
 
-            moti_mean = np.mean(sum_moti_rews)
+            moti_mean = np.mean(mean_moti_rews)
             il_mean = np.mean(sum_il_rews)
-            moti_max = np.max(sum_moti_rews)
-            moti_min = np.min(sum_moti_rews)
+            moti_max = np.max(mean_moti_rews)
+            moti_min = np.min(mean_moti_rews)
             il_max = np.max(sum_il_rews)
             il_min = np.min(sum_il_rews)
             epsilon = 0.05
-            print(np.max(sum_moti_rews))
+            print(np.max(mean_moti_rews))
             print(np.max(sum_il_rews))
             print(np.median(sum_il_rews))
             print(np.median(moti_mean))
             print(moti_mean)
             print(il_mean)
             print(np.min(sum_il_rews))
-            print(np.min(sum_moti_rews))
+            print(np.min(mean_moti_rews))
+            print(" ")
+            print("Max sum moti: {}".format(np.max(sum_moti_rews)))
+            print("Mean sum moti: {}".format(np.mean(sum_moti_rews)))
+            print("Min sum moti: {}".format(np.min(sum_moti_rews)))
             print(" ")
             print("Min step moti: {}".format(np.min(step_moti_rews)))
             print("Min step IL: {}".format(np.min(step_il_rews)))
@@ -852,11 +855,11 @@ if __name__ == '__main__':
             print(" ")
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
-            sum_moti_rews_dict = {k: v for k, v in sorted(sum_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
+            mean_moti_rews_dict = {k: v for k, v in sorted(mean_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
             # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
-            for k, v in zip(sum_moti_rews_dict.keys(), sum_moti_rews_dict.values()):
-                if v > 0.04:
+            for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
+                if v > 0.05 and sum_moti_rews_dict[k] > 16:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
@@ -900,7 +903,7 @@ if __name__ == '__main__':
 
             # if False:
             if len(all_normalized_im_rews) > 20:
-                cluster_indices = cluster(all_normalized_im_rews, clusters=40)
+                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
 
