@@ -6,7 +6,15 @@ import sys
 import threading
 from PyQt5 import QtWidgets, QtCore
 
+from matplotlib import cm
+
+print(cm.get_cmap('tab20b')(0))
+input('...')
+
+
+
 from vispy import app, visuals, scene
+from vispy.visuals.filters import ShadingFilter, WireframeFilter
 
 class Canvas(scene.SceneCanvas):
 
@@ -43,7 +51,8 @@ class Canvas(scene.SceneCanvas):
     def on_key_press(self, event):
 
         print(event.key.name)
-        print(self.camera.center)
+        # print(self.camera.center)
+
         self.forward()
 
         # if self.timer is not None:
@@ -86,17 +95,23 @@ class Canvas(scene.SceneCanvas):
         self.create_new_line(self.line)
 
     def forward(self):
-        print(self.camera._get_rotation_tr())
-        xPos = np.sin(self.camera.elevation * (np.pi * 2) / 360) * np.cos(self.camera.azimuth * (np.pi * 2) / 360)
-        yPos = np.sin(-self.camera.azimuth * (np.pi * 2) / 360)
-        zPos = np.cos(self.camera.azimuth * (np.pi * 2) / 360) * np.cos(self.camera.elevation * (np.pi * 2) / 360)
-        print(xPos)
-        print(yPos)
-        print(zPos)
-        self.camera.center = np.asarray(self.camera.center) - np.asarray([xPos, yPos, zPos])*4
+        up, forward, right = self.camera._get_dim_vectors()
+        # Create mapping so correct dim is up
+        pp1 = np.array([(0, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0)])
+        pp2 = np.array([(0, 0, 0), forward, right, up])
+        pos = -self.camera._actual_distance * forward
+        print(pos)
+
     def create_new_line(self, line):
         Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
-        p2 = Line3d(parent=self.view.scene)
+        p2 = Line3d(parent=self.view.scene, scaling=False)
+        #             vertex_colors=[
+        #                 [1, 1, 1, 1],
+        #                 [1, 1, 1, 1],
+        #                 [1, 1, 1, 1],
+        #                 [1, 1, 1, 1],
+        #             ])
+        # p2.shading_filter.enabled=False
         p2.set_data(line[self.index: self.index + 2])
         print(line[self.index: self.index + 2])
         self.index += 1
@@ -197,7 +212,7 @@ class myWindow(QtWidgets.QMainWindow):
         p1 = Scatter3D(parent=view.scene)
         p1.set_gl_state('opaque', blend=True, depth_test=True)
         p1.set_data(pos, face_color=colors, symbol='o', size=10,
-                    edge_width=0, scaling=True)
+                    edge_width=0, scaling=False)
 
         scene.widgets.Label("ASDKHS", rotation=0.0)
 

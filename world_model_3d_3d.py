@@ -10,9 +10,13 @@ import matplotlib.pyplot as plt
 from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
 from clustering.cluster_im import cluster
+from clustering.clustering import cluster_trajectories as cluster_simple
 import threading
+from matplotlib import cm
+
 
 from vispy import app, visuals, scene, gloo
+from vispy.visuals.filters import ShadingFilter, WireframeFilter
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
@@ -35,6 +39,9 @@ class WorlModelCanvas(scene.SceneCanvas):
         self.timer = None
         self.camera = None
         self.actions = []
+        self.colors = []
+        self.default_colors = (0, 1, 1, 1)
+        self.default_color = False
         scene.SceneCanvas.__init__(self, *args, **kwargs)
         self.title = 'App demo'
 
@@ -51,6 +58,9 @@ class WorlModelCanvas(scene.SceneCanvas):
 
         if event.key.name == 'Space':
             self.reset_index()
+
+        if event.key.name == 'F1':
+            self.change_line_colors()
 
         if event.key.name == 'Up' or event.key.name == 'Down':
 
@@ -94,6 +104,24 @@ class WorlModelCanvas(scene.SceneCanvas):
                 plt.show()
 
 
+    def change_line_colors(self):
+        if self.default_color:
+            self.default_color = False
+            for i, v in enumerate(self.line_visuals):
+                v.color = self.colors[i]
+                # v.set_data(v.pos, color=self.colors[i])
+                v.visible = False
+                v.visible = True
+                v.mesh_data_changed()
+        else:
+            self.default_color = True
+            for i, v in enumerate(self.line_visuals):
+                v.color = self.default_colors
+                # v.set_data(color=self.default_colors)
+                v.visible = False
+                v.visible = True
+                v.mesh_data_changed()
+
     def rotate(self):
         self.timer = threading.Timer(1/60, self.rotate)
         self.camera.azimuth = self.camera.azimuth + 1
@@ -126,10 +154,11 @@ class WorlModelCanvas(scene.SceneCanvas):
     def set_lines(self, lines):
         self.lines = lines
 
-    def set_line_visuals(self, visual, im_rews=None, actions=None):
+    def set_line_visuals(self, visual, im_rews=None, actions=None, color=None):
         self.line_visuals.append(visual)
         self.im_rews.append(im_rews)
         self.actions.append(actions)
+        self.colors.append(color)
 
 def plot_map(map):
     """
@@ -174,6 +203,11 @@ def convert_to_rgb(minval, maxval, val, colors=[(150,0,0), (255,255,0), (255,255
         (r1, g1, b1), (r2, g2, b2) = colors[i], colors[i+1]
         return int(r1 + f*(r2-r1))/255, int(g1 + f*(g2-g1))/255, int(b1 + f*(b2-b1))/255, 1
 
+# import colorsys
+# def convert_to_hsv(value):
+#     rgb = colorsys.hsv_to_rgb(0.125, value, 1)
+#     return rgb + (1,)
+
 def plot_3d_map(map):
     # build your visuals, that's all
     Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
@@ -201,7 +235,7 @@ def plot_3d_map(map):
     p1 = Scatter3D(parent=view.scene)
     # p1.events.add(mouse_double_click=scene.events.SceneMouseEvent('OHOH', p1))
     p1.set_gl_state('additive', blend=True, depth_test=True)
-    p1.set_data(map[:, :3], face_color=colors, symbol='o', size=1, edge_width=0, edge_color=colors, scaling=True)
+    p1.set_data(map[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors, scaling=True)
 
     return view, canvas
 
@@ -265,7 +299,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:]:
+    for traj in list(trajectories.values())[-1000:]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -360,25 +394,15 @@ def print_3d_agg_traj(traj, cells, view):
     Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
     p1 = Line3D(parent=view.scene)
     p1.set_gl_state('opaque', blend=True, depth_test=True)
-    p1.set_data(agg_traj[:, :3], width=0.1, color=(0, 0.90, 0.90, 1))
+    p1.set_data(agg_traj[:, :3], width=5, method='agg', color=(0, 0.90, 0.90, 1))
 
-def print_3d_traj(traj, im_rews, view, canvas, actions, index=None):
+def print_3d_traj(traj, im_rews, view, canvas, actions, index=None, max=None, min=None):
     """
     Method that will plot the trajectory
     """
     ep_trajectory = np.asarray(traj)
     color = 'c'
 
-    if (ep_trajectory[-1, 3:5] == [0.5, 0.5]).all():
-        color = 'g'
-    elif (ep_trajectory[-1, 3:5] == [0, 1]).all():
-        color = 'b'
-    elif (ep_trajectory[-1, 3:5] == [1, 0]).all():
-        color = 'y'
-    elif (ep_trajectory[-1, 3:5] == [0.3, 0.7]).all():
-        color = 'm'
-    elif (ep_trajectory[-1, 3:5] == [0.7, 0.3]).all():
-        color = 'k'
 
     ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
     ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
@@ -389,11 +413,21 @@ def print_3d_traj(traj, im_rews, view, canvas, actions, index=None):
     else:
         color = random_color(index)
 
-    Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
-    p1 = Line3D(parent=view.scene)
-    p1.set_gl_state('opaque', blend=True, depth_test=True)
-    p1.set_data(ep_trajectory[:, :3], width=0.1, color=color)
-    canvas.set_line_visuals(p1, im_rews, actions)
+    # Line3D = scene.visuals.create_visual_node(visuals.LineVisual)
+    # p1 = Line3D(parent=view.scene)
+    # p1.set_gl_state('additive', blend=True, depth_test=True)
+    # p1.set_data(ep_trajectory[:, :3], width=5, color=color)
+    # canvas.set_line_visuals(p1, im_rews, actions)
+
+    # color = convert_to_rgb(1, 20, index, colors=[(0, 255, 255), (255, 0, 255)])
+    color = cm.get_cmap('tab20b')(index)
+
+    Tube3D = scene.visuals.create_visual_node(visuals.TubeVisual)
+    p1 = Tube3D(parent=view.scene, points=ep_trajectory[:, :3], color=color, radius=0.5)
+    # wire = WireframeFilter(width=0.5)
+    # p1.attach(wire)
+    p1.shading_filter.enabled=False
+    canvas.set_line_visuals(p1, im_rews, actions, color)
 
 
 def print_traj(traj):
@@ -530,13 +564,12 @@ if __name__ == '__main__':
     buffer = trajectories_to_pos_buffer(trajectories, world_model)
     world_model = np.asarray(world_model)
     # plt.figure()
-    print(np.max(world_model[:,3]/550))
-    print(np.max(world_model[:,3])/550)
-    print(np.min(world_model[:,3]))
-    world_model[:,3] = np.clip(world_model[:,3], 0, np.max(world_model[:,3])/1550)
+    world_model[:,3] = np.clip(world_model[:,3], np.percentile(world_model[:,3], 5), np.percentile(world_model[:,3], 95))
+    # world_model[:, 3] = np.clip(10*np.log10(world_model[:, 3]), 0, 30)
+    # world_model[:, 3] = (world_model[:, 3] - np.min(world_model[:, 3])) / (np.max(world_model[:, 3]) - np.min(world_model[:, 3]))
     view, canvas = plot_3d_map(world_model)
-    app.run()
-    input('...')
+    # app.run()
+    # input('...')
     # plt.show()
 
     # Create Heatmap
@@ -704,7 +737,7 @@ if __name__ == '__main__':
 
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
+            for keys, traj in zip(list(trajectories.keys())[-1000:], list(trajectories.values())[-1000:]):
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -876,6 +909,7 @@ if __name__ == '__main__':
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
             all_normalized_im_rews = []
+            all_sum_fitlered_im_rews = []
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
 
@@ -900,6 +934,7 @@ if __name__ == '__main__':
                 # im_rew = savitzky_golay(im_rew, 51, 3)
                 # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
                 all_normalized_im_rews.append(im_rew)
+                all_sum_fitlered_im_rews.append(np.sum(im_rew))
 
             # if False:
             if len(all_normalized_im_rews) > 20:
@@ -929,7 +964,7 @@ if __name__ == '__main__':
             thr = np.mean(step_moti_rews)
             for i, traj, im_rews, key in zip(range(len(cluster_indices)), traj_to_observe[idxs_to_observe][cluster_indices],
                                         all_normalized_im_rews[cluster_indices], episodes_to_observe):
-                print_3d_traj(traj, im_rews, view, canvas, actions[key], i)
+                print_3d_traj(traj, im_rews, view, canvas, actions[key], i, np.max(all_sum_fitlered_im_rews), np.min(all_sum_fitlered_im_rews))
             app.run()
             input('...')
             # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
