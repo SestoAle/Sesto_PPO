@@ -7,13 +7,14 @@ import threading
 from PyQt5 import QtWidgets, QtCore
 
 from matplotlib import cm
-
-print(cm.get_cmap('tab20b')(0))
-
-
-
 from vispy import app, visuals, scene
-from vispy.visuals.filters import ShadingFilter, WireframeFilter
+
+from PyQt5.QtCore import QDateTime, Qt, QTimer
+from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
+        QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
+        QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
+        QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
+        QVBoxLayout, QWidget, QFrame, QStackedLayout)
 
 class Canvas(scene.SceneCanvas):
 
@@ -28,6 +29,7 @@ class Canvas(scene.SceneCanvas):
         self.map = None
         scene.SceneCanvas.__init__(self, *args, **kwargs)
         self.title = 'App demo'
+        self.size = (1920, 1024)
 
     def set_line(self, line):
         self.line = line
@@ -40,27 +42,11 @@ class Canvas(scene.SceneCanvas):
 
     def set_camera(self, camera):
         self.camera = camera
-        # self.start_azimuth = self.camera.azimuth
 
-    # def on_close(self, event):
-    #     print('closing!')
-    #
-    # def on_resize(self, event):
-    #     print('Resize %r' % (event.size, ))
-    #
     def on_key_press(self, event):
 
         print(event.key.name)
         self.map.visible = not self.map.visible
-        # print(self.camera.center)
-
-        # self.forward()
-
-        # if self.timer is not None:
-        #     self.timer.cancel()
-        #     self.timer = None
-        # else:
-        #     self.rotate()
 
     def rotate(self):
         self.timer = threading.Timer(1/60, self.rotate)
@@ -70,96 +56,81 @@ class Canvas(scene.SceneCanvas):
     def rotate_slider(self, value):
         self.camera.azimuth = self.start_azimuth + value*10
 
-    #
-    # def on_key_release(self, event):
-    #     modifiers = [key.name for key in event.modifiers]
-    #     print('Key released - text: %r, key: %s, modifiers: %r' % (
-    #         event.text, event.key.name, modifiers))
-    #
     def on_mouse_press(self, event):
         self.print_mouse_event(event, 'Mouse press')
-    #
-    # def on_mouse_release(self, event):
-    #     self.print_mouse_event(event, 'Mouse release')
-    #
-    # def on_mouse_move(self, event):
-    #     self.print_mouse_event(event, 'Mouse move')
-    #
-    # def on_mouse_wheel(self, event):
-    #     self.print_mouse_event(event, 'Mouse wheel')
 
     def print_mouse_event(self, event, what):
         modifiers = ', '.join([key.name for key in event.modifiers])
         print('%s - pos: %r, button: %s, modifiers: %s, delta: %r' %
               (what, event.pos, event.button, modifiers, event.delta))
 
-        self.create_new_line(self.line)
-
-    def forward(self):
-        up, forward, right = self.camera._get_dim_vectors()
-        # Create mapping so correct dim is up
-        pp1 = np.array([(0, 0, 0), (0, 0, -1), (1, 0, 0), (0, 1, 0)])
-        pp2 = np.array([(0, 0, 0), forward, right, up])
-        pos = -self.camera._actual_distance * forward
-        print(pos)
 
     def create_new_line(self, line):
         Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
         p2 = Line3d(parent=self.view.scene)
-        #             vertex_colors=[
-        #                 [1, 1, 1, 1],
-        #                 [1, 1, 1, 1],
-        #                 [1, 1, 1, 1],
-        #                 [1, 1, 1, 1],
-        #             ])
-        # p2.shading_filter.enabled=False
         p2.set_data(line[self.index: self.index + 2])
         print(line[self.index: self.index + 2])
         self.index += 1
-    # def on_draw(self, event):
-    #     gloo.clear(color=True, depth=True)
-
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, canvas):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(440, 299)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-        self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
-        self.gridLayout.setObjectName("gridLayout")
-        self.frameFor3d = QtWidgets.QFrame(self.centralwidget)
-        self.frameFor3d.setFrameShape(QtWidgets.QFrame.StyledPanel)
-        self.frameFor3d.setFrameShadow(QtWidgets.QFrame.Raised)
-        self.frameFor3d.setObjectName("frameFor3d")
-        self.gridLayout.addWidget(self.frameFor3d, 0, 0, 1, 1)
-        self.horizontalSlider = QtWidgets.QSlider(self.centralwidget)
-        self.horizontalSlider.setOrientation(QtCore.Qt.Horizontal)
-        self.horizontalSlider.setObjectName("horizontalSlider")
-        self.horizontalSlider.valueChanged.connect(lambda value: canvas.rotate_slider(value))
-
-        self.gridLayout.addWidget(self.horizontalSlider, 1, 0, 1, 1)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 440, 18))
-        self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def retranslateUi(self, MainWindow):
-        _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-
-class myWindow(QtWidgets.QMainWindow):
-    def __init__(self):
-        super(myWindow, self).__init__()
-        self.ui = Ui_MainWindow()
 
 
+class WorldModel(QDialog):
+    def __init__(self, canvas, parent=None):
+        super(WorldModel, self).__init__(parent)
+
+        self.originalPalette = QApplication.palette()
+
+        styleComboBox = QComboBox()
+        styleComboBox.addItems(QStyleFactory.keys())
+
+        styleLabel = QLabel("&Style:")
+        styleLabel.setBuddy(styleComboBox)
+
+        self.useStylePaletteCheckBox = QCheckBox("&Use style's standard palette")
+        self.useStylePaletteCheckBox.setChecked(True)
+
+        topLayout = QHBoxLayout()
+        topLayout.addWidget(styleLabel)
+        topLayout.addWidget(styleComboBox)
+        topLayout.addStretch(1)
+        topLayout.addWidget(self.useStylePaletteCheckBox)
+
+        progressBar = QProgressBar()
+        progressBar.setRange(0, 10000)
+        progressBar.setValue(0)
+
+        defaultPushButton = QPushButton("Default Push Button")
+        defaultPushButton.setDefault(True)
+        defaultPushButton.clicked.connect(lambda x: progressBar.setVisible(progressBar.isHidden()) )
+        defaultPushButton.resize(50, 50)
+
+        label = QLabel("asjdasjkh")
+        label.setStyleSheet('color: black')
+
+        a = QPushButton(canvas.native)
+        a.resize(50, 50)
+        b = QPushButton("bv")
+
+        stackLayout = QStackedLayout()
+        # stackLayout.addWidget(canvas.native)
+        # stackLayout.addWidget(label)
+        stackLayout.addWidget(canvas.native)
+
+        label = QLabel(canvas.native)
+        label.setText("SADASD")
+        label.setStyleSheet('color: white')
+
+        mainLayout = QVBoxLayout()
+        mainLayout.addLayout(topLayout)
+        mainLayout.addLayout(stackLayout)
+        mainLayout.addWidget(defaultPushButton)
+        mainLayout.addWidget(progressBar)
+
+        self.setLayout(mainLayout)
+
+
+# run
+if __name__ == '__main__':
+    if sys.flags.interactive != 1:
         # build your visuals, that's all
         Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
         # Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
@@ -167,7 +138,6 @@ class myWindow(QtWidgets.QMainWindow):
         # The real-things : plot using scene
         # build canvas
         canvas = Canvas(keys='interactive', show=True)
-        self.ui.setupUi(self, canvas)
 
         # Add a ViewBox to let the user zoom/rotate
         view = canvas.central_widget.add_view()
@@ -220,14 +190,14 @@ class myWindow(QtWidgets.QMainWindow):
         canvas.set_line(pos)
         canvas.map = p1
 
-        lay = QtWidgets.QVBoxLayout(self.ui.frameFor3d)
-        lay.addWidget(canvas.native)
+        grid = canvas.central_widget.add_grid(margin=10)
+        grid.spacing = 0
 
-# run
-if __name__ == '__main__':
-    if sys.flags.interactive != 1:
-        appa = QtWidgets.QApplication([])
-        application = myWindow()
-        application.show()
+        title = scene.Label("Plot Title", color='white')
+        title.height_max = 40
+        grid.add_widget(title, row=0, col=0, col_span=2)
 
-        app.run()
+        app = QApplication(sys.argv)
+        gallery = WorldModel(canvas)
+        gallery.show()
+        sys.exit(app.exec_())
