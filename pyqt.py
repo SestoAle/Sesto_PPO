@@ -9,7 +9,6 @@ from PyQt5 import QtWidgets, QtCore
 from matplotlib import cm
 
 print(cm.get_cmap('tab20b')(0))
-input('...')
 
 
 
@@ -26,6 +25,7 @@ class Canvas(scene.SceneCanvas):
         self.camera = None
         self.timer = None
         self.start_azimuth = None
+        self.map = None
         scene.SceneCanvas.__init__(self, *args, **kwargs)
         self.title = 'App demo'
 
@@ -51,9 +51,10 @@ class Canvas(scene.SceneCanvas):
     def on_key_press(self, event):
 
         print(event.key.name)
+        self.map.visible = not self.map.visible
         # print(self.camera.center)
 
-        self.forward()
+        # self.forward()
 
         # if self.timer is not None:
         #     self.timer.cancel()
@@ -104,7 +105,7 @@ class Canvas(scene.SceneCanvas):
 
     def create_new_line(self, line):
         Line3d = scene.visuals.create_visual_node(visuals.LineVisual)
-        p2 = Line3d(parent=self.view.scene, scaling=False)
+        p2 = Line3d(parent=self.view.scene)
         #             vertex_colors=[
         #                 [1, 1, 1, 1],
         #                 [1, 1, 1, 1],
@@ -212,11 +213,12 @@ class myWindow(QtWidgets.QMainWindow):
         p1 = Scatter3D(parent=view.scene)
         p1.set_gl_state('opaque', blend=True, depth_test=True)
         p1.set_data(pos, face_color=colors, symbol='o', size=10,
-                    edge_width=0, scaling=False)
+                    edge_width=0, scaling=True)
 
         scene.widgets.Label("ASDKHS", rotation=0.0)
 
         canvas.set_line(pos)
+        canvas.map = p1
 
         lay = QtWidgets.QVBoxLayout(self.ui.frameFor3d)
         lay.addWidget(canvas.native)

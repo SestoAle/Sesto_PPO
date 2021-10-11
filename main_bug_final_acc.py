@@ -26,7 +26,7 @@ if len(physical_devices) > 0:
 
 # Parse arguments for training
 parser = argparse.ArgumentParser()
-parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_2_fix')
+parser.add_argument('-mn', '--model-name', help="The name of the model", default='play_3_500_3')
 parser.add_argument('-gn', '--game-name', help="The name of the game", default=None)
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
@@ -389,7 +389,7 @@ if __name__ == "__main__":
             "agent_spawn_y": [1.7, 1.7, 1.7],
             "win_weight": [[1], [1], [1]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
-                               [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1]],
+                               [0.5]],
             "goal_area": [3, 3, 3]
         }
     }
