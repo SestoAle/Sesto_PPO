@@ -31,7 +31,7 @@ parser.add_argument('-gn', '--game-name', help="The name of the game", default=N
 parser.add_argument('-wk', '--work-id', help="Work id for parallel training", default=0)
 parser.add_argument('-sf', '--save-frequency', help="How mane episodes after save the model", default=3000)
 parser.add_argument('-lg', '--logging', help="How many episodes after logging statistics", default=100)
-parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=500)
+parser.add_argument('-mt', '--max-timesteps', help="Max timestep per episode", default=200)
 parser.add_argument('-se', '--sampled-env', help="IRL", default=20)
 parser.add_argument('-rc', '--recurrent', dest='recurrent', action='store_true')
 parser.add_argument('-pl', '--parallel', dest='parallel', action='store_true')
@@ -389,7 +389,7 @@ if __name__ == "__main__":
             "agent_spawn_y": [1.7, 1.7, 1.7],
             "win_weight": [[1], [1], [1]],
             "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
-                               [0.5]],
+                               [0]],
             "goal_area": [3, 3, 3]
         }
     }

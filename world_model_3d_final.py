@@ -14,14 +14,14 @@ from motivation.random_network_distillation import RND
 from reward_model.reward_model import GAIL
 from clustering.cluster_im import cluster
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_3_500_3'
+model_name = 'play_3_500_4'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):

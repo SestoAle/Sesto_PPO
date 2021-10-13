@@ -33,6 +33,11 @@ EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
 import threading
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 class WorlModelCanvas(QObject, scene.SceneCanvas):
     heatmap_signal = pyqtSignal(bool)
 
@@ -55,6 +60,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.heatmap = None
         self.label = None
         self.loading = None
+
+        self.mean_moti_thr = 0.04
+        self.sum_moti_thr = 16
+
         super(WorlModelCanvas, self).__init__()
         self.unfreeze()
         scene.SceneCanvas.__init__(self, *args, **kwargs)
@@ -208,15 +217,36 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         if self.heatmap == None:
             return
 
+        self.heatmap.visible = False
+        self.covermap.visible = False
         self.heatmap.parent = None
-        self.heatmap.parent = None
+        self.covermap.parent = None
         self.heatmap = None
         self.covermap = None
 
+        self.remove_lines()
+
+    def remove_lines(self):
+        for v in self.line_visuals:
+            v.visible = False
+            v.parent = None
+
+        del self.line_visuals[:]
+        self.line_visuals = []
+
+        del self.im_rews[:]
+        self.im_rews = []
+
+        del self.actions[:]
+        self.actions = []
+
+        del self.colors[:]
+        self.colors = []
+
+        del self.trajs[:]
+        self.trajs = []
 
     def set_maps(self, heatmap, covermap):
-        self.remove_maps()
-
         self.heatmap = heatmap
         self.covermap = covermap
 
@@ -249,7 +279,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         world_model = []
         pos_buffer = dict()
         count = 0
-        for traj in list(trajectories.values())[-200:]:
+        for traj in list(trajectories.values())[:]:
             count += 1
             for state in traj:
 
@@ -272,8 +302,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         return pos_buffer, world_model
 
-    def plot_3d_map(self, trajectories):
-        buffer, world_model = self.trajectories_to_pos_buffer(trajectories)
+    def plot_3d_map(self, buffer, world_model):
         world_model = np.asarray(world_model)
         world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 5),
                                     np.percentile(world_model[:, 3], 95))
@@ -288,7 +317,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
         colors = np.asarray(colors)
         heatmap = Scatter3D(parent=view.scene)
-        # p1.events.add(mouse_double_click=scene.events.SceneMouseEvent('OHOH', p1))
         heatmap.set_gl_state('additive', blend=True, depth_test=True)
         heatmap.set_data(world_model[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors,
                          scaling=True)
@@ -309,14 +337,14 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     def stop_loading(self):
         self.loading.visible = False
 
-    def extrapolate_trajectories(self, model_name, trajectories, actions):
+    def extrapolate_trajectories(self, model_name, trajectories, actions,
+                                 unfiltered_trajectories=None, unfiltered_moti=None):
         graph = tf.compat.v1.Graph()
         motivation = None
         reward_model = None
         try:
             # Load motivation model
             with graph.as_default():
-                # model_name = "asdasdasd"
                 tf.compat.v1.disable_eager_execution()
                 motivation_sess = tf.compat.v1.Session(graph=graph)
                 motivation = RND(motivation_sess, input_spec=input_spec,
@@ -376,20 +404,20 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -414,100 +442,113 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             step_moti_rews = []
             step_il_rews = []
 
-            # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[-3000:], list(trajectories.values())[-3000:]):
-                for i, point in enumerate(traj):
-                    de_point = np.zeros(3)
-                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
-                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                    de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
-                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold and \
-                            point[-1] <= 0.5:
-                        #         if True:
-                        traj_to_observe.append(traj)
-                        episodes_to_observe.append(keys)
-                        break
 
-            # Get the value of the motivation and imitation models of the extracted trajectories
-            for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
-                states_batch = []
-                actions_batch = []
+            if unfiltered_trajectories is None:
+                # Get only those trajectories that touch the desired points
+                for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
+                    for i, point in enumerate(traj):
+                        de_point = np.zeros(3)
+                        de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                        de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                        de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                                np.abs(de_point[2] - desired_point_y) < threshold and \
+                                point[-1] <= 0.5:
+                            #         if True:
+                            traj_to_observe.append(traj)
+                            episodes_to_observe.append(keys)
+                            break
 
-                for state, action in zip(traj, actions[key]):
-                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-                    # TODO: correct form
-                    state = np.asarray(state)
-                    # state[:3] = 2 * (state[:3]/40) - 1
+                # Get the value of the motivation and imitation models of the extracted trajectories
+                for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
+                    states_batch = []
+                    actions_batch = []
+
+                    for state, action in zip(traj, actions[key]):
+                        # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+                        # TODO: correct form
+                        state = np.asarray(state)
+                        # state[:3] = 2 * (state[:3]/40) - 1
+                        state = np.concatenate([state, filler])
+                        state[-2:] = state[3:5]
+                        # Create the states batch to feed the models
+                        state = dict(global_in=state)
+                        states_batch.append(state)
+                        actions_batch.append(action)
+                        de_point = np.zeros(3)
+                        de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 500
+                        de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 500
+                        de_point[2] = ((np.asarray(state['global_in'][2]) + 1) / 2) * 60
+
+                        if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                                goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                                np.abs(de_point[2] - desired_point_y) < threshold:
+                            break
+
+                    # The actions is one less than the states, so add the last state
+                    state = traj[-1]
                     state = np.concatenate([state, filler])
                     state[-2:] = state[3:5]
-                    # Create the states batch to feed the models
                     state = dict(global_in=state)
                     states_batch.append(state)
-                    actions_batch.append(action)
-                    de_point = np.zeros(3)
-                    de_point[0] = ((np.asarray(state['global_in'][0]) + 1) / 2) * 500
-                    de_point[1] = ((np.asarray(state['global_in'][1]) + 1) / 2) * 500
-                    de_point[2] = ((np.asarray(state['global_in'][2]) + 1) / 2) * 60
 
-                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
-                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold:
-                        break
+                    # il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
+                    il_rew = np.zeros(len(states_batch[:-1]))
+                    step_il_rews.extend(il_rew)
+                    il_rew = np.sum(il_rew)
+                    sum_il_rews.append(il_rew)
 
-                # The actions is one less than the states, so add the last state
-                state = traj[-1]
-                state = np.concatenate([state, filler])
-                state[-2:] = state[3:5]
-                state = dict(global_in=state)
-                states_batch.append(state)
+                    moti_rew = motivation.eval(states_batch)
+                    moti_rews.append(moti_rew)
+                    step_moti_rews.extend(moti_rew)
+                    points.extend([k['global_in'] for k in states_batch])
+                    mean_moti_rew = np.mean(moti_rew)
+                    mean_moti_rews.append(mean_moti_rew)
+                    mean_moti_rews_dict[idx_traj] = mean_moti_rew
 
-                # il_rew = reward_model.eval(states_batch[:-1], states_batch, actions_batch)
-                il_rew = np.zeros(len(states_batch[:-1]))
-                step_il_rews.extend(il_rew)
-                il_rew = np.sum(il_rew)
-                sum_il_rews.append(il_rew)
+                    sum_moti_rew = np.sum(moti_rew)
+                    sum_moti_rews.append(sum_moti_rew)
+                    sum_moti_rews_dict[idx_traj] = sum_moti_rew
 
-                moti_rew = motivation.eval(states_batch)
-                moti_rews.append(moti_rew)
-                step_moti_rews.extend(moti_rew)
-                points.extend([k['global_in'] for k in states_batch])
-                mean_moti_rew = np.mean(moti_rew)
-                mean_moti_rews.append(mean_moti_rew)
-                mean_moti_rews_dict[idx_traj] = mean_moti_rew
+                moti_mean = np.mean(mean_moti_rews)
+                il_mean = np.mean(sum_il_rews)
+                moti_max = np.max(mean_moti_rews)
+                moti_min = np.min(mean_moti_rews)
+                il_max = np.max(sum_il_rews)
+                il_min = np.min(sum_il_rews)
+                epsilon = 0.05
+                print(np.max(mean_moti_rews))
+                print(np.max(sum_il_rews))
+                print(np.median(sum_il_rews))
+                print(np.median(moti_mean))
+                print(moti_mean)
+                print(il_mean)
+                print(np.min(sum_il_rews))
+                print(np.min(mean_moti_rews))
+                print(" ")
+                print("Max sum moti: {}".format(np.max(sum_moti_rews)))
+                print("Mean sum moti: {}".format(np.mean(sum_moti_rews)))
+                print("Min sum moti: {}".format(np.min(sum_moti_rews)))
+                print(" ")
+                print("Min step moti: {}".format(np.min(step_moti_rews)))
+                print("Min step IL: {}".format(np.min(step_il_rews)))
+                print("Max step moti: {}".format(np.max(step_moti_rews)))
+                print("Max step IL: {}".format(np.max(step_il_rews)))
+                print("Mean step moti: {}".format(np.mean(step_moti_rews)))
+                print("Mean step IL: {}".format(np.mean(step_il_rews)))
+                print(" ")
 
-                sum_moti_rew = np.sum(moti_rew)
-                sum_moti_rews.append(sum_moti_rew)
-                sum_moti_rews_dict[idx_traj] = sum_moti_rew
 
-            moti_mean = np.mean(mean_moti_rews)
-            il_mean = np.mean(sum_il_rews)
-            moti_max = np.max(mean_moti_rews)
-            moti_min = np.min(mean_moti_rews)
-            il_max = np.max(sum_il_rews)
-            il_min = np.min(sum_il_rews)
-            epsilon = 0.05
-            print(np.max(mean_moti_rews))
-            print(np.max(sum_il_rews))
-            print(np.median(sum_il_rews))
-            print(np.median(moti_mean))
-            print(moti_mean)
-            print(il_mean)
-            print(np.min(sum_il_rews))
-            print(np.min(mean_moti_rews))
-            print(" ")
-            print("Max sum moti: {}".format(np.max(sum_moti_rews)))
-            print("Mean sum moti: {}".format(np.mean(sum_moti_rews)))
-            print("Min sum moti: {}".format(np.min(sum_moti_rews)))
-            print(" ")
-            print("Min step moti: {}".format(np.min(step_moti_rews)))
-            print("Min step IL: {}".format(np.min(step_il_rews)))
-            print("Max step moti: {}".format(np.max(step_moti_rews)))
-            print("Max step IL: {}".format(np.max(step_il_rews)))
-            print("Mean step moti: {}".format(np.mean(step_moti_rews)))
-            print("Mean step IL: {}".format(np.mean(step_il_rews)))
-            print(" ")
+                traj_to_observe = np.asarray(traj_to_observe)
+
+                self.save_unfiltered_trajs(model_name, traj_to_observe, mean_moti_rews_dict, sum_moti_rews_dict)
+
+            else:
+                traj_to_observe = unfiltered_trajectories
+                mean_moti_rews_dict = unfiltered_moti['mean']
+                sum_moti_rews_dict = unfiltered_moti['sum']
+
 
             # Get those trajectories that have an high motivation reward AND a low imitation reward
             mean_moti_rews_dict = {k: v for k, v in
@@ -515,11 +556,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
-                if v > 0.05 and sum_moti_rews_dict[k] > 16:
+                if v > 0.04 and sum_moti_rews_dict[k] > 16:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
-            traj_to_observe = np.asarray(traj_to_observe)
             idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
@@ -530,12 +570,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             all_sum_fitlered_im_rews = []
             # Plot the trajectories
             for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
-
                 states_batch = []
                 actions_batch = []
-                key = episodes_to_observe[idx]
+                # key = episodes_to_observe[idx]
 
-                for state, action in zip(traj, actions[key]):
+                # for state, action in zip(traj, actions[key]):
+                for state in traj:
                     # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
                     # TODO: correct form
                     state = np.asarray(state)
@@ -546,7 +586,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     # Create the states batch to feed the models
                     state = dict(global_in=state)
                     states_batch.append(state)
-                    actions_batch.append(action)
 
                 im_rew = motivation.eval(states_batch)
                 # im_rew = savitzky_golay(im_rew, 51, 3)
@@ -560,44 +599,101 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             else:
                 cluster_indices = np.arange(len(all_normalized_im_rews))
 
-            episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
+            # episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
             all_normalized_im_rews = np.asarray(all_normalized_im_rews)
 
-            for i, traj, im_rews, key in zip(range(len(cluster_indices)),
+            # for i, traj, im_rews, key in zip(range(len(cluster_indices)),
+            #                                  traj_to_observe[idxs_to_observe][cluster_indices],
+            #                                  all_normalized_im_rews[cluster_indices], episodes_to_observe):
+            for i, traj, im_rews in zip(range(len(cluster_indices)),
                                              traj_to_observe[idxs_to_observe][cluster_indices],
-                                             all_normalized_im_rews[cluster_indices], episodes_to_observe):
-                self.print_3d_traj(traj, im_rews, view, actions[key], i, np.max(all_sum_fitlered_im_rews),
+                                             all_normalized_im_rews[cluster_indices]):
+                self.print_3d_traj(traj, im_rews, view, None, i, np.max(all_sum_fitlered_im_rews),
                                      np.min(all_sum_fitlered_im_rews))
+
+    def load_precomputed_models(self, model_name, folder='arrays'):
+        try:
+            with open('{}/{}/{}_buffer.pickle'.format(folder, model_name, model_name), 'rb') as f:
+                buffer = pickle.load(f)
+            with open('{}/{}/{}_worldmodel.npy'.format(folder, model_name, model_name), 'rb') as f:
+                world_model = np.load(f, allow_pickle=True)
+            with open('{}/{}/{}_stats.pickle'.format(folder, model_name, model_name), 'rb') as f:
+                stats = pickle.load(f)
+
+            return buffer, world_model, stats
+
+        except Exception as e:
+            print(e)
+            return None, None, None
+
+    def save_precomputed_models(self, model_name, buffer, world_model, stats, folder='arrays'):
+        with open('{}/{}/{}_buffer.pickle'.format(folder, model_name, model_name), 'wb') as f:
+            pickle.dump(buffer, f)
+        with open('{}/{}/{}_worldmodel.npy'.format(folder, model_name, model_name), 'wb') as f:
+            np.save(f, world_model)
+        with open('{}/{}/{}_stats.pickle'.format(folder, model_name, model_name), 'wb') as f:
+            pickle.dump(stats, f)
+
+    def load_unfiltered_trajs(self, model_name, folder='arrays'):
+        try:
+            with open('{}/{}/{}_unf_trajs.npy'.format(folder, model_name, model_name), 'rb') as f:
+                unfiltered_trajs = np.load(f, allow_pickle=True)
+            with open('{}/{}/{}_moti.pickle'.format(folder, model_name, model_name), 'rb') as f:
+                moti = pickle.load(f)
+
+            return unfiltered_trajs, moti
+
+        except Exception as e:
+            print(e)
+            return None, None
+
+    def save_unfiltered_trajs(self, model_name, trajs, mean_moti, sum_moti, folder='arrays'):
+        with open('{}/{}/{}_unf_trajs.npy'.format(folder, model_name, model_name), 'wb') as f:
+            np.save(f, trajs)
+        with open('{}/{}/{}_moti.pickle'.format(folder, model_name, model_name), 'wb') as f:
+            moti = dict(mean=mean_moti, sum=sum_moti)
+            pickle.dump(moti, f)
 
     def load_data(self, model_name):
 
-        # x = threading.Thread(target=self.start_loading)
-        # x.start()
+        self.remove_maps()
 
-        trajectories = dict()
-        actions = dict()
-        for filename in os.listdir("arrays/{}/".format(model_name)):
-            if 'trajectories' in filename:
-                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
-                    trajectories.update(json.load(f))
-            else:
-                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
-                    actions.update(json.load(f))
-        trajectories = {int(k): v for k, v in trajectories.items()}
-        trajectories = collections.OrderedDict(sorted(trajectories.items()))
-        actions = {int(k): v for k, v in actions.items()}
-        actions = collections.OrderedDict(sorted(actions.items()))
+        buffer, world_model, stats = self.load_precomputed_models(model_name)
+        unfiltered_trajs, unfiltered_moti = self.load_unfiltered_trajs(model_name)
 
-        buffer, world_model = self.plot_3d_map(trajectories)
+        trajectories = None
+        actions = None
 
-        self.change_text(model_name, len(list(buffer.keys())), len(trajectories))
+        if buffer is None or world_model is None or unfiltered_trajs is None:
+            trajectories = dict()
+            actions = dict()
+            for filename in os.listdir("arrays/{}/".format(model_name)):
+                if 'trajectories' in filename:
+                    with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                        trajectories.update(json.load(f))
+                elif 'actions' in filename:
+                    with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                        actions.update(json.load(f))
+            trajectories = {int(k): v for k, v in trajectories.items()}
+            trajectories = collections.OrderedDict(sorted(trajectories.items()))
+            actions = {int(k): v for k, v in actions.items()}
+            actions = collections.OrderedDict(sorted(actions.items()))
 
-        self.extrapolate_trajectories(model_name, trajectories, actions)
+            buffer, world_model = self.trajectories_to_pos_buffer(trajectories)
+
+            stats = dict(episodes=len(trajectories))
+
+            self.save_precomputed_models(model_name, buffer, world_model, stats)
+
+        self.extrapolate_trajectories(model_name, trajectories, actions, unfiltered_trajs, unfiltered_moti)
+
+        self.plot_3d_map(buffer, world_model)
+        self.change_text(model_name, len(list(buffer.keys())), stats['episodes'])
+
+
 
         self.stop_loading()
-        #
-        # x = threading.Thread(target=self.stop_loading)
-        # x.start()
+
 
     def print_3d_traj(self, traj, im_rews, view, actions, index=None, max=None, min=None):
         """
@@ -651,9 +747,9 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         y = np.concatenate((firstvals, y, lastvals))
         return np.convolve(m[::-1], y, mode='valid')
 
-class WorldModel(QDialog):
+class WorldModelApplication(QDialog):
     def __init__(self, canvas, parent=None):
-        super(WorldModel, self).__init__(parent)
+        super(WorldModelApplication, self).__init__(parent)
 
         self.originalPalette = QApplication.palette()
         self.canvas = canvas
@@ -685,9 +781,18 @@ class WorldModel(QDialog):
         topLayout.addStretch(1)
         topLayout.addWidget(self.useStylePaletteCheckBox)
 
+        controlLayout = QVBoxLayout()
+        slider = QSlider(QT)
+        controlLayout.addWidget(slider)
+
+
+        midLayout = QHBoxLayout()
+        midLayout.addWidget(canvas.native)
+        midLayout.addLayout(controlLayout)
+
         mainLayout = QVBoxLayout()
         mainLayout.addLayout(topLayout)
-        mainLayout.addWidget(canvas.native)
+        mainLayout.addLayout(midLayout)
 
         self.load_thread = None
         self.setLayout(mainLayout)
@@ -697,7 +802,7 @@ class WorldModel(QDialog):
 
         def __init__(self, function):
             self.function = function
-            super(WorldModel.MyThread, self).__init__()
+            super(WorldModelApplication.MyThread, self).__init__()
 
         def run(self):
             self.function()
@@ -712,7 +817,7 @@ class WorldModel(QDialog):
         if model_name == "" or self.last_model_name == model_name:
             return
 
-        self.load_thread = WorldModel.MyThread(function=lambda : self.canvas.load_data(model_name))
+        self.load_thread = WorldModelApplication.MyThread(function=lambda : self.canvas.load_data(model_name))
         self.last_model_name = model_name
         self.canvas.start_loading()
         self.load_thread.start()
@@ -761,6 +866,6 @@ if __name__ == '__main__':
 
         # Build application and pass it the canvas just created
         app = QApplication(sys.argv)
-        gallery = WorldModel(canvas)
+        gallery = WorldModelApplication(canvas)
         gallery.show()
         sys.exit(app.exec_())

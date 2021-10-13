@@ -20,14 +20,14 @@ from matplotlib import cm
 from vispy import app, visuals, scene, gloo
 from vispy.visuals.filters import ShadingFilter, WireframeFilter
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_500_3'
+model_name = 'play_3_500_4'
 reward_model_name = "vaffanculo_im_9000"
 
 class WorlModelCanvas(scene.SceneCanvas):
@@ -366,7 +366,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[-3000:]:
+    for traj in list(trajectories.values())[:]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -727,20 +727,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -770,7 +770,7 @@ if __name__ == '__main__':
 
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
-            for keys, traj in zip(list(trajectories.keys())[-3000:], list(trajectories.values())[-3000:]):
+            for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
                 # to_observe = False
                 # for point in traj:
                 #     de_point = np.zeros(3)
@@ -925,7 +925,7 @@ if __name__ == '__main__':
             # moti_to_observe = [k for k in sum_moti_rews_dict.keys()]
             moti_to_observe = []
             for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
-                if v > 0.05 and sum_moti_rews_dict[k] > 16:
+                if v > 0.04 and sum_moti_rews_dict[k] > 16:
                     moti_to_observe.append(k)
             moti_to_observe = np.reshape(moti_to_observe, -1)
 
