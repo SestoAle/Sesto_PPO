@@ -311,7 +311,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 else:
                     pos_buffer[pos_key] = 1
 
-            if count % 100 == 0:
+            if count % 500 == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
@@ -326,8 +326,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
     def plot_3d_map(self, buffer, world_model):
         world_model = np.asarray(world_model)
-        world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 5),
-                                    np.percentile(world_model[:, 3], 95))
+        world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 2),
+                                    np.percentile(world_model[:, 3], 98))
 
         min_value = np.min(world_model[:, 3])
         max_value = np.max(world_model[:, 3])
@@ -354,8 +354,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         return buffer, world_model
 
     def plot_3d_map_in_time(self, world_model_in_time):
-        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
-        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
+        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 2)
+        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 98)
         for world_model in world_model_in_time:
             world_model = np.asarray(world_model)
             world_model[:, 3] = np.clip(world_model[:, 3], min_perc,
@@ -441,20 +441,20 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -859,7 +859,7 @@ class WorldModelApplication(QDialog):
         self.timeLabel.setBuddy(self.timeSlider)
         self.timeSlider.setMaximum(100)
         self.timeSlider.setValue(0)
-        self.timeLabel.setText(self.timeLabelText.format(self.timeSlider.value() * 100))
+        self.timeLabel.setText(self.timeLabelText.format(self.timeSlider.value() * 500))
         self.timeSlider.setMinimumSize(200, 0)
         trajsLayout.addWidget(self.timeLabel)
         trajsLayout.addWidget(self.timeSlider)
@@ -955,7 +955,7 @@ class WorldModelApplication(QDialog):
         else:
             self.useStylePaletteCheckBox.setEnabled(True)
         self.canvas.show_heatmap_in_time(np.clip(value, 0, self.timeSlider.maximum()))
-        value = value * 100
+        value = value * 500
         self.timeLabel.setText(self.timeLabelText.format(value))
 
     def disable_inputs(self):

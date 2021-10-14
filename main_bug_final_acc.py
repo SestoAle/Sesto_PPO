@@ -423,7 +423,7 @@ if __name__ == "__main__":
         with graph.as_default():
             tf.compat.v1.disable_eager_execution()
             motivation_sess = tf.compat.v1.Session(graph=graph)
-            motivation = RND(motivation_sess, input_spec=input_spec, network_spec_predictor=network_spec_rnd_predictor,
+            motivation = RND(motivation_sess, input_spec=input_spec_rnd, network_spec_predictor=network_spec_rnd_predictor,
                              network_spec_target=network_spec_rnd_target, lr=7e-5,
                              obs_to_state=obs_to_state_rnd, num_itr=30, motivation_weight=1)
             init = tf.compat.v1.global_variables_initializer()
