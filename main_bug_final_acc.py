@@ -387,10 +387,10 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
-            "win_weight": [[1], [1], [1]],
-            "reward_weights": [[0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1], [0, 0, 0.3, 0.5, 0.7, 0.8, 0.9, 1],
+            "win_weight": [[0], [0], [0]],
+            "reward_weights": [[0], [0],
                                [0]],
-            "goal_area": [3, 3, 3]
+            "goal_area": [4, 4, 4]
         }
     }
 
