@@ -316,7 +316,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 else:
                     pos_buffer[pos_key] = 1
                     pos_buffer_is_grounded[pos_key] = state[3]
-                    alphas = np.zeros(10)
+                    alphas = np.zeros(11)
                     alphas[int(state[-2]) * 10] = 1
                     pos_buffer_alpha[pos_key] = alphas
 
