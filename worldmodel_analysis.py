@@ -34,7 +34,7 @@ EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
 import threading
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -69,7 +69,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         self.trajectory_visualizer = True
 
-        self.mean_moti_thr = 0.05
+        self.mean_moti_thr = 0.04
         self.sum_moti_thr = 16
 
         super(WorlModelCanvas, self).__init__()
@@ -295,12 +295,14 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     def trajectories_to_pos_buffer(self, trajectories):
         world_model_in_time = []
         pos_buffer = dict()
+        pos_buffer_is_grounded = dict()
+        pos_buffer_alpha = dict()
         count = 0
         for traj in list(trajectories.values())[:]:
             count += 1
             for state in traj:
 
-                position = np.asarray(state[:5])
+                position = np.asarray(state[:3])
                 position[0] = (((position[0] + 1) / 2) * 500)
                 position[1] = (((position[1] + 1) / 2) * 500)
                 position[2] = (((position[2] + 1) / 2) * 60)
@@ -308,26 +310,33 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 pos_key = ' '.join(map(str, position))
                 if pos_key in pos_buffer.keys():
                     pos_buffer[pos_key] += 1
+                    if state[3] == 1:
+                        pos_buffer_is_grounded[pos_key] = state[3]
+                        pos_buffer_alpha[pos_key][int(state[-2])] += 1
                 else:
                     pos_buffer[pos_key] = 1
+                    pos_buffer_is_grounded[pos_key] = state[3]
+                    alphas = np.zeros(10)
+                    alphas[int(state[-2]) * 10] = 1
+                    pos_buffer_alpha[pos_key] = alphas
 
             if count % 500 == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
-                    if k_value[3] == 1:
+                    if pos_buffer_is_grounded[k] == 1:
                         heat = pos_buffer[k]
                         world_model_t.append(k_value[:3] + [heat])
                 world_model_in_time.append(world_model_t)
 
         world_model = world_model_in_time[-1]
 
-        return pos_buffer, world_model, world_model_in_time
+        return pos_buffer, pos_buffer_alpha, world_model, world_model_in_time
 
     def plot_3d_map(self, buffer, world_model):
         world_model = np.asarray(world_model)
-        world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 2),
-                                    np.percentile(world_model[:, 3], 98))
+        world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 5),
+                                    np.percentile(world_model[:, 3], 95))
 
         min_value = np.min(world_model[:, 3])
         max_value = np.max(world_model[:, 3])
@@ -354,8 +363,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         return buffer, world_model
 
     def plot_3d_map_in_time(self, world_model_in_time):
-        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 2)
-        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 98)
+        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
+        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
         for world_model in world_model_in_time:
             world_model = np.asarray(world_model)
             world_model[:, 3] = np.clip(world_model[:, 3], min_perc,
@@ -636,6 +645,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         try:
             with open('{}/{}/{}_buffer.pickle'.format(folder, model_name, model_name), 'rb') as f:
                 buffer = pickle.load(f)
+            with open('{}/{}/{}_buffer_alpha.pickle'.format(folder, model_name, model_name), 'rb') as f:
+                buffer_alpha = pickle.load(f)
             with open('{}/{}/{}_worldmodel.npy'.format(folder, model_name, model_name), 'rb') as f:
                 world_model = np.load(f, allow_pickle=True)
             with open('{}/{}/{}_worldmodel_time.npy'.format(folder, model_name, model_name), 'rb') as f:
@@ -643,15 +654,18 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             with open('{}/{}/{}_stats.pickle'.format(folder, model_name, model_name), 'rb') as f:
                 stats = pickle.load(f)
 
-            return buffer, world_model, stats, world_model_in_time
+            return buffer, buffer_alpha, world_model, stats, world_model_in_time
 
         except Exception as e:
             print(e)
-            return None, None, None, None
+            return None, None, None, None, None
 
-    def save_precomputed_models(self, model_name, buffer, world_model, stats, world_model_in_time=None, folder='arrays'):
+    def save_precomputed_models(self, model_name, buffer, buffer_alpha, world_model, stats, world_model_in_time=None,
+                                folder='arrays'):
         with open('{}/{}/{}_buffer.pickle'.format(folder, model_name, model_name), 'wb') as f:
             pickle.dump(buffer, f)
+        with open('{}/{}/{}_buffer_alpha.pickle'.format(folder, model_name, model_name), 'wb') as f:
+            pickle.dump(buffer_alpha, f)
         with open('{}/{}/{}_worldmodel.npy'.format(folder, model_name, model_name), 'wb') as f:
             np.save(f, world_model)
         with open('{}/{}/{}_worldmodel_time.npy'.format(folder, model_name, model_name), 'wb') as f:
@@ -683,7 +697,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         self.remove_maps()
 
-        buffer, world_model, stats, world_model_in_time = self.load_precomputed_models(model_name)
+        buffer, buffer_alpha, world_model, stats, world_model_in_time = self.load_precomputed_models(model_name)
         unfiltered_trajs, unfiltered_moti = self.load_unfiltered_trajs(model_name)
 
         trajectories = None
@@ -704,11 +718,11 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             actions = {int(k): v for k, v in actions.items()}
             actions = collections.OrderedDict(sorted(actions.items()))
 
-            buffer, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories)
+            buffer, buffer_alpha, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories)
 
             stats = dict(episodes=len(trajectories))
 
-            self.save_precomputed_models(model_name, buffer, world_model, stats, world_model_in_time)
+            self.save_precomputed_models(model_name, buffer, buffer_alpha, world_model, stats, world_model_in_time)
 
             unfiltered_trajs = None
             unfiltered_moti = None

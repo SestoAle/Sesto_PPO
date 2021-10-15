@@ -235,7 +235,7 @@ if __name__ == '__main__':
             if 'trajectories' in filename:
                 with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
                     trajectories.update(json.load(f))
-            else:
+            elif 'actions' in filename:
                 with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
                     actions.update(json.load(f))
         trajectories = {int(k): v for k, v in trajectories.items()}
