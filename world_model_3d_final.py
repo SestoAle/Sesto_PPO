@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_3_500_4'
+model_name = 'play_4_only_im_no_map'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -87,7 +87,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:]:
+    for traj in list(trajectories.values())[:21130]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -104,6 +104,7 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
                 pos_buffer[pos_key] = 1
 
     print("Number of points covered by the agent: {}".format(len(list(pos_buffer.keys()))))
+    input('...')
     return pos_buffer
 
 
@@ -396,20 +397,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            desired_point_y = 28
-            goal_area_x = 35
-            goal_area_z = 18
-            goal_area_y = 28
-            goal_area_height = 44
-            goal_area_width = 44
+            # desired_point_y = 28
+            # goal_area_x = 35
+            # goal_area_z = 18
+            # goal_area_y = 28
+            # goal_area_height = 44
+            # goal_area_width = 44
 
             # Goal Area 4
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454

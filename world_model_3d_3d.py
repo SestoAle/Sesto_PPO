@@ -27,7 +27,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_3_500_4'
+model_name = 'play_4_only_im_no_map'
 reward_model_name = "vaffanculo_im_9000"
 
 class WorlModelCanvas(scene.SceneCanvas):
@@ -372,7 +372,7 @@ def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
         #     continue
         for state in traj:
 
-            position = np.asarray(state[:5])
+            position = np.asarray(state[:3])
             position[0] = (((position[0] + 1) / 2) * 500)
             position[1] = (((position[1] + 1) / 2) * 500)
             position[2] = (((position[2] + 1) / 2) * 60)
@@ -396,6 +396,7 @@ def trajectories_to_pos_buffer(trajectories, world_model, tau=1/40):
             world_model.append(k_value[:3] + [heat])
 
     print("Number of points covered by the agent: {}".format(len(list(pos_buffer.keys()))))
+    input('....')
     return pos_buffer
 
 

@@ -3,6 +3,7 @@ from math import factorial
 import os
 import pickle
 from math import factorial
+from copy import deepcopy
 
 import numpy as np
 from scipy.spatial import distance_matrix
@@ -111,6 +112,30 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         if event.key.name == 'F2':
             self.change_map()
+
+        if event.key.name == '0':
+            self.plot_3D_alpha_map(self.world_model, 0)
+
+        if event.key.name == '1':
+            self.plot_3D_alpha_map(self.world_model, 1)
+
+        if event.key.name == '4':
+            self.plot_3D_alpha_map(self.world_model, 4)
+
+        if event.key.name == '6':
+            self.plot_3D_alpha_map(self.world_model, 6)
+
+        if event.key.name == '8':
+            self.plot_3D_alpha_map(self.world_model, 8)
+
+        if event.key.name == '9':
+            self.plot_3D_alpha_map(self.world_model, 9)
+
+        if event.key.name == 'O':
+            self.plot_3D_alpha_map(self.world_model, 10)
+
+        if event.key.name == 'I':
+            self.plot_3D_alpha_map(self.world_model, 11)
 
         if event.key.name == 'Up' or event.key.name == 'Down':
 
@@ -312,57 +337,68 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     pos_buffer[pos_key] += 1
                     if state[3] == 1:
                         pos_buffer_is_grounded[pos_key] = state[3]
-                        pos_buffer_alpha[pos_key][int(state[-2])] += 1
+                        pos_buffer_alpha[pos_key][int(state[-2] * 10)] += 1
                 else:
                     pos_buffer[pos_key] = 1
                     pos_buffer_is_grounded[pos_key] = state[3]
                     alphas = np.zeros(11)
-                    alphas[int(state[-2]) * 10] = 1
+                    alphas[int(state[-2] * 10)] = 1
                     pos_buffer_alpha[pos_key] = alphas
 
-            if count % 500 == 0:
+            if count % len(trajectories.keys()) == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
                     if pos_buffer_is_grounded[k] == 1:
                         heat = pos_buffer[k]
-                        world_model_t.append(k_value[:3] + [heat])
+                        alpha_heat = pos_buffer_alpha[k]
+                        world_model_t.append(k_value[:3] + [heat] + list(alpha_heat))
                 world_model_in_time.append(world_model_t)
 
         world_model = world_model_in_time[-1]
 
         return pos_buffer, pos_buffer_alpha, world_model, world_model_in_time
 
-    def plot_3d_map(self, buffer, world_model):
-        world_model = np.asarray(world_model)
-        world_model[:, 3] = np.clip(world_model[:, 3], np.percentile(world_model[:, 3], 5),
-                                    np.percentile(world_model[:, 3], 95))
+    def plot_3d_map(self, buffer, world_model, color=3):
+        world_model_array = deepcopy(np.asarray(world_model))
+        world_model_array[:, color] = np.clip(world_model_array[:, color], np.percentile(world_model_array[:, 3], 5),
+                                              np.percentile(world_model_array[:, 3], 95))
 
-        min_value = np.min(world_model[:, 3])
-        max_value = np.max(world_model[:, 3])
+        min_value = np.min(world_model_array[:, color])
+        max_value = np.max(world_model_array[:, color])
 
         colors = []
-        for c in world_model[:, 3]:
-            colors.append(self.convert_to_rgb(min_value, max_value, c))
+        for i, c in enumerate(world_model[:, color]):
+            if c != 0:
+                colors.append(self.convert_to_rgb(min_value, max_value, world_model_array[i, color]))
+            else:
+                colors.append((0,0,0,0))
 
         Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
         colors = np.asarray(colors)
         heatmap = Scatter3D(parent=view.scene)
         heatmap.set_gl_state('additive', blend=True, depth_test=True)
-        heatmap.set_data(world_model[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors,
+        heatmap.set_data(world_model_array[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors,
                          scaling=True)
 
         Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
         covermap = Scatter3D(parent=view.scene)
         covermap.set_gl_state('additive', blend=True, depth_test=True)
-        covermap.set_data(world_model[:, :3], face_color=(0.61, 0, 0, 1), symbol='o', size=0.7, edge_width=0,
+        covermap.set_data(world_model_array[:, :3], face_color=(0.61, 0, 0, 1), symbol='o', size=0.7, edge_width=0,
                           edge_color=(1, 0, 0, 1), scaling=True)
         covermap.visible = False
 
         self.set_maps(heatmap, covermap)
-        return buffer, world_model
+        return buffer, world_model_array
+
+    def plot_3D_alpha_map(self, world_model, alpha=0):
+
+        self.heatmap.visible = False
+        self.plot_3d_map(None, world_model, color=alpha + 3)
+
 
     def plot_3d_map_in_time(self, world_model_in_time):
+
         min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
         max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
         for world_model in world_model_in_time:
@@ -399,8 +435,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             self.heatmap_signal.emit(True)
         else:
             self.heatmap_in_time[index].visible = True
-
-
 
     def start_loading(self):
         self.loading.visible = True
@@ -450,20 +484,20 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 15
 
             # Goal Area 3
-            desired_point_y = 28
-            goal_area_x = 35
-            goal_area_z = 18
-            goal_area_y = 28
-            goal_area_height = 44
-            goal_area_width = 44
+            # desired_point_y = 28
+            # goal_area_x = 35
+            # goal_area_z = 18
+            # goal_area_y = 28
+            # goal_area_height = 44
+            # goal_area_width = 44
 
             # Goal Area 4
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -653,7 +687,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 world_model_in_time = np.load(f, allow_pickle=True)
             with open('{}/{}/{}_stats.pickle'.format(folder, model_name, model_name), 'rb') as f:
                 stats = pickle.load(f)
-
             return buffer, buffer_alpha, world_model, stats, world_model_in_time
 
         except Exception as e:
@@ -700,10 +733,14 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         buffer, buffer_alpha, world_model, stats, world_model_in_time = self.load_precomputed_models(model_name)
         unfiltered_trajs, unfiltered_moti = self.load_unfiltered_trajs(model_name)
 
+        self.unfreeze()
+        self.world_model = world_model
+        self.buffer_alpha = buffer_alpha
+        self.freeze()
         trajectories = None
         actions = None
 
-        if buffer is None or world_model is None or unfiltered_trajs is None:
+        if buffer is None or world_model is None:
             trajectories = dict()
             actions = dict()
             for filename in os.listdir("arrays/{}/".format(model_name)):
@@ -719,7 +756,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             actions = collections.OrderedDict(sorted(actions.items()))
 
             buffer, buffer_alpha, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories)
-
+            world_model = np.asarray(world_model)
             stats = dict(episodes=len(trajectories))
 
             self.save_precomputed_models(model_name, buffer, buffer_alpha, world_model, stats, world_model_in_time)
@@ -935,6 +972,7 @@ class WorldModelApplication(QDialog):
 
         self.load_thread = None
         self.setLayout(mainLayout)
+        self.resize(1920, 1080)
 
     class MyThread(QThread):
         finished = pyqtSignal()
