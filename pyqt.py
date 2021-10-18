@@ -54,6 +54,14 @@ class Canvas(scene.SceneCanvas):
     def on_key_press(self, event):
         print(event.key.name)
 
+    def move(self):
+        self.timer = threading.Timer(1/60, self.move)
+        self.timer.start()
+        tr = self.ellipse.transform.translate
+        tr[2] += 1
+        print(tr)
+        self.ellipse.transform.translate = tr
+
 
     def toggle_visibility(self):
         self.map.visible = not self.map.visible
@@ -77,6 +85,7 @@ class Canvas(scene.SceneCanvas):
         gc.collect()
 
     def print_mouse_event(self, event, what):
+        self.move()
         modifiers = ', '.join([key.name for key in event.modifiers])
         print('%s - pos: %r, button: %s, modifiers: %s, delta: %r' %
               (what, event.pos, event.button, modifiers, event.delta))
@@ -133,6 +142,14 @@ class Canvas(scene.SceneCanvas):
                     edge_width=0, scaling=True)
 
         scene.widgets.Label("ASDKHS", rotation=0.0)
+
+        Cube = scene.visuals.create_visual_node(visuals.CubeVisual)
+        self.unfreeze()
+        self.ellipse = Cube(parent=view.scene, color='white', size=10)
+        # Define a scale and translate transformation :
+        self.ellipse.transform = visuals.transforms.STTransform(translate=(0., 0., 0.))
+
+        self.freeze()
 
         canvas.set_line(pos)
 

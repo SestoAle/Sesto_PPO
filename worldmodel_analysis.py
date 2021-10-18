@@ -4,6 +4,7 @@ import os
 import pickle
 from math import factorial
 from copy import deepcopy
+from scipy.interpolate import splprep
 
 import numpy as np
 from scipy.spatial import distance_matrix
@@ -11,7 +12,6 @@ from scipy.spatial import distance_matrix
 import matplotlib.pyplot as plt
 import sys
 from threading import Thread
-from pyqt2 import LabeledSlider
 
 from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
@@ -50,9 +50,15 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.current_line = None
         self.lines = None
         self.line_visuals = []
+        self.lines_positions = []
         self.im_rews = []
         self.index = -1
         self.timer = None
+        self.agent = None
+        self.agent_timer = None
+        self.agent_speed = 5
+        self.animation_index = None
+        self.movement_vector = (0, 0, 0)
         self.camera = None
         self.actions = []
         self.colors = []
@@ -67,7 +73,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.label = None
         self.loading = None
         self.cluster_size = 20
-
+        self.smooth_window = 5
         self.trajectory_visualizer = True
 
         self.mean_moti_thr = 0.04
@@ -145,6 +151,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             if event.key.name == 'Down':
                 self.index -= 1
 
+            self.delete_agent()
+
             self.index = np.clip(self.index, -1, len(self.line_visuals))
 
             if self.index == -1 or self.index == len(self.line_visuals):
@@ -161,6 +169,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             self.line_visuals[line_index].visible = True
             self.one_line=True
 
+        if event.key.name == 'A':
+            self.delete_agent()
+            self.create_agent(self.trajs[self.index][0, :3])
+            self.animation_index = 1
+            self.move_agent()
+
         if event.key.name == 'P':
             plt.close('all')
             if self.index == -1 or self.index == len(self.line_visuals):
@@ -169,15 +183,16 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             if self.im_rews[self.index] is not None:
                 plt.figure()
                 plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
-                plot_data = self.savitzky_golay(self.im_rews[self.index], 51, 3)
+                plot_data = self.savitzky_golay(self.im_rews[self.index], 101, 3)
                 # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
                 plt.plot(range(len(plot_data)), plot_data)
 
-            if self.actions[self.index] is not None:
-                plt.figure()
-                plt.hist(self.actions[self.index])
+                if self.actions[self.index] is not None:
+                    plt.figure()
+                    plt.hist(self.actions[self.index])
 
                 plt.show()
+
 
     def change_line_colors(self):
         if self.default_color:
@@ -194,11 +209,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 colors = np.ones((len(v._meshdata._vertices), 4))
                 colors[:, ] = self.default_colors
                 v._meshdata.set_vertex_colors(colors)
-
-    def rotate(self):
-        self.timer = threading.Timer(1/60, self.rotate)
-        self.camera.azimuth = self.camera.azimuth + 1
-        self.timer.start()
 
     def toggle_lines(self):
         if self.index == -1 or self.index == len(self.line_visuals) or not self.one_line:
@@ -266,7 +276,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         self.remove_lines()
 
-    def remove_lines(self):
+    def remove_lines(self, only_visuals=False):
         for v in self.line_visuals:
             v.visible = False
             v.parent = None
@@ -274,29 +284,31 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         del self.line_visuals[:]
         self.line_visuals = []
 
-        del self.im_rews[:]
-        self.im_rews = []
+        if not only_visuals:
+            del self.im_rews[:]
+            self.im_rews = []
 
-        del self.actions[:]
-        self.actions = []
+            del self.actions[:]
+            self.actions = []
 
-        del self.colors[:]
-        self.colors = []
+            del self.colors[:]
+            self.colors = []
 
-        del self.trajs[:]
-        self.trajs = []
+            del self.trajs[:]
+            self.trajs = []
 
-        self.index = -1
+            self.index = -1
 
     def set_maps(self, heatmap, covermap):
         self.heatmap = heatmap
         self.covermap = covermap
 
-    def set_line_visuals(self, visual, im_rews=None, actions=None, color=None):
+    def set_line_visuals(self, visual, positions, im_rews=None, actions=None, color=None):
         self.line_visuals.append(visual)
         self.im_rews.append(im_rews)
         self.actions.append(actions)
         self.colors.append(color)
+        self.lines_positions.append(positions)
 
     def random_color(self, value):
         return (np.random.uniform(), np.random.uniform(), np.random.uniform(), 1)
@@ -345,7 +357,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     alphas[int(state[-2] * 10)] = 1
                     pos_buffer_alpha[pos_key] = alphas
 
-            if count % len(trajectories.keys()) == 0:
+            if count % 2000 == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
@@ -398,7 +410,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
 
     def plot_3d_map_in_time(self, world_model_in_time):
-
         min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
         max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
         for world_model in world_model_in_time:
@@ -442,6 +453,53 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     def stop_loading(self):
         self.loading.visible = False
 
+    def create_agent(self, starting_position=(255, 255, 0)):
+        if self.agent == None:
+            Cube = scene.visuals.create_visual_node(visuals.CubeVisual)
+            self.agent = Cube(parent=self.view.scene, color='white', size=1)
+            # Define a scale and translate transformation :
+            self.agent.transform = visuals.transforms.STTransform(translate=starting_position)
+        else:
+            self.agent.visible = True
+            self.movement_vector = (0, 0, 0)
+            self.agent.transform = visuals.transforms.STTransform(translate=starting_position)
+
+    def delete_agent(self):
+        if self.agent is None:
+            return
+        if self.agent_timer is not None:
+            self.agent_timer.cancel()
+            self.agent_timer = None
+        self.agent.visible = False
+
+    def rotate(self):
+        self.timer = threading.Timer(1/60, self.rotate)
+        self.camera.azimuth = self.camera.azimuth + 1
+        self.timer.start()
+
+    def move_agent(self):
+
+        self.agent_timer = threading.Timer(1/60, self.move_agent)
+        to_move = self.trajs[self.index][self.animation_index, :]
+        current_tr = self.agent.transform.translate
+        if np.linalg.norm(to_move - current_tr[:3]) < 0.05 or np.linalg.norm(self.movement_vector) < 0.05:
+            self.animation_index += 1
+            if self.animation_index == len(self.trajs[self.index]):
+                self.agent_timer.cancel()
+                self.agent_timer = None
+                self.delete_agent()
+                return
+            to_move = self.trajs[self.index][self.animation_index, :]
+            self.movement_vector = to_move - current_tr[:3]
+            self.movement_vector = self.movement_vector / self.agent_speed
+        current_tr[0] += self.movement_vector[0]
+        current_tr[1] += self.movement_vector[1]
+        current_tr[2] += self.movement_vector[2]
+
+        self.agent.transform.translate = current_tr
+        self.agent_timer.start()
+
+
     def extrapolate_trajectories(self, motivation, trajectories, actions):
 
         if motivation is not None:
@@ -484,20 +542,20 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -531,8 +589,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                     if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
                             goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold and \
-                            point[-1] <= 0.5:
+                            np.abs(de_point[2] - desired_point_y) < threshold: # and \
+                            # point[-1] <= 0.5:
                         #         if True:
                         traj_to_observe.append(traj)
                         episodes_to_observe.append(keys)
@@ -672,8 +730,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         for i, traj, im_rews in zip(range(len(cluster_indices)),
                                     traj_to_observe[idxs_to_observe][cluster_indices],
                                     all_normalized_im_rews[cluster_indices]):
-            self.print_3d_traj(traj, im_rews, view, None, i, np.max(all_sum_fitlered_im_rews),
-                               np.min(all_sum_fitlered_im_rews))
+
+            self.im_rews.append(im_rews)
+            self.actions.append(None)
+            self.trajs.append(traj[:, :3])
+
+            self.print_3d_traj(traj, index=i)
 
     def load_precomputed_models(self, model_name, folder='arrays'):
         try:
@@ -815,16 +877,24 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             print(e)
         return motivation
 
-    def print_3d_traj(self, traj, im_rews, view, actions, index=None, max=None, min=None):
+    def print_3d_traj(self, traj, index=None, with_denorm=True, max=None, min=None):
         """
         Method that will plot the trajectory
         """
         ep_trajectory = np.asarray(traj)
+        smooth_window = self.smooth_window
         color = 'c'
 
-        ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
-        ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
-        ep_trajectory[:, 2] = ((np.asarray(ep_trajectory[:, 2]) + 1) / 2) * 60
+        if with_denorm:
+            ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
+            ep_trajectory[:, 1] = ((np.asarray(ep_trajectory[:, 1]) + 1) / 2) * 500
+            ep_trajectory[:, 2] = ((np.asarray(ep_trajectory[:, 2]) + 1) / 2) * 60
+
+        smoothed_traj = deepcopy(ep_trajectory)
+
+        smoothed_traj[:, 0] = self.savitzky_golay(smoothed_traj[:, 0], smooth_window, 3)
+        smoothed_traj[:, 1] = self.savitzky_golay(smoothed_traj[:, 1], smooth_window, 3)
+        smoothed_traj[:, 2] = self.savitzky_golay(smoothed_traj[:, 2], smooth_window, 3)
 
         if index is None:
             color = (0, 0.90, 0.90, 1)
@@ -835,15 +905,13 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         color = cm.get_cmap('tab20b')(index % 20)
 
         Tube3D = scene.visuals.create_visual_node(visuals.TubeVisual)
-        p1 = Tube3D(parent=view.scene, points=ep_trajectory[:, :3], color=color, radius=0.5)
+        p1 = Tube3D(parent=view.scene, points=smoothed_traj[:, :3], color=color, radius=0.5)
         # wire = WireframeFilter(width=0.5)
         # p1.attach(wire)
         p1.shading_filter.enabled = False
         self.line_visuals.append(p1)
-        self.im_rews.append(im_rews)
-        self.actions.append(actions)
         self.colors.append(color)
-        self.trajs.append(ep_trajectory[:, :3])
+        return p1
 
     def savitzky_golay(self, y, window_size, order, deriv=0, rate=1):
         try:
@@ -874,7 +942,7 @@ class WorldModelApplication(QDialog):
         self.originalPalette = QApplication.palette()
         self.canvas = canvas
 
-        self.styleComboBox = QComboBox()
+        self.modelNameCombo = QComboBox()
 
         areas = []
         for file in os.listdir('arrays'):
@@ -882,24 +950,24 @@ class WorldModelApplication(QDialog):
             if os.path.isdir(d):
                 areas.append(file)
 
-        self.styleComboBox.addItems([""] + areas)
+        self.modelNameCombo.addItems([""] + areas)
         self.last_model_name = ""
 
         styleLabel = QLabel("&Model Name:")
-        styleLabel.setBuddy(self.styleComboBox)
+        styleLabel.setBuddy(self.modelNameCombo)
 
-        self.styleComboBox.activated[str].connect(self.combo_changed)
+        self.modelNameCombo.activated[str].connect(self.name_combo_changed)
 
-        self.useStylePaletteCheckBox = QCheckBox("&heatmap")
-        self.useStylePaletteCheckBox.setChecked(True)
+        self.heatmapCheck = QCheckBox("&heatmap")
+        self.heatmapCheck.setChecked(True)
         self.canvas.heatmap_signal.connect(lambda b: self.set_state_checkbox(b))
-        self.useStylePaletteCheckBox.toggled.connect(canvas.change_map)
+        self.heatmapCheck.toggled.connect(canvas.change_map)
 
         topLayout = QHBoxLayout()
         topLayout.addWidget(styleLabel)
-        topLayout.addWidget(self.styleComboBox)
+        topLayout.addWidget(self.modelNameCombo)
         topLayout.addStretch(1)
-        topLayout.addWidget(self.useStylePaletteCheckBox)
+        topLayout.addWidget(self.heatmapCheck)
 
         midLeftLayout = QGridLayout()
 
@@ -912,8 +980,28 @@ class WorldModelApplication(QDialog):
         self.timeSlider.setValue(0)
         self.timeLabel.setText(self.timeLabelText.format(self.timeSlider.value() * 500))
         self.timeSlider.setMinimumSize(200, 0)
+
+        self.alphaCombo = QComboBox()
+        self.alphaLabel = QLabel('&alpha:')
+        self.alphaLabel.setBuddy(self.alphaCombo)
+        self.alphaCombo.addItems(['all', '0.0', '0.3', '0.5', '0.7', '0.8', '0.9', '1.0'])
+        self.alphaCombo.activated[str].connect(self.alpha_name_changed)
+
+        self.smoothSlider = QSlider(Qt.Horizontal)
+        self.smoothLabel = QLabel("&Smooth:")
+        self.smoothLabel.setBuddy(self.smoothSlider)
+        self.smoothSlider.setMaximum(101)
+        self.smoothSlider.setMinimum(5)
+        self.smoothSlider.setTickInterval(2)
+        self.smoothSlider.setSingleStep(2)
+        self.smoothSlider.sliderReleased.connect(self.smooth_changed)
+
         trajsLayout.addWidget(self.timeLabel)
         trajsLayout.addWidget(self.timeSlider)
+        trajsLayout.addWidget(self.alphaLabel)
+        trajsLayout.addWidget(self.alphaCombo)
+        trajsLayout.addWidget(self.smoothLabel)
+        trajsLayout.addWidget(self.smoothSlider)
         trajsLayout.addStretch(1)
         trajsLayout.setContentsMargins(20, 20, 20, 20)
         self.timeSlider.valueChanged.connect(self.time_slider_changed)
@@ -956,7 +1044,10 @@ class WorldModelApplication(QDialog):
         self.clusterSize.valueChanged.connect(lambda x: self.clusterSizeLabel.setText(
             self.clusterSizeText.format(x)))
 
-        canvas.filtering_mean_signal.connect(lambda x: self.filteringMean.setValue(self.de_normalize(x)))
+        canvas.filtering_mean_signal.connect(lambda x: {
+            self.filteringMean.setValue(self.de_normalize(x))
+        })
+
         canvas.cluster_size_signal.connect(lambda x: self.clusterSize.setValue(x))
 
         midLeftLayout.addLayout(trajsLayout, 0, 0)
@@ -986,11 +1077,22 @@ class WorldModelApplication(QDialog):
             self.finished.emit()
 
     def set_state_checkbox(self, b):
-        self.useStylePaletteCheckBox.blockSignals(True)
-        self.useStylePaletteCheckBox.setChecked(b)
-        self.useStylePaletteCheckBox.blockSignals(False)
+        self.heatmapCheck.blockSignals(True)
+        self.heatmapCheck.setChecked(b)
+        self.heatmapCheck.blockSignals(False)
 
-    def combo_changed(self, model_name):
+    def smooth_changed(self):
+        value = self.smoothSlider.value()
+        if value % 2 == 0:
+            value -= 1
+        self.canvas.smooth_window = value
+        self.canvas.remove_lines(only_visuals=True)
+        for i, traj in enumerate(self.canvas.trajs):
+            p = canvas.print_3d_traj(traj, index=i, with_denorm=False)
+            if self.canvas.index != i and self.canvas.index != -1 and self.canvas.index != len(self.canvas.trajs):
+                p.visible = False
+
+    def name_combo_changed(self, model_name):
         if model_name == "" or self.last_model_name == model_name:
             return
 
@@ -1001,30 +1103,44 @@ class WorldModelApplication(QDialog):
         self.load_thread.finished.connect(self.enable_inputs)
         self.disable_inputs()
 
+    def alpha_name_changed(self, value):
+        if value=='all':
+            value = 0
+            self.timeSlider.setEnabled(True)
+            self.timeSlider.blockSignals(True)
+            self.timeSlider.setValue(self.timeSlider.maximum())
+            self.timeSlider.blockSignals(False)
+        else:
+            self.timeSlider.setEnabled(False)
+            value = int(float(value) * 10) + 1
+        self.canvas.plot_3D_alpha_map(self.canvas.world_model, value)
+
     def time_slider_changed(self, value):
         if value != self.timeSlider.maximum():
-            self.useStylePaletteCheckBox.setEnabled(False)
+            self.heatmapCheck.setEnabled(False)
         else:
-            self.useStylePaletteCheckBox.setEnabled(True)
+            self.heatmapCheck.setEnabled(True)
         self.canvas.show_heatmap_in_time(np.clip(value, 0, self.timeSlider.maximum()))
         value = value * 500
         self.timeLabel.setText(self.timeLabelText.format(value))
 
     def disable_inputs(self):
-        self.styleComboBox.setEnabled(False)
-        self.useStylePaletteCheckBox.setEnabled(False)
+        self.modelNameCombo.setEnabled(False)
+        self.heatmapCheck.setEnabled(False)
         self.clusterSize.setEnabled(False)
         self.filteringMean.setEnabled(False)
         self.filteringButton.setEnabled(False)
         self.timeSlider.setEnabled(False)
+        self.alphaCombo.setEnabled(False)
 
     def enable_inputs(self):
-        self.styleComboBox.setEnabled(True)
-        self.useStylePaletteCheckBox.setEnabled(True)
+        self.modelNameCombo.setEnabled(True)
+        self.heatmapCheck.setEnabled(True)
         self.clusterSize.setEnabled(True)
         self.filteringMean.setEnabled(True)
         self.filteringButton.setEnabled(True)
         self.timeSlider.setEnabled(True)
+        self.alphaCombo.setEnabled(True)
 
     def de_normalize(self, value):
         return int(((value - 0.01) / (0.06 - 0.01)) * (100 - 0) + 0)
