@@ -135,8 +135,8 @@ def network_spec_rnd_target(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal_weight = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 3], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, threedgrid, goal_weight = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 9261, 3], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
