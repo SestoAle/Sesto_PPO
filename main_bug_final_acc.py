@@ -90,7 +90,7 @@ class BugEnvironment:
         self.dems = None
 
         # Defined the values to sample for goal-conditioned policy
-        self.reward_weights = [0, 0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1]
+        self.reward_weights = [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
 
 
     def execute(self, actions, visualize=False):
@@ -387,9 +387,9 @@ if __name__ == "__main__":
             "agent_spawn_x": [0, 0, 0],
             "agent_spawn_z": [0, 0, 0],
             "agent_spawn_y": [1.7, 1.7, 1.7],
-            "win_weight": [[0], [0], [0]],
-            "reward_weights": [[0], [0],
-                               [0]],
+            "win_weight": [[1], [1], [1]],
+            "reward_weights": [[0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1], [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+                               [0, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9, 1]],
             "goal_area": [4, 4, 4]
         }
     }
@@ -425,7 +425,7 @@ if __name__ == "__main__":
             motivation_sess = tf.compat.v1.Session(graph=graph)
             motivation = RND(motivation_sess, input_spec=input_spec_rnd, network_spec_predictor=network_spec_rnd_predictor,
                              network_spec_target=network_spec_rnd_target, lr=7e-5,
-                             obs_to_state=obs_to_state_rnd, num_itr=30, motivation_weight=1)
+                             obs_to_state=obs_to_state_rnd, num_itr=60, motivation_weight=1)
             init = tf.compat.v1.global_variables_initializer()
             motivation_sess.run(init)
 

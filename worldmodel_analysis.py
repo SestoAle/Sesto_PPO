@@ -4,6 +4,10 @@ import os
 import pickle
 from math import factorial
 from copy import deepcopy
+import seaborn as sns
+import os
+
+sns.set_theme(style="dark")
 from scipy.interpolate import splprep
 
 import numpy as np
@@ -19,11 +23,13 @@ from clustering.cluster_im import cluster
 from clustering.clustering import cluster_trajectories as cluster_simple
 from matplotlib import cm
 import collections
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 
 
 from vispy import app, visuals, scene, gloo
 from vispy.visuals.filters import ShadingFilter, WireframeFilter
 
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import QDateTime, Qt, QTimer, QObject
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -35,7 +41,7 @@ EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
 import threading
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -45,6 +51,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     filtering_mean_signal = pyqtSignal(float)
     cluster_size_signal = pyqtSignal(int)
     in_time_signal = pyqtSignal(int)
+    im_rew_signal = pyqtSignal(np.ndarray)
 
     def __init__(self, *args, **kwargs):
         self.current_line = None
@@ -159,14 +166,24 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 self.one_line = False
                 self.hide_all_lines()
                 self.toggle_lines()
+                self.im_rew_signal.emit(np.asarray([]))
                 return
 
             line_index = self.index
 
             self.hide_all_lines()
-
-            plt.close('all')
             self.line_visuals[line_index].visible = True
+
+            if self.im_rews[line_index] is not None:
+                # plt.figure()
+                # plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
+                plot_data = self.im_rews[self.index]
+                plot_data = self.savitzky_golay(plot_data, 101, 3)
+                # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                # plt.plot(range(len(plot_data)), plot_data)
+                plot_data = np.asarray(plot_data)
+                self.im_rew_signal.emit(plot_data)
+
             self.one_line=True
 
         if event.key.name == 'A':
@@ -179,13 +196,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             plt.close('all')
             if self.index == -1 or self.index == len(self.line_visuals):
                 return
-
-            if self.im_rews[self.index] is not None:
-                plt.figure()
-                plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
-                plot_data = self.savitzky_golay(self.im_rews[self.index], 101, 3)
-                # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
-                plt.plot(range(len(plot_data)), plot_data)
 
                 if self.actions[self.index] is not None:
                     plt.figure()
@@ -357,32 +367,42 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     alphas[int(state[-2] * 10)] = 1
                     pos_buffer_alpha[pos_key] = alphas
 
-            if count % 2000 == 0:
+            if count % 100 == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
                     if pos_buffer_is_grounded[k] == 1:
                         heat = pos_buffer[k]
-                        alpha_heat = pos_buffer_alpha[k]
-                        world_model_t.append(k_value[:3] + [heat] + list(alpha_heat))
+                        world_model_t.append(k_value[:3] + [heat])
                 world_model_in_time.append(world_model_t)
 
-        world_model = world_model_in_time[-1]
+        world_model = []
+        for k in pos_buffer.keys():
+            k_value = list(map(float, k.split(" ")))
+            if pos_buffer_is_grounded[k] == 1:
+                heat = pos_buffer[k]
+                alpha_heat = pos_buffer_alpha[k]
+                world_model.append(k_value[:3] + [heat] + list(alpha_heat))
 
         return pos_buffer, pos_buffer_alpha, world_model, world_model_in_time
 
-    def plot_3d_map(self, buffer, world_model, color=3):
+    def plot_3d_map(self, world_model, color_index=3, percentile=95,
+                    colors_gradient=[(150, 0, 0), (255, 255, 0), (255, 255, 255)], set_map=True):
         world_model_array = deepcopy(np.asarray(world_model))
-        world_model_array[:, color] = np.clip(world_model_array[:, color], np.percentile(world_model_array[:, 3], 5),
-                                              np.percentile(world_model_array[:, 3], 95))
+        world_model_array[:, color_index] = np.clip(world_model_array[:, color_index],
+                                                    np.percentile(world_model_array[:, 3], 100 - percentile),
+                                                    np.percentile(world_model_array[:, 3], percentile))
 
-        min_value = np.min(world_model_array[:, color])
-        max_value = np.max(world_model_array[:, color])
+        min_value = np.min(world_model_array[:, color_index])
+        max_value = np.max(world_model_array[:, color_index])
+        print(min_value)
+        print(max_value)
 
         colors = []
-        for i, c in enumerate(world_model[:, color]):
+        for i, c in enumerate(world_model[:, color_index]):
             if c != 0:
-                colors.append(self.convert_to_rgb(min_value, max_value, world_model_array[i, color]))
+                colors.append(self.convert_to_rgb(min_value, max_value, world_model_array[i, color_index],
+                                                  colors=colors_gradient))
             else:
                 colors.append((0,0,0,0))
 
@@ -390,7 +410,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         colors = np.asarray(colors)
         heatmap = Scatter3D(parent=view.scene)
         heatmap.set_gl_state('additive', blend=True, depth_test=True)
-        heatmap.set_data(world_model_array[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors,
+        heatmap.set_data(world_model_array[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0,
+                         edge_color=colors,
                          scaling=True)
 
         Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
@@ -400,16 +421,18 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                           edge_color=(1, 0, 0, 1), scaling=True)
         covermap.visible = False
 
-        self.set_maps(heatmap, covermap)
-        return buffer, world_model_array
+        if set_map:
+            self.set_maps(heatmap, covermap)
+        return world_model_array
 
     def plot_3D_alpha_map(self, world_model, alpha=0):
 
         self.heatmap.visible = False
-        self.plot_3d_map(None, world_model, color=alpha + 3)
+        self.plot_3d_map(world_model, color_index=alpha + 3)
 
 
     def plot_3d_map_in_time(self, world_model_in_time):
+
         min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
         max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
         for world_model in world_model_in_time:
@@ -480,7 +503,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     def move_agent(self):
 
         self.agent_timer = threading.Timer(1/60, self.move_agent)
-        to_move = self.trajs[self.index][self.animation_index, :]
+        to_move = self.trajs[self.index][self.animation_index, :3]
         current_tr = self.agent.transform.translate
         if np.linalg.norm(to_move - current_tr[:3]) < 0.05 or np.linalg.norm(self.movement_vector) < 0.05:
             self.animation_index += 1
@@ -489,7 +512,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 self.agent_timer = None
                 self.delete_agent()
                 return
-            to_move = self.trajs[self.index][self.animation_index, :]
+            to_move = self.trajs[self.index][self.animation_index, :3]
             self.movement_vector = to_move - current_tr[:3]
             self.movement_vector = self.movement_vector / self.agent_speed
         current_tr[0] += self.movement_vector[0]
@@ -542,20 +565,21 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 15
 
             # Goal Area 3
-            desired_point_y = 28
-            goal_area_x = 35
-            goal_area_z = 18
-            goal_area_y = 28
-            goal_area_height = 44
-            goal_area_width = 44
+            # desired_point_y = 28
+            # goal_area_x = 35
+            # goal_area_z = 18
+            # goal_area_y = 28
+            # goal_area_height = 44
+            # goal_area_width = 44
 
             # Goal Area 4
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -589,8 +613,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                     if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
                             goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold: # and \
-                            # point[-1] <= 0.5:
+                            np.abs(de_point[2] - desired_point_y) < threshold and \
+                            point[-1] <= 0.5:
                         #         if True:
                         traj_to_observe.append(traj)
                         episodes_to_observe.append(keys)
@@ -675,6 +699,35 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         mean_moti_rews_dict = {k: v for k, v in
                                sorted(mean_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
 
+        # im_heatmap = []
+        filler = np.zeros((66))
+        # for traj in traj_to_observe:
+        #     states_batch = []
+        #     actions_batch = []
+        #     # key = episodes_to_observe[idx]
+        #
+        #     # for state, action in zip(traj, actions[key]):
+        #     for state in traj:
+        #         # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+        #         # TODO: correct form
+        #         state = np.asarray(state)
+        #         state = np.concatenate([state, filler])
+        #         state[-2:] = state[3:5]
+        #
+        #         # Create the states batch to feed the models
+        #         state = dict(global_in=state)
+        #         states_batch.append(state)
+        #
+        #     im_rew = motivation.eval(states_batch)
+        #     im_rew = self.savitzky_golay(im_rew, 101, 3)
+        #     for state, im in zip(states_batch, im_rew):
+        #         position = np.zeros(3)
+        #         position[0] = (((state['global_in'][0] + 1) / 2) * 500)
+        #         position[1] = (((state['global_in'][1] + 1) / 2) * 500)
+        #         position[2] = (((state['global_in'][2] + 1) / 2) * 60)
+        #         position = position.astype(int)
+        #         im_heatmap.append(list(position) + [im])
+
         moti_to_observe = []
         print(self.mean_moti_thr)
         for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
@@ -690,7 +743,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         all_normalized_im_rews = []
         all_sum_fitlered_im_rews = []
-        filler = np.zeros((66))
         # Plot the trajectories
         for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
             states_batch = []
@@ -733,9 +785,15 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             self.im_rews.append(im_rews)
             self.actions.append(None)
-            self.trajs.append(traj[:, :3])
+            self.trajs.append(traj)
 
+            # self.print_3d_traj(traj, index=i)
             self.print_3d_traj(traj, index=i)
+
+        # im_heatmap = np.asarray(im_heatmap)
+        # im_heatmap[:, 3] = (im_heatmap[:, 3] - np.min(im_heatmap[:, 3]))/(np.max(im_heatmap[:, 3]) - np.min(im_heatmap[:, 3]))
+        # self.plot_3d_map(im_heatmap, color_index=3, colors_gradient=[(0, 0, 255), (0, 255, 0)], percentile=100,
+        #                  set_map=False)
 
     def load_precomputed_models(self, model_name, folder='arrays'):
         try:
@@ -788,6 +846,22 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             moti = dict(mean=mean_moti, sum=sum_moti)
             pickle.dump(moti, f)
 
+    def load_data_from_disk(self, model_name):
+        trajectories = dict()
+        actions = dict()
+        for filename in os.listdir("arrays/{}/".format(model_name)):
+            if 'trajectories' in filename:
+                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                    trajectories.update(json.load(f))
+            elif 'actions' in filename:
+                with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
+                    actions.update(json.load(f))
+        trajectories = {int(k): v for k, v in trajectories.items()}
+        trajectories = collections.OrderedDict(sorted(trajectories.items()))
+        actions = {int(k): v for k, v in actions.items()}
+        actions = collections.OrderedDict(sorted(actions.items()))
+        return trajectories, actions
+
     def load_data(self, model_name):
 
         self.remove_maps()
@@ -803,19 +877,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         actions = None
 
         if buffer is None or world_model is None:
-            trajectories = dict()
-            actions = dict()
-            for filename in os.listdir("arrays/{}/".format(model_name)):
-                if 'trajectories' in filename:
-                    with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
-                        trajectories.update(json.load(f))
-                elif 'actions' in filename:
-                    with open("arrays/{}/{}".format(model_name, filename), 'r') as f:
-                        actions.update(json.load(f))
-            trajectories = {int(k): v for k, v in trajectories.items()}
-            trajectories = collections.OrderedDict(sorted(trajectories.items()))
-            actions = {int(k): v for k, v in actions.items()}
-            actions = collections.OrderedDict(sorted(actions.items()))
+
+            trajectories, actions = self.load_data_from_disk(model_name)
 
             buffer, buffer_alpha, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories)
             world_model = np.asarray(world_model)
@@ -827,30 +890,34 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             unfiltered_moti = None
 
         self.in_time_signal.emit(len(world_model_in_time))
-        self.plot_3d_map(buffer, world_model)
+        self.plot_3d_map(world_model)
         self.plot_3d_map_in_time(world_model_in_time)
 
         if self.trajectory_visualizer:
-                motivation = self.load_motivation(model_name)
+            motivation = self.load_motivation(model_name)
 
-                if unfiltered_trajs is None:
-                    unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict = \
-                        self.extrapolate_trajectories(motivation, trajectories, actions)
+            if unfiltered_trajs is None:
 
-                    self.save_unfiltered_trajs(model_name, unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict)
+                if trajectories is None:
+                    trajectories, actions = self.load_data_from_disk(model_name)
 
-                if unfiltered_moti is not None:
-                    mean_moti_rews_dict, sum_moti_rews_dict = unfiltered_moti.values()
+                unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict = \
+                    self.extrapolate_trajectories(motivation, trajectories, actions)
 
-                self.unfreeze()
-                self.motivation = motivation
-                self.unfiltered_trajs = unfiltered_trajs
-                self.mean_moti_rews_dict = mean_moti_rews_dict
-                self.sum_moti_rews_dict = sum_moti_rews_dict
-                self.freeze()
-                self.filtering_mean_signal.emit(self.mean_moti_thr)
-                self.cluster_size_signal.emit(self.cluster_size)
-                self.filtering_trajectory()
+                self.save_unfiltered_trajs(model_name, unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict)
+
+            if unfiltered_moti is not None:
+                mean_moti_rews_dict, sum_moti_rews_dict = unfiltered_moti.values()
+
+            self.unfreeze()
+            self.motivation = motivation
+            self.unfiltered_trajs = unfiltered_trajs
+            self.mean_moti_rews_dict = mean_moti_rews_dict
+            self.sum_moti_rews_dict = sum_moti_rews_dict
+            self.freeze()
+            self.filtering_mean_signal.emit(self.mean_moti_thr)
+            self.cluster_size_signal.emit(self.cluster_size)
+            self.filtering_trajectory()
 
         self.change_text(model_name, len(list(buffer.keys())), stats['episodes'])
         self.stop_loading()
@@ -902,10 +969,23 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             color = self.random_color(index)
 
         # color = convert_to_rgb(1, 20, index, colors=[(0, 255, 255), (255, 0, 255)])
-        color = cm.get_cmap('tab20b')(index % 20)
+        # color = cm.get_cmap('tab20b')(index % 20)
+        color = cm.get_cmap('tab20b')(traj[0][-1] % 20)
+
+        if self.im_rews[index] is not None:
+            im_rews = deepcopy(self.im_rews[index])
+            # im_rews = self.savitzky_golay(im_rews, 101, 5)
+            colors = []
+            for i in im_rews:
+                if i > np.mean(np.clip(im_rews, np.percentile(im_rews, 10), np.max(im_rews))):
+                    colors.append((1, 0, 0, 1))
+                else:
+                    colors.append(color)
+        else:
+            colors = color
 
         Tube3D = scene.visuals.create_visual_node(visuals.TubeVisual)
-        p1 = Tube3D(parent=view.scene, points=smoothed_traj[:, :3], color=color, radius=0.5)
+        p1 = Tube3D(parent=view.scene, points=smoothed_traj[:, :3], color=colors, radius=0.5)
         # wire = WireframeFilter(width=0.5)
         # p1.attach(wire)
         p1.shading_filter.enabled = False
@@ -934,6 +1014,28 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         lastvals = y[-1] + np.abs(y[-half_window - 1:-1][::-1] - y[-1])
         y = np.concatenate((firstvals, y, lastvals))
         return np.convolve(m[::-1], y, mode='valid')
+
+class MplCanvas(FigureCanvasQTAgg):
+
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        self.fig = plt.gcf()
+        self.axes = plt.gca()
+        plt.axis('off')
+        plt.clf()
+        FigureCanvasQTAgg.__init__(self, self.fig)
+        FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        FigureCanvasQTAgg.updateGeometry(self)
+
+    def plot(self, x, y):
+        plt.clf()
+        plt.plot(x, y)
+        # plt.xlim(0, 100)
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        self.draw()
+
+    def clear_plot(self):
+        plt.clf()
+        self.draw()
 
 class WorldModelApplication(QDialog):
     def __init__(self, canvas, parent=None):
@@ -1057,13 +1159,23 @@ class WorldModelApplication(QDialog):
         midLayout.addWidget(canvas.native)
         midLayout.addLayout(midLeftLayout)
 
+        bottomLayout = QVBoxLayout()
+        self.plotWidget = MplCanvas()
+        bottomLayout.addWidget(self.plotWidget)
+        self.plotWidget.setMinimumSize(0, 50)
+        self.plotWidget.setMaximumSize(100000, 50)
+        self.canvas.im_rew_signal.connect(self.plot_curiosity)
+
+        # bottomLayout.addStretch(1)
+
         mainLayout = QVBoxLayout()
         mainLayout.addLayout(topLayout)
         mainLayout.addLayout(midLayout)
+        mainLayout.addLayout(bottomLayout)
 
         self.load_thread = None
         self.setLayout(mainLayout)
-        self.resize(1920, 1080)
+        self.resize(1024, 600)
 
     class MyThread(QThread):
         finished = pyqtSignal()
@@ -1102,6 +1214,12 @@ class WorldModelApplication(QDialog):
         self.load_thread.start()
         self.load_thread.finished.connect(self.enable_inputs)
         self.disable_inputs()
+
+    def plot_curiosity(self, x):
+        if len(x) == 0:
+            self.plotWidget.clear_plot()
+        else:
+            self.plotWidget.plot(np.arange(len(x)), x)
 
     def alpha_name_changed(self, value):
         if value=='all':
