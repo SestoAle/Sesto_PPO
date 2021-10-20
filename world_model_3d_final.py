@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_only_im_no_map'
+model_name = 'play_4_500_3'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -87,7 +87,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:21130]:
+    for traj in list(trajectories.values())[:]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -104,7 +104,6 @@ def trajectories_to_pos_buffer(trajectories, tau=1/40):
                 pos_buffer[pos_key] = 1
 
     print("Number of points covered by the agent: {}".format(len(list(pos_buffer.keys()))))
-    input('...')
     return pos_buffer
 
 
@@ -397,20 +396,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            # desired_point_y = 28
-            # goal_area_x = 35
-            # goal_area_z = 18
-            # goal_area_y = 28
-            # goal_area_height = 44
-            # goal_area_width = 44
+            desired_point_y = 28
+            goal_area_x = 35
+            goal_area_z = 18
+            goal_area_y = 28
+            goal_area_height = 44
+            goal_area_width = 44
 
             # Goal Area 4
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -439,19 +438,21 @@ if __name__ == '__main__':
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
-                # to_observe = False
-                # for point in traj:
-                #     de_point = np.zeros(3)
-                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
-                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                #     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
-                #     if np.abs(de_point[0] - 10) < threshold and \
-                #             np.abs(de_point[1] - 463) < threshold and \
-                #             np.abs(de_point[2] - 40) < threshold:
-                #         to_observe = True
-                #         break
-                #
-                # if to_observe:
+                to_observe = False
+                if traj[0][-1] > 0.5:
+                    continue
+                for point in traj:
+                    de_point = np.zeros(3)
+                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                    de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                    if np.abs(de_point[0] - 461) < threshold and \
+                            np.abs(de_point[1] - 102) < threshold and \
+                            np.abs(de_point[2] - 15) < threshold:
+                        to_observe = True
+                        break
+
+                if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
@@ -461,8 +462,8 @@ if __name__ == '__main__':
                 #         #         np.abs(de_point[1] - desired_point_z) < threshold :
                         if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
                                  goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                                    np.abs(de_point[2] - desired_point_y) < threshold and \
-                                       point[-1] <= 0.5:
+                                    np.abs(de_point[2] - desired_point_y) < threshold: # and \
+                                       # 0.4 <= point[-1] <= 0.2:
                 #         if True:
                             traj_len = len(traj)
                             traj_to_observe.append(traj)
@@ -604,9 +605,9 @@ if __name__ == '__main__':
             thr = np.mean(step_moti_rews)
             for i, traj in enumerate(traj_to_observe[idxs_to_observe]):
                 print_traj(traj)
-            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
-                                            facecolor='none', zorder=100)
-            fig.gca().add_patch(goal_region)
+            # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+            #                                 facecolor='none', zorder=100)
+            # fig.gca().add_patch(goal_region)
             print("The bugged trajectories are {}".format(len(idxs_to_observe)))
 
             plt.show()
@@ -637,50 +638,50 @@ if __name__ == '__main__':
                     len(expert_traj['acts'])) + " timesteps in these demonstrations")
 
             all_normalized_im_rews = []
-            # Plot the trajectories
-            for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
+            # # Plot the trajectories
+            # for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
+            #
+            #     states_batch = []
+            #     actions_batch = []
+            #     key = episodes_to_observe[idx]
+            #
+            #     for state, action in zip(traj, actions[key]):
+            #         # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
+            #         # TODO: correct form
+            #         state = np.asarray(state)
+            #         # state[:3] = 2 * (state[:3] / 40) - 1
+            #         state = np.concatenate([state, filler])
+            #         state[-2:] = state[3:5]
+            #
+            #         # Create the states batch to feed the models
+            #         state = dict(global_in=state)
+            #         states_batch.append(state)
+            #         actions_batch.append(action)
+            #
+            #     im_rew = motivation.eval(states_batch)
+            #     # im_rew = savitzky_golay(im_rew, 51, 3)
+            #     # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+            #
+            #     all_normalized_im_rews.append(im_rew)
+            #
+            # # if False:
+            # if len(all_normalized_im_rews) > 20:
+            #     cluster_indices = cluster(all_normalized_im_rews, clusters=20)
+            # else:
+            #     cluster_indices = np.arange(len(all_normalized_im_rews))
 
-                states_batch = []
-                actions_batch = []
-                key = episodes_to_observe[idx]
-
-                for state, action in zip(traj, actions[key]):
-                    # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-                    # TODO: correct form
-                    state = np.asarray(state)
-                    # state[:3] = 2 * (state[:3] / 40) - 1
-                    state = np.concatenate([state, filler])
-                    state[-2:] = state[3:5]
-
-                    # Create the states batch to feed the models
-                    state = dict(global_in=state)
-                    states_batch.append(state)
-                    actions_batch.append(action)
-
-                im_rew = motivation.eval(states_batch)
-                # im_rew = savitzky_golay(im_rew, 51, 3)
-                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
-
-                all_normalized_im_rews.append(im_rew)
-
-            # if False:
-            if len(all_normalized_im_rews) > 20:
-                cluster_indices = cluster(all_normalized_im_rews, clusters=20)
-            else:
-                cluster_indices = np.arange(len(all_normalized_im_rews))
-
-            new_episode_to_observe = []
-            episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
-
-            fig = plt.figure()
-            thr = np.mean(step_moti_rews)
-            for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
-                print_traj(traj)
-            goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
-                                            facecolor='none', zorder=100)
-            fig.gca().add_patch(goal_region)
-            plt.show()
-            traj_to_observe = traj_to_observe[idxs_to_observe][cluster_indices]
+            # new_episode_to_observe = []
+            # episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
+            #
+            # fig = plt.figure()
+            # thr = np.mean(step_moti_rews)
+            # for i, traj in enumerate(traj_to_observe[idxs_to_observe][cluster_indices]):
+            #     print_traj(traj)
+            # goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height, linewidth=5, edgecolor='r',
+            #                                 facecolor='none', zorder=100)
+            # fig.gca().add_patch(goal_region)
+            # plt.show()
+            # traj_to_observe = traj_to_observe[idxs_to_observe][cluster_indices]
 
             for traj, key in zip(traj_to_observe, episodes_to_observe):
                 states_batch = []

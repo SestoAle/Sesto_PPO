@@ -41,7 +41,7 @@ EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
 import threading
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
@@ -178,7 +178,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 # plt.figure()
                 # plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
                 plot_data = self.im_rews[self.index]
-                plot_data = self.savitzky_golay(plot_data, 101, 3)
+                plot_data = self.savitzky_golay(plot_data, 21, 3)
                 # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
                 # plt.plot(range(len(plot_data)), plot_data)
                 plot_data = np.asarray(plot_data)
@@ -432,7 +432,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
 
     def plot_3d_map_in_time(self, world_model_in_time):
-
+        return
         min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
         max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
         for world_model in world_model_in_time:
@@ -535,12 +535,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             episodes_to_observe = []
 
             # Goal Area 1
-            # desired_point_y = 1
-            # goal_area_x = 447
-            # goal_area_z = 466
-            # goal_area_y = 1
-            # goal_area_height = 20
-            # goal_area_width = 44
+            desired_point_y = 1
+            goal_area_x = 447
+            goal_area_z = 466
+            goal_area_y = 1
+            goal_area_height = 20
+            goal_area_width = 44
 
             # Goal Area 2
             # desired_point_y = 21
@@ -574,12 +574,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             # Goal Area 4
 
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -606,6 +606,21 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
+                if traj[0][-1] > 0.5:
+                    continue
+                # to_observe = False
+                # for point in traj:
+                #     de_point = np.zeros(3)
+                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                #     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                #     if np.abs(de_point[0] - 461) < threshold and \
+                #             np.abs(de_point[1] - 102) < threshold and \
+                #             np.abs(de_point[2] - 15) < threshold:
+                #         to_observe = True
+                #         break
+                #
+                # if to_observe:
                 for i, point in enumerate(traj):
                     de_point = np.zeros(3)
                     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
@@ -613,8 +628,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 60
                     if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
                             goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
-                            np.abs(de_point[2] - desired_point_y) < threshold and \
-                            point[-1] <= 0.5:
+                            np.abs(de_point[2] - desired_point_y) < threshold:
                         #         if True:
                         traj_to_observe.append(traj)
                         episodes_to_observe.append(keys)
@@ -672,6 +686,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 sum_moti_rews_dict[idx_traj] = sum_moti_rew
 
             traj_to_observe = np.asarray(traj_to_observe)
+            print(len(traj_to_observe))
 
             return traj_to_observe, mean_moti_rews_dict, sum_moti_rews_dict
 
@@ -974,10 +989,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         if self.im_rews[index] is not None:
             im_rews = deepcopy(self.im_rews[index])
-            # im_rews = self.savitzky_golay(im_rews, 101, 5)
+            im_rews = self.savitzky_golay(im_rews, 21, 5)
             colors = []
             for i in im_rews:
-                if i > np.mean(np.clip(im_rews, np.percentile(im_rews, 10), np.max(im_rews))):
+                if i > np.mean(np.clip(im_rews, np.percentile(im_rews, 20), np.max(im_rews))):
                     colors.append((1, 0, 0, 1))
                 else:
                     colors.append(color)
@@ -1051,7 +1066,7 @@ class WorldModelApplication(QDialog):
             d = os.path.join('arrays', file)
             if os.path.isdir(d):
                 areas.append(file)
-
+        areas.sort()
         self.modelNameCombo.addItems([""] + areas)
         self.last_model_name = ""
 
@@ -1124,7 +1139,7 @@ class WorldModelApplication(QDialog):
 
         self.clusterSize = QSlider(Qt.Horizontal)
         self.clusterSize.setMinimumSize(200, 0)
-        self.clusterSize.setMaximum(20)
+        self.clusterSize.setMaximum(30)
         self.clusterSizeText = '&Clusters: {}'
         self.clusterSizeLabel = QLabel(self.clusterSizeText.format(self.clusterSize.value()))
         self.clusterSizeLabel.setBuddy(self.clusterSize)
@@ -1162,8 +1177,8 @@ class WorldModelApplication(QDialog):
         bottomLayout = QVBoxLayout()
         self.plotWidget = MplCanvas()
         bottomLayout.addWidget(self.plotWidget)
-        self.plotWidget.setMinimumSize(0, 50)
-        self.plotWidget.setMaximumSize(100000, 50)
+        self.plotWidget.setMinimumSize(0, 80)
+        self.plotWidget.setMaximumSize(100000, 80)
         self.canvas.im_rew_signal.connect(self.plot_curiosity)
 
         # bottomLayout.addStretch(1)
@@ -1175,7 +1190,7 @@ class WorldModelApplication(QDialog):
 
         self.load_thread = None
         self.setLayout(mainLayout)
-        self.resize(1024, 600)
+        self.resize(1980, 1024)
 
     class MyThread(QThread):
         finished = pyqtSignal()
