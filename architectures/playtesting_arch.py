@@ -103,6 +103,10 @@ def network_spec_rnd_predictor(states):
 
     global_state = agent
     global_state = tf.reshape(global_state, (-1, 3 * 32))
+
+    goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+    global_state = tf.concat([global_state, goal_weight])
+
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
 
@@ -154,6 +158,8 @@ def network_spec_rnd_target(states):
 
     global_state = agent
     global_state = tf.reshape(global_state, (-1, 3 * 32))
+    goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+    global_state = tf.concat([global_state, goal_weight])
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
 

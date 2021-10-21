@@ -87,7 +87,7 @@ import collections
 def trajectories_to_pos_buffer(trajectories, tau=1/40):
     pos_buffer = dict()
     count = 0
-    for traj in list(trajectories.values())[:]:
+    for traj in list(trajectories.values())[:100]:
         count += 1
         # if traj[-1][-1] < 0.4 or traj[-1][-1] > 0.6:
         #     continue
@@ -396,20 +396,20 @@ if __name__ == '__main__':
             # goal_area_width = 15
 
             # Goal Area 3
-            desired_point_y = 28
-            goal_area_x = 35
-            goal_area_z = 18
-            goal_area_y = 28
-            goal_area_height = 44
-            goal_area_width = 44
+            # desired_point_y = 28
+            # goal_area_x = 35
+            # goal_area_z = 18
+            # goal_area_y = 28
+            # goal_area_height = 44
+            # goal_area_width = 44
 
             # Goal Area 4
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -438,21 +438,21 @@ if __name__ == '__main__':
             pos_buffer = dict()
             # Get only those trajectories that touch the desired points
             for keys, traj in zip(list(trajectories.keys())[:], list(trajectories.values())[:]):
-                to_observe = False
-                if traj[0][-1] > 0.5:
-                    continue
-                for point in traj:
-                    de_point = np.zeros(3)
-                    de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
-                    de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
-                    de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
-                    if np.abs(de_point[0] - 461) < threshold and \
-                            np.abs(de_point[1] - 102) < threshold and \
-                            np.abs(de_point[2] - 15) < threshold:
-                        to_observe = True
-                        break
-
-                if to_observe:
+                # to_observe = False
+                    if traj[0][-1] > 0.5:
+                        continue
+                # for point in traj:
+                #     de_point = np.zeros(3)
+                #     de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
+                #     de_point[1] = ((np.asarray(point[1]) + 1) / 2) * 500
+                #     de_point[2] = ((np.asarray(point[2]) + 1) / 2) * 40
+                #     if np.abs(de_point[0] - 461) < threshold and \
+                #             np.abs(de_point[1] - 102) < threshold and \
+                #             np.abs(de_point[2] - 15) < threshold:
+                #         to_observe = True
+                #         break
+                #
+                # if to_observe:
                     for i, point in enumerate(traj):
                         de_point = np.zeros(3)
                         de_point[0] = ((np.asarray(point[0]) + 1) / 2) * 500
@@ -490,7 +490,7 @@ if __name__ == '__main__':
             # for id in cluster_indices:
             #     new_episode_to_observe.append(episodes_to_observe[id])
             # episodes_to_observe = new_episode_to_observe
-
+            peaks = []
             # Get the value of the motivation and imitation models of the extracted trajectories
             for key, traj, idx_traj in zip(episodes_to_observe, traj_to_observe, range(len(traj_to_observe))):
                 states_batch = []
@@ -538,11 +538,13 @@ if __name__ == '__main__':
 
                 moti_rew = motivation.eval(states_batch)
                 moti_rews.append(moti_rew)
+                peaks = np.max(moti_rew)
                 step_moti_rews.extend(moti_rew)
                 points.extend([k['global_in'] for k in states_batch])
                 moti_rew = np.mean(moti_rew)
                 sum_moti_rews.append(moti_rew)
                 sum_moti_rews_dict[idx_traj] = moti_rew
+                peaks = np.max(moti_rew)
 
 
             # # Try to print points that have high value of IM
@@ -599,6 +601,11 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
+
+            peaks = np.asarray(peaks)
+            print(np.shape(peaks))
+            st_peak_traj_indexes = np.argpartition(peaks, -20)[-20:]
+            idxs_to_observe = st_peak_traj_indexes
 
             # Plot the trajectories
             fig = plt.figure()
@@ -700,12 +707,17 @@ if __name__ == '__main__':
                     state = dict(global_in=state)
                     states_batch.append(state)
                     actions_batch.append(action)
+                    de_point = np.zeros(3)
+                    if goal_area_x < de_point[0] < (goal_area_x + goal_area_width) and \
+                            goal_area_z < de_point[1] < (goal_area_z + goal_area_height) and \
+                            np.abs(de_point[2] - desired_point_y) < threshold:
+                        break
 
                 im_rew = motivation.eval(states_batch)
                 plt.figure()
-                plt.title("im: {}".format(np.sum(im_rew)))
-                im_rew = savitzky_golay(im_rew, 51, 3)
-                im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                plt.title("sum: {}, mean: {}".format(np.sum(im_rew), np.mean(im_rew)))
+                # im_rew = savitzky_golay(im_rew, 51, 3)
+                # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
 
                 print(key)
                 all_normalized_im_rews.append(im_rew)
@@ -728,7 +740,7 @@ if __name__ == '__main__':
                 f.close()
 
                 fig = plt.figure()
-                print_traj_with_diff(traj, im_rew, thr)
+                print_traj(traj)
                 goal_region = patches.Rectangle((goal_area_x, goal_area_z), goal_area_width, goal_area_height,
                                                 linewidth=5, edgecolor='r',
                                                 facecolor='none', zorder=100)

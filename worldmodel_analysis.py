@@ -6,6 +6,7 @@ from math import factorial
 from copy import deepcopy
 import seaborn as sns
 import os
+from sklearn.svm import OneClassSVM
 
 sns.set_theme(style="dark")
 from scipy.interpolate import splprep
@@ -196,6 +197,18 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             plt.close('all')
             if self.index == -1 or self.index == len(self.line_visuals):
                 return
+
+            if self.im_rews[self.index] is not None:
+                plt.figure()
+                print(len(self.im_rews[self.index]))
+                plt.title("sum: {}, mean: {}".format(self.sum_moti_rews_dict[self.index], self.mean_moti_rews_dict[self.index]))
+                plot_data = self.im_rews[self.index]
+                # plot_data = self.savitzky_golay(plot_data, 21, 3)
+                # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+                # plt.plot(range(len(plot_data)), plot_data)
+                plot_data = np.asarray(plot_data)
+                # self.im_rew_signal.emit(plot_data)
+                plt.plot(range(len(plot_data)), plot_data)
 
                 if self.actions[self.index] is not None:
                     plt.figure()
@@ -535,12 +548,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             episodes_to_observe = []
 
             # Goal Area 1
-            desired_point_y = 1
-            goal_area_x = 447
-            goal_area_z = 466
-            goal_area_y = 1
-            goal_area_height = 20
-            goal_area_width = 44
+            # desired_point_y = 1
+            # goal_area_x = 447
+            # goal_area_z = 466
+            # goal_area_y = 1
+            # goal_area_height = 20
+            # goal_area_width = 44
 
             # Goal Area 2
             # desired_point_y = 21
@@ -574,12 +587,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             # Goal Area 4
 
-            # desired_point_y = 1
-            # goal_area_x = 442
-            # goal_area_z = 38
-            # goal_area_y = 1
-            # goal_area_height = 65
-            # goal_area_width = 46
+            desired_point_y = 1
+            goal_area_x = 442
+            goal_area_z = 38
+            goal_area_y = 1
+            goal_area_height = 65
+            goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -710,10 +723,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         print("Min sum moti: {}".format(np.min(sum_moti_rews)))
         print(" ")
 
-        # Get those trajectories that have an high motivation reward AND a low imitation reward
-        mean_moti_rews_dict = {k: v for k, v in
-                               sorted(mean_moti_rews_dict.items(), key=lambda item: item[1], reverse=True)}
-
         # im_heatmap = []
         filler = np.zeros((66))
         # for traj in traj_to_observe:
@@ -744,11 +753,17 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         #         im_heatmap.append(list(position) + [im])
 
         moti_to_observe = []
-        print(self.mean_moti_thr)
+        mean_to_observe = []
+        sum_to_observe = []
         for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
-            if v > self.mean_moti_thr and sum_moti_rews_dict[k] > self.sum_moti_thr:
+            if v > 0 and sum_moti_rews_dict[k] > 0:
                 moti_to_observe.append(k)
+                mean_to_observe.append(v)
+                sum_to_observe.append(sum_moti_rews_dict[k])
+
         moti_to_observe = np.reshape(moti_to_observe, -1)
+        mean_to_observe = np.asarray(mean_to_observe)
+        sum_to_observe = np.asarray(sum_to_observe)
 
         idxs_to_observe = moti_to_observe
         print(moti_to_observe)
@@ -758,6 +773,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         all_normalized_im_rews = []
         all_sum_fitlered_im_rews = []
+        all_points = []
+        all_im_rews = []
         # Plot the trajectories
         for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
             states_batch = []
@@ -777,19 +794,72 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 states_batch.append(state)
 
             im_rew = motivation.eval(states_batch)
+            all_im_rews.extend(im_rew)
+            all_points.extend([k['global_in'] for k in states_batch])
             # im_rew = savitzky_golay(im_rew, 51, 3)
             # im_rew = (im_rew - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
             all_normalized_im_rews.append(im_rew)
             all_sum_fitlered_im_rews.append(np.sum(im_rew))
 
+        all_points = np.asarray(all_points)
+        all_im_rews = np.asarray(all_im_rews)
+        # indices = np.where(all_im_rews > np.asarray(0.08))
+        # indices = np.reshape(indices, -1)
+        # points_to_plot = deepcopy(all_points)
+        # points_to_plot = points_to_plot[indices]
+        #
+        # points_to_plot[:, 0] = ((points_to_plot[:, 0] + 1) / 2) * 500
+        # points_to_plot[:, 1] = ((points_to_plot[:, 1] + 1) / 2) * 500
+        # points_to_plot[:, 2] = ((points_to_plot[:, 2] + 1) / 2) * 60
+        # points_to_plot = points_to_plot.astype(int)
+        # Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
+        # covermap = Scatter3D(parent=view.scene)
+        # covermap.set_gl_state('additive', blend=True, depth_test=True)
+        # covermap.set_data(points_to_plot[:, :3], face_color=(0, 1, 0, 1), symbol='o', size=2, edge_width=0,
+        #                   edge_color=(0, 1, 0, 1), scaling=True)
+        #
+        indices = np.where(all_points[:, 6] > np.asarray(0.5))
+        indices = np.reshape(indices, -1)
+        points_to_plot = deepcopy(all_points)
+        points_to_plot = points_to_plot[indices]
+
+        points_to_plot[:, 0] = ((points_to_plot[:, 0] + 1) / 2) * 500
+        points_to_plot[:, 1] = ((points_to_plot[:, 1] + 1) / 2) * 500
+        points_to_plot[:, 2] = ((points_to_plot[:, 2] + 1) / 2) * 60
+        points_to_plot = points_to_plot.astype(int)
+        Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
+        covermap = Scatter3D(parent=view.scene)
+        covermap.set_gl_state('additive', blend=True, depth_test=True)
+        covermap.set_data(points_to_plot[:, :3], face_color=(1, 0, 0, 1), symbol='o', size=2, edge_width=0,
+                          edge_color=(1, 0, 0, 1), scaling=True)
+
         # if False:
         if len(all_normalized_im_rews) > self.cluster_size:
-            cluster_indices = cluster(all_normalized_im_rews, clusters=self.cluster_size)
+            cluster_indices = cluster(all_normalized_im_rews, clusters=self.cluster_size,
+                                      means=mean_to_observe, sums=sum_to_observe)
         else:
             cluster_indices = np.arange(len(all_normalized_im_rews))
 
         # episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
         all_normalized_im_rews = np.asarray(all_normalized_im_rews)
+
+        # Get the trajectory with the highest peak
+
+        # highest_peak_traj_indexes = np.argpartition(np.max(all_normalized_im_rews, axis=1), -20)[-20:]
+        # highest_peak_traj_indexes = np.arange(40)
+        #
+        # highest_peak_traj_index = np.unravel_index(np.argmax(all_normalized_im_rews), np.shape(all_normalized_im_rews))[0]
+        # cluster_indices = np.append(cluster_indices, highest_peak_traj_index)
+        # cluster_indices = np.asarray([highest_peak_traj_index])
+        # cluster_indices = np.asarray(highest_peak_traj_indexes)
+        new_sum_moti_rews_dict = dict()
+        new_mean_moti_rews_dict = dict()
+        for a, i in enumerate(cluster_indices):
+            new_sum_moti_rews_dict[a] = mean_to_observe[i]
+            new_mean_moti_rews_dict[a] = sum_to_observe[i]
+
+        # self.sum_moti_rews_dict = new_sum_moti_rews_dict
+        # self.mean_moti_rews_dict = new_mean_moti_rews_dict
 
         # for i, traj, im_rews, key in zip(range(len(cluster_indices)),
         #                                  traj_to_observe[idxs_to_observe][cluster_indices],
@@ -1035,7 +1105,7 @@ class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = plt.gcf()
         self.axes = plt.gca()
-        plt.axis('off')
+        # plt.axis('off')
         plt.clf()
         FigureCanvasQTAgg.__init__(self, self.fig)
         FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -1045,7 +1115,7 @@ class MplCanvas(FigureCanvasQTAgg):
         plt.clf()
         plt.plot(x, y)
         # plt.xlim(0, 100)
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         self.draw()
 
     def clear_plot(self):
@@ -1190,7 +1260,7 @@ class WorldModelApplication(QDialog):
 
         self.load_thread = None
         self.setLayout(mainLayout)
-        self.resize(1980, 1024)
+        self.resize(1024, 800)
 
     class MyThread(QThread):
         finished = pyqtSignal()

@@ -153,7 +153,7 @@ class EpisodeThreaded(Thread):
                     v_internal = v_internal_n
 
                 if self.motivation:
-                    self.parallel_buffer['motivation'][self.index]['state_n'].append(state_n_rnd)
+                    self.parallel_buffer['motivation'][self.index]['state_n'].append(state_n)
 
                 if self.reward_model:
                     self.parallel_buffer['reward_model'][self.index]['state'].append(state)
