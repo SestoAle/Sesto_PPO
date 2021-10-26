@@ -64,8 +64,8 @@ def network_spec_rnd_predictor(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal_weight, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 2, 3, 49, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -92,6 +92,11 @@ def network_spec_rnd_predictor(states):
     global_state = agent
     #global_state = embedding(global_state, indices=501, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
+    # bs, _ = shape_list(goal_weight)
+    # win_weight = tf.ones((bs, 1))
+    # goal_weight = tf.concat([win_weight, goal_weight], axis=1)
+    # goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+    # global_state = tf.concat([global_state, goal_weight], axis=1)
     #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
 
 
@@ -123,8 +128,8 @@ def network_spec_rnd_target(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal_weight, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 2, 3, 49, 12, 2], axis=1)
 
     agent_plane_x = ((agent_plane_x + 1) / 2) * 500
     agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -152,8 +157,11 @@ def network_spec_rnd_target(states):
     global_state = agent
     #global_state = embedding(global_state, indices=501, size=32, name='embs')
     global_state = tf.reshape(global_state, (-1, 3 * 32))
-    #global_state = linear(global_state, 1024, name='global_embs', activation=tf.nn.leaky_relu)
-
+    # bs, _ = shape_list(goal_weight)
+    # win_weight = tf.ones((bs, 1))
+    # goal_weight = tf.concat([win_weight, goal_weight], axis=1)
+    # goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+    # global_state = tf.concat([global_state, goal_weight], axis=1)
 
     global_state = linear(global_state, 1024, name='latent_1', activation=tf.nn.leaky_relu,
 
@@ -175,8 +183,8 @@ def network_spec_rnd(states):
 
     # agent, goal, rays, obs = tf.split(global_state, [4, 3, 12, 21], axis=1)
     # Jump
-    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal, grid, rays, inventory = \
-        tf.split(global_state, [1, 1, 1, 1, 1, 5, 49, 12, 2], axis=1)
+    agent_plane_x, agent_plane_z, agent_jump, is_grounded, can_double_jump, goal_weight, goal, grid, rays, inventory = \
+        tf.split(global_state, [1, 1, 1, 1, 1, 2, 3, 49, 12, 2], axis=1)
 
     # agent_plane_x = ((agent_plane_x + 1) / 2) * 220
     # agent_plane_x = tf.cast(agent_plane_x, tf.int32)
@@ -189,6 +197,8 @@ def network_spec_rnd(states):
 
     agent = tf.concat([agent_plane_x, agent_plane_z, agent_jump], axis=1)
     global_state = agent
+    goal_weight = linear(goal_weight, 1024, name='goal_embs', activation=tf.nn.relu)
+    global_state = tf.concat([global_state, goal_weight])
 
     # global_state = embedding(global_state, indices=280, size=32, name='embs')
     # global_state = tf.reshape(global_state, (-1, 3 * 32))

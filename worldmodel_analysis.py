@@ -6,6 +6,8 @@ from math import factorial
 from copy import deepcopy
 import seaborn as sns
 import os
+from PyQt5.Qt import QStandardItemModel, QStandardItem
+import similaritymeasures
 from sklearn.svm import OneClassSVM
 
 sns.set_theme(style="dark")
@@ -22,9 +24,11 @@ from architectures.bug_arch_very_acc_final import *
 from motivation.random_network_distillation import RND
 from clustering.cluster_im import cluster
 from clustering.clustering import cluster_trajectories as cluster_simple
+from clustering.clustering import frechet_distance
 from matplotlib import cm
 import collections
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from sklearn.metrics import pairwise_distances
 
 
 from vispy import app, visuals, scene, gloo
@@ -36,7 +40,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget, QFrame, QStackedLayout)
+        QVBoxLayout, QWidget, QFrame, QStackedLayout, QListView, QTreeView)
 
 EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
@@ -53,6 +57,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     cluster_size_signal = pyqtSignal(int)
     in_time_signal = pyqtSignal(int)
     im_rew_signal = pyqtSignal(np.ndarray)
+    traj_list_signal = pyqtSignal(dict)
+    cluster_selected_signal = pyqtSignal(int)
 
     def __init__(self, *args, **kwargs):
         self.current_line = None
@@ -70,10 +76,13 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.camera = None
         self.actions = []
         self.colors = []
+        self.gradients = []
         self.trajs = []
         self.view = None
         self.default_colors = (0, 1, 1, 1)
         self.default_color = False
+        self.gradient_color = False
+        self.current_color_mode = 'none'
         self.one_line = False
         self.covermap = None
         self.heatmap = None
@@ -86,6 +95,9 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         self.mean_moti_thr = 0.04
         self.sum_moti_thr = 16
+        self.tmp_line = None
+        self.tmp_traj = None
+        self.tmp_im_rew = None
 
         super(WorlModelCanvas, self).__init__()
         self.unfreeze()
@@ -122,7 +134,16 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             self.reset_index()
 
         if event.key.name == 'F1':
-            self.change_line_colors()
+            if self.current_color_mode == 'none':
+                self.change_line_colors('gradient')
+                self.current_color_mode = 'gradient'
+            elif self.current_color_mode == 'gradient':
+                self.change_line_colors('default')
+                self.current_color_mode = 'default'
+            elif self.current_color_mode == 'default':
+                self.change_line_colors('none')
+                self.current_color_mode = 'none'
+
 
         if event.key.name == 'F2':
             self.change_map()
@@ -154,10 +175,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         if event.key.name == 'Up' or event.key.name == 'Down':
 
             if event.key.name == 'Up':
-                self.index += 1
+                self.index -= 1
 
             if event.key.name == 'Down':
-                self.index -= 1
+                self.index += 1
 
             self.delete_agent()
 
@@ -168,24 +189,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 self.hide_all_lines()
                 self.toggle_lines()
                 self.im_rew_signal.emit(np.asarray([]))
+                self.cluster_selected_signal.emit(-1)
                 return
 
-            line_index = self.index
-
-            self.hide_all_lines()
-            self.line_visuals[line_index].visible = True
-
-            if self.im_rews[line_index] is not None:
-                # plt.figure()
-                # plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
-                plot_data = self.im_rews[self.index]
-                plot_data = self.savitzky_golay(plot_data, 21, 3)
-                # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
-                # plt.plot(range(len(plot_data)), plot_data)
-                plot_data = np.asarray(plot_data)
-                self.im_rew_signal.emit(plot_data)
-
-            self.one_line=True
+            self.plot_one_traj(self.index)
 
         if event.key.name == 'A':
             self.delete_agent()
@@ -200,7 +207,6 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             if self.im_rews[self.index] is not None:
                 plt.figure()
-                print(len(self.im_rews[self.index]))
                 plt.title("sum: {}, mean: {}".format(self.sum_moti_rews_dict[self.index], self.mean_moti_rews_dict[self.index]))
                 plot_data = self.im_rews[self.index]
                 # plot_data = self.savitzky_golay(plot_data, 21, 3)
@@ -216,22 +222,39 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
                 plt.show()
 
+    def plot_one_traj(self, line_index):
+        self.hide_all_lines()
+        self.line_visuals[line_index].visible = True
+        self.cluster_selected_signal.emit(line_index)
 
-    def change_line_colors(self):
-        if self.default_color:
-            self.default_color = False
-            for i, v in enumerate(self.line_visuals):
-                v.set_data(meshdata=v._meshdata)
-                colors = np.ones((len(v._meshdata._vertices), 4))
-                colors[:, ] = self.colors[i]
-                v._meshdata.set_vertex_colors(colors)
-        else:
-            self.default_color = True
-            for i, v in enumerate(self.line_visuals):
-                v.set_data(meshdata=v._meshdata)
-                colors = np.ones((len(v._meshdata._vertices), 4))
+        if self.im_rews[line_index] is not None:
+            self.plot_im_rews(self.im_rews[line_index])
+
+        self.one_line = True
+
+    def plot_im_rews(self, im_rews):
+        # plt.figure()
+        # plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
+        plot_data = im_rews
+        plot_data = self.savitzky_golay(plot_data, 21, 3)
+        # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
+        # plt.plot(range(len(plot_data)), plot_data)
+        plot_data = np.asarray(plot_data)
+        self.im_rew_signal.emit(plot_data)
+
+    def change_line_colors(self, mode='default'):
+        for i, v in enumerate(self.line_visuals):
+            v.set_data(meshdata=v._meshdata)
+            colors = np.ones((len(v._meshdata._vertices), 4))
+            if mode == 'default':
                 colors[:, ] = self.default_colors
-                v._meshdata.set_vertex_colors(colors)
+            elif mode == 'gradient':
+                colors[:, ] = self.gradients[i]
+            else:
+                colors[:, ] = self.colors[i]
+
+            v._meshdata.set_vertex_colors(colors)
+
 
     def toggle_lines(self):
         if self.index == -1 or self.index == len(self.line_visuals) or not self.one_line:
@@ -245,6 +268,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         if self.line_visuals is not None and len(self.line_visuals) > 0:
             for v in self.line_visuals:
                 v.visible = False
+
+        if self.tmp_line is not None:
+            self.tmp_line.visible = False
+            self.tmp_line = None
+            self.tmp_traj = None
+            self.tmp_im_rew = None
 
     def reset_index(self):
         if self.index == -1 or self.index == len(self.line_visuals):
@@ -307,6 +336,9 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         del self.line_visuals[:]
         self.line_visuals = []
 
+        if self.tmp_line is not None:
+            self.tmp_line.visible = False
+
         if not only_visuals:
             del self.im_rews[:]
             self.im_rews = []
@@ -317,10 +349,17 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             del self.colors[:]
             self.colors = []
 
+            del self.gradients[:]
+            self.gradients = []
+
             del self.trajs[:]
             self.trajs = []
 
             self.index = -1
+
+            self.tmp_line = None
+            self.tmp_traj = None
+            self.tmp_im_rew = None
 
     def set_maps(self, heatmap, covermap):
         self.heatmap = heatmap
@@ -586,7 +625,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 44
 
             # Goal Area 4
-
+            #
             desired_point_y = 1
             goal_area_x = 442
             goal_area_z = 38
@@ -725,38 +764,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         # im_heatmap = []
         filler = np.zeros((66))
-        # for traj in traj_to_observe:
-        #     states_batch = []
-        #     actions_batch = []
-        #     # key = episodes_to_observe[idx]
-        #
-        #     # for state, action in zip(traj, actions[key]):
-        #     for state in traj:
-        #         # TODO: In here I will de-normalize and fill the state. Remove this if the states are saved in the
-        #         # TODO: correct form
-        #         state = np.asarray(state)
-        #         state = np.concatenate([state, filler])
-        #         state[-2:] = state[3:5]
-        #
-        #         # Create the states batch to feed the models
-        #         state = dict(global_in=state)
-        #         states_batch.append(state)
-        #
-        #     im_rew = motivation.eval(states_batch)
-        #     im_rew = self.savitzky_golay(im_rew, 101, 3)
-        #     for state, im in zip(states_batch, im_rew):
-        #         position = np.zeros(3)
-        #         position[0] = (((state['global_in'][0] + 1) / 2) * 500)
-        #         position[1] = (((state['global_in'][1] + 1) / 2) * 500)
-        #         position[2] = (((state['global_in'][2] + 1) / 2) * 60)
-        #         position = position.astype(int)
-        #         im_heatmap.append(list(position) + [im])
 
         moti_to_observe = []
         mean_to_observe = []
         sum_to_observe = []
         for k, v in zip(mean_moti_rews_dict.keys(), mean_moti_rews_dict.values()):
-            if v > 0 and sum_moti_rews_dict[k] > 0:
+            if v > self.mean_moti_thr and sum_moti_rews_dict[k] > self.sum_moti_thr:
                 moti_to_observe.append(k)
                 mean_to_observe.append(v)
                 sum_to_observe.append(sum_moti_rews_dict[k])
@@ -775,8 +788,9 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         all_sum_fitlered_im_rews = []
         all_points = []
         all_im_rews = []
+        traj_to_observe = traj_to_observe[idxs_to_observe]
         # Plot the trajectories
-        for traj, idx in zip(traj_to_observe[idxs_to_observe], idxs_to_observe):
+        for traj, idx in zip(traj_to_observe, idxs_to_observe):
             states_batch = []
             actions_batch = []
             # key = episodes_to_observe[idx]
@@ -818,40 +832,41 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         # covermap.set_data(points_to_plot[:, :3], face_color=(0, 1, 0, 1), symbol='o', size=2, edge_width=0,
         #                   edge_color=(0, 1, 0, 1), scaling=True)
         #
-        indices = np.where(all_points[:, 6] > np.asarray(0.5))
-        indices = np.reshape(indices, -1)
-        points_to_plot = deepcopy(all_points)
-        points_to_plot = points_to_plot[indices]
-
-        points_to_plot[:, 0] = ((points_to_plot[:, 0] + 1) / 2) * 500
-        points_to_plot[:, 1] = ((points_to_plot[:, 1] + 1) / 2) * 500
-        points_to_plot[:, 2] = ((points_to_plot[:, 2] + 1) / 2) * 60
-        points_to_plot = points_to_plot.astype(int)
-        Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
-        covermap = Scatter3D(parent=view.scene)
-        covermap.set_gl_state('additive', blend=True, depth_test=True)
-        covermap.set_data(points_to_plot[:, :3], face_color=(1, 0, 0, 1), symbol='o', size=2, edge_width=0,
-                          edge_color=(1, 0, 0, 1), scaling=True)
+        # indices = np.where(all_points[:, 6] > np.asarray(0.5))
+        # indices = np.reshape(indices, -1)
+        # points_to_plot = deepcopy(all_points)
+        # points_to_plot = points_to_plot[indices]
+        #
+        # points_to_plot[:, 0] = ((points_to_plot[:, 0] + 1) / 2) * 500
+        # points_to_plot[:, 1] = ((points_to_plot[:, 1] + 1) / 2) * 500
+        # points_to_plot[:, 2] = ((points_to_plot[:, 2] + 1) / 2) * 60
+        # points_to_plot = points_to_plot.astype(int)
+        # Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
+        # covermap = Scatter3D(parent=view.scene)
+        # covermap.set_gl_state('additive', blend=True, depth_test=True)
+        # covermap.set_data(points_to_plot[:, :3], face_color=(1, 0, 0, 1), symbol='o', size=2, edge_width=0,
+        #                   edge_color=(1, 0, 0, 1), scaling=True)
 
         # if False:
         if len(all_normalized_im_rews) > self.cluster_size:
-            cluster_indices = cluster(all_normalized_im_rews, clusters=self.cluster_size,
-                                      means=mean_to_observe, sums=sum_to_observe)
+            # cluster_indices, centroids, cluster_labels = cluster(all_normalized_im_rews, clusters=self.cluster_size,
+            #                           means=mean_to_observe, sums=sum_to_observe)
+            cluster_indices, centroids, cluster_labels = cluster_simple(traj_to_observe, latents=all_normalized_im_rews,
+                                                                 means=mean_to_observe, num_clusters=self.cluster_size)
         else:
             cluster_indices = np.arange(len(all_normalized_im_rews))
+            centroids = all_sum_fitlered_im_rews
+            cluster_labels = np.asarray([])
+
+
+        self.unfreeze()
+        self.centroids = centroids
+        self.cluster_labels = cluster_labels
+        self.freeze()
 
         # episodes_to_observe = np.asarray(episodes_to_observe)[idxs_to_observe][cluster_indices]
         all_normalized_im_rews = np.asarray(all_normalized_im_rews)
 
-        # Get the trajectory with the highest peak
-
-        # highest_peak_traj_indexes = np.argpartition(np.max(all_normalized_im_rews, axis=1), -20)[-20:]
-        # highest_peak_traj_indexes = np.arange(40)
-        #
-        # highest_peak_traj_index = np.unravel_index(np.argmax(all_normalized_im_rews), np.shape(all_normalized_im_rews))[0]
-        # cluster_indices = np.append(cluster_indices, highest_peak_traj_index)
-        # cluster_indices = np.asarray([highest_peak_traj_index])
-        # cluster_indices = np.asarray(highest_peak_traj_indexes)
         new_sum_moti_rews_dict = dict()
         new_mean_moti_rews_dict = dict()
         for a, i in enumerate(cluster_indices):
@@ -865,15 +880,57 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         #                                  traj_to_observe[idxs_to_observe][cluster_indices],
         #                                  all_normalized_im_rews[cluster_indices], episodes_to_observe):
         for i, traj, im_rews in zip(range(len(cluster_indices)),
-                                    traj_to_observe[idxs_to_observe][cluster_indices],
+                                    traj_to_observe[cluster_indices],
                                     all_normalized_im_rews[cluster_indices]):
 
             self.im_rews.append(im_rews)
             self.actions.append(None)
             self.trajs.append(traj)
 
-            # self.print_3d_traj(traj, index=i)
+        self.unfreeze()
+        all_distances = []
+
+        for tr1 in self.trajs:
+            tr1_dist = []
+            for tr2 in self.trajs:
+                tr1_dist.append(frechet_distance(tr1, tr2))
+            all_distances.append(tr1_dist)
+
+        all_distances = np.asarray(all_distances)
+        mean_distances = np.mean(all_distances, axis=1)
+
+        min = np.argmin(mean_distances)
+
+        self.all_distances = all_distances[min]
+        self.all_distances = np.clip(self.all_distances, np.percentile(self.all_distances, 5), np.percentile(self.all_distances, 95))
+
+        self.freeze()
+
+        for i, traj, im_rews in zip(range(len(cluster_indices)),
+                                    traj_to_observe[cluster_indices],
+                                    all_normalized_im_rews[cluster_indices]):
             self.print_3d_traj(traj, index=i)
+
+        tree_dict = {
+            'cluster_trajs': {},
+            'sub_trajs': {},
+            'sub_latents': {}
+        }
+        count = 0
+        for i, centroid_idx in enumerate(cluster_indices):
+            traj_centroid = traj_to_observe[centroid_idx]
+            tree_dict['cluster_trajs']['cl_{}'.format(i)] = traj_centroid
+            tree_dict['sub_trajs']['cl_{}'.format(i)] = []
+            tree_dict['sub_latents']['cl_{}'.format(i)] = []
+            if len(self.cluster_labels > 0):
+                cluster_label = self.cluster_labels[centroid_idx]
+                sub_traj_idxs = np.where(self.cluster_labels == cluster_label)
+                for sub_traj, sub_latent in zip(traj_to_observe[sub_traj_idxs], all_normalized_im_rews[sub_traj_idxs]):
+                    count += 1
+                    tree_dict['sub_trajs']['cl_{}'.format(i)].append(sub_traj)
+                    tree_dict['sub_latents']['cl_{}'.format(i)].append(sub_latent)
+
+        self.traj_list_signal.emit(tree_dict)
 
         # im_heatmap = np.asarray(im_heatmap)
         # im_heatmap[:, 3] = (im_heatmap[:, 3] - np.min(im_heatmap[:, 3]))/(np.max(im_heatmap[:, 3]) - np.min(im_heatmap[:, 3]))
@@ -1029,13 +1086,17 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             print(e)
         return motivation
 
-    def print_3d_traj(self, traj, index=None, with_denorm=True, max=None, min=None):
+    def print_3d_traj(self, traj, index=None, with_denorm=True, max=None, min=None, tmp_line=False, im_rews=None,
+                      color=None):
         """
         Method that will plot the trajectory
         """
-        ep_trajectory = np.asarray(traj)
+        ep_trajectory = np.asarray(deepcopy(traj))
         smooth_window = self.smooth_window
-        color = 'c'
+
+        if im_rews is None:
+            if self.im_rews[index] is not None:
+                im_rews = self.im_rews[index]
 
         if with_denorm:
             ep_trajectory[:, 0] = ((np.asarray(ep_trajectory[:, 0]) + 1) / 2) * 500
@@ -1048,34 +1109,62 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         smoothed_traj[:, 1] = self.savitzky_golay(smoothed_traj[:, 1], smooth_window, 3)
         smoothed_traj[:, 2] = self.savitzky_golay(smoothed_traj[:, 2], smooth_window, 3)
 
-        if index is None:
-            color = (0, 0.90, 0.90, 1)
-        else:
-            color = self.random_color(index)
+        if color is None:
+            default_colors = [(0, 255, 0), (0, 255, 255), (255, 0, 255)]
 
-        # color = convert_to_rgb(1, 20, index, colors=[(0, 255, 255), (255, 0, 255)])
-        # color = cm.get_cmap('tab20b')(index % 20)
-        color = cm.get_cmap('tab20b')(traj[0][-1] % 20)
+            cluster_zero = np.argmin(self.all_distances)
+            all_distances = np.asarray(self.all_distances)
+            max_distance = np.max(all_distances)
+            min_distance = np.min(all_distances)
+            dist_from_cluster_zero = frechet_distance(traj, self.trajs[cluster_zero])
+            dist_from_cluster_zero = np.clip(dist_from_cluster_zero, min_distance, max_distance)
+            color = self.convert_to_rgb(min_distance, max_distance, dist_from_cluster_zero, default_colors)
 
-        if self.im_rews[index] is not None:
-            im_rews = deepcopy(self.im_rews[index])
-            im_rews = self.savitzky_golay(im_rews, 21, 5)
-            colors = []
+        if im_rews is not None:
+            im_rews = deepcopy(im_rews)
+            im_rews = self.savitzky_golay(im_rews, 51, 5)
+            im_rews = np.clip(im_rews, np.percentile(im_rews, 25), np.max(im_rews))
+            max_im_rews = np.max(im_rews)
+            mean_im_rews = np.mean(im_rews)
+            gradient = []
+            vertex_gradient = []
             for i in im_rews:
-                if i > np.mean(np.clip(im_rews, np.percentile(im_rews, 20), np.max(im_rews))):
-                    colors.append((1, 0, 0, 1))
+                if i > mean_im_rews:
+                    traj_color = self.convert_to_rgb(mean_im_rews, max_im_rews, i,
+                                                     colors=[np.asarray(color)[:3] * 255, (255, 0, 0)])
+                    gradient.append(traj_color)
+                    for i in range(8):
+                        vertex_gradient.append(traj_color)
                 else:
-                    colors.append(color)
+                    gradient.append(color)
+                    for i in range(8):
+                        vertex_gradient.append(color)
+            colors = gradient
         else:
+            colors = color
+
+        if self.current_color_mode == 'default':
+            colors = self.default_colors
+        elif self.current_color_mode == 'gradient':
+            colors = gradient
+        elif self.current_color_mode == 'none':
             colors = color
 
         Tube3D = scene.visuals.create_visual_node(visuals.TubeVisual)
         p1 = Tube3D(parent=view.scene, points=smoothed_traj[:, :3], color=colors, radius=0.5)
-        # wire = WireframeFilter(width=0.5)
-        # p1.attach(wire)
         p1.shading_filter.enabled = False
-        self.line_visuals.append(p1)
-        self.colors.append(color)
+        if tmp_line:
+            if self.tmp_line is not None:
+                self.tmp_line.visible = False
+
+            p1.visible = True
+            self.tmp_line = p1
+            self.tmp_traj = traj
+            self.tmp_im_rew = im_rews
+        else:
+            self.line_visuals.append(p1)
+            self.colors.append(color)
+            self.gradients.append(vertex_gradient)
         return p1
 
     def savitzky_golay(self, y, window_size, order, deriv=0, rate=1):
@@ -1105,7 +1194,7 @@ class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         self.fig = plt.gcf()
         self.axes = plt.gca()
-        # plt.axis('off')
+        plt.axis('off')
         plt.clf()
         FigureCanvasQTAgg.__init__(self, self.fig)
         FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -1114,8 +1203,8 @@ class MplCanvas(FigureCanvasQTAgg):
     def plot(self, x, y):
         plt.clf()
         plt.plot(x, y)
-        # plt.xlim(0, 100)
-        # plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        plt.xlim(0, 501)
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
         self.draw()
 
     def clear_plot(self):
@@ -1183,12 +1272,28 @@ class WorldModelApplication(QDialog):
         self.smoothSlider.setSingleStep(2)
         self.smoothSlider.sliderReleased.connect(self.smooth_changed)
 
+        self.trajTreeView = QTreeView()
+        self.trajTreeViewLabel = QLabel('&Trajectories:')
+        self.trajTreeViewLabel.setBuddy(self.trajTreeView)
+        self.trajTreeView.setHeaderHidden(True)
+        self.trajTreeModel = QStandardItemModel()
+        self.treeRootNode = self.trajTreeModel.invisibleRootItem()
+        self.trajTreeView.setModel(self.trajTreeModel)
+        self.trajTreeView.expandAll()
+        self.trajTreeView.setMinimumSize(0, 500)
+        # self.trajTreeView.clicked.connect(self.tree_view_clicked)
+        self.trajTreeView.selectionModel().selectionChanged.connect(self.tree_view_selected)
+        self.canvas.traj_list_signal.connect(self.populateTreeView)
+        self.canvas.cluster_selected_signal.connect(self.tree_view_set_index)
+
         trajsLayout.addWidget(self.timeLabel)
         trajsLayout.addWidget(self.timeSlider)
         trajsLayout.addWidget(self.alphaLabel)
         trajsLayout.addWidget(self.alphaCombo)
         trajsLayout.addWidget(self.smoothLabel)
         trajsLayout.addWidget(self.smoothSlider)
+        trajsLayout.addWidget(self.trajTreeViewLabel)
+        trajsLayout.addWidget(self.trajTreeView)
         trajsLayout.addStretch(1)
         trajsLayout.setContentsMargins(20, 20, 20, 20)
         self.timeSlider.valueChanged.connect(self.time_slider_changed)
@@ -1260,7 +1365,7 @@ class WorldModelApplication(QDialog):
 
         self.load_thread = None
         self.setLayout(mainLayout)
-        self.resize(1024, 800)
+        self.resize(1920, 1080)
 
     class MyThread(QThread):
         finished = pyqtSignal()
@@ -1285,9 +1390,55 @@ class WorldModelApplication(QDialog):
         self.canvas.smooth_window = value
         self.canvas.remove_lines(only_visuals=True)
         for i, traj in enumerate(self.canvas.trajs):
-            p = canvas.print_3d_traj(traj, index=i, with_denorm=False)
+            p = self.canvas.print_3d_traj(traj, index=i, with_denorm=True)
             if self.canvas.index != i and self.canvas.index != -1 and self.canvas.index != len(self.canvas.trajs):
                 p.visible = False
+
+        if self.canvas.tmp_line is not None:
+            p = self.canvas.print_3d_traj(self.canvas.tmp_traj, index=None, with_denorm=True,
+                                          im_rews=self.canvas.tmp_im_rew)
+
+
+    def tree_view_clicked(self, index):
+        parent = index.parent().row()
+        if parent < 0:
+            self.canvas.plot_one_traj(index.row())
+            self.canvas.index = index.row()
+        else:
+            self.canvas.blockSignals(True)
+            self.trajTreeView.blockSignals(True)
+            self.canvas.plot_one_traj(index.parent().row())
+            self.canvas.index = index.parent().row()
+            self.canvas.print_3d_traj(self.trajTreeModel.itemFromIndex(index).data()[0], tmp_line=True,
+                                      im_rews=self.trajTreeModel.itemFromIndex(index).data()[1],
+                                      color=self.canvas.colors[index.parent().row()])
+            self.canvas.plot_im_rews(self.trajTreeModel.itemFromIndex(index).data()[1])
+            self.canvas.blockSignals(False)
+            self.trajTreeView.blockSignals(False)
+
+    def tree_view_selected(self, item):
+        if len(item.indexes()) > 0:
+            index = item.indexes()[0]
+            self.tree_view_clicked(index)
+
+    def tree_view_set_index(self, index):
+        if index == -1:
+            self.trajTreeView.selectionModel().clearSelection()
+        else:
+            self.trajTreeView.setCurrentIndex(self.trajTreeModel.index(index, 0))
+
+    def populateTreeView(self, treeDict):
+
+        for i, traj in enumerate(treeDict['sub_trajs'].keys()):
+            cl_item = QStandardItem('Cluster {}'.format(i))
+            cl_item.setEditable(False)
+            for j, sub_traj, sub_latent in zip(range(len(treeDict['sub_trajs'][traj])),
+                                               treeDict['sub_trajs'][traj], treeDict['sub_latents'][traj]):
+                sub_item = QStandardItem('Traj {}'.format(j))
+                sub_item.setData([sub_traj, sub_latent])
+                sub_item.setEditable(False)
+                cl_item.appendRow(sub_item)
+            self.treeRootNode.appendRow(cl_item)
 
     def name_combo_changed(self, model_name):
         if model_name == "" or self.last_model_name == model_name:
@@ -1335,6 +1486,7 @@ class WorldModelApplication(QDialog):
         self.filteringButton.setEnabled(False)
         self.timeSlider.setEnabled(False)
         self.alphaCombo.setEnabled(False)
+        self.clear_tree_view()
 
     def enable_inputs(self):
         self.modelNameCombo.setEnabled(True)
@@ -1351,10 +1503,15 @@ class WorldModelApplication(QDialog):
     def normalize_value(self, value):
        return round(((value - 0) / (100 - 0)) * (0.06 - 0.01) + 0.01, 3)
 
+    def clear_tree_view(self):
+        self.trajTreeModel.clear()
+        self.treeRootNode = self.trajTreeModel.invisibleRootItem()
+
     def change_thr_filtering(self):
         # The value of the mean threshold in percentage
         value = self.filteringMean.value()
         value = ((value - 0) / (100 - 0)) * (0.06 - 0.01) + 0.01
+        self.clear_tree_view()
         canvas.mean_moti_thr = value
         canvas.cluster_size = self.clusterSize.value()
         canvas.remove_lines()

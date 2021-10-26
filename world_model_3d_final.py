@@ -21,7 +21,7 @@ if len(physical_devices) > 0:
 
 name_good = 'bug_detector_gail_schifo_acc_com_irl_im_3_no_key_5_2_pl_c2=0.1_replay_random_buffer'
 
-model_name = 'play_4_500_3'
+model_name = 'play_4_500_6'
 reward_model_name = "vaffanculo_im_9000"
 
 def plot_map(map):
@@ -601,11 +601,6 @@ if __name__ == '__main__':
             idxs_to_observe = moti_to_observe
             print(moti_to_observe)
             print(idxs_to_observe)
-
-            peaks = np.asarray(peaks)
-            print(np.shape(peaks))
-            st_peak_traj_indexes = np.argpartition(peaks, -20)[-20:]
-            idxs_to_observe = st_peak_traj_indexes
 
             # Plot the trajectories
             fig = plt.figure()

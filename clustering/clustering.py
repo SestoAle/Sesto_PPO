@@ -5,6 +5,12 @@ import hdbscan
 from clustering.rdp import rdp_with_index, distance
 from joblib import Parallel, delayed
 import multiprocessing
+from sklearn.metrics import pairwise_distances_argmin_min
+from sklearn_extra.cluster import KMedoids
+from clustering.distances.discrete import FastDiscreteFrechetMatrix, FastDiscreteFrechetSparse, \
+    earth_haversine, euclidean
+from copy import deepcopy
+import time
 
 def compute_distance_matrix(trajectories, method="Frechet"):
     """
@@ -12,84 +18,89 @@ def compute_distance_matrix(trajectories, method="Frechet"):
     """
     n = len(trajectories)
     dist_m = np.zeros((n, n))
+    distance = euclidean
+    fdfdm = FastDiscreteFrechetSparse(distance)
     for i in range(n - 1):
         p = trajectories[i]
         for j in range(i + 1, n):
             q = trajectories[j]
             if method == "Frechet":
-                dist_m[i, j] = similaritymeasures.frechet_dist(p, q)
+                dist_m[i, j] = fdfdm.distance(p, q)
             else:
                 dist_m[i, j] = similaritymeasures.area_between_two_curves(p, q)
             dist_m[j, i] = dist_m[i, j]
     return dist_m
 
+def frechet_distance(traj1, traj2):
+    p = deepcopy(traj1)
+    q = deepcopy(traj2)
+    p[:, 0] = (((p[:, 0]) + 1) / 2) * 500
+    p[:, 1] = (((p[:, 1]) + 1) / 2) * 500
+    p[:, 2] = (((p[:, 2]) + 1) / 2) * 60
+    p = reduce_traj(0, p)
+    q[:, 0] = (((q[:, 0]) + 1) / 2) * 500
+    q[:, 1] = (((q[:, 1]) + 1) / 2) * 500
+    q[:, 2] = (((q[:, 2]) + 1) / 2) * 60
+    q = reduce_traj(0, q)
+    distance = euclidean
+    fdfdm = FastDiscreteFrechetMatrix(distance)
+    return fdfdm.distance(p, q)
+
 def thread_compute_distance(index, trajectory, trajectories):
     n = len(trajectories)
     p = trajectory
-    #distances = np.zeros((n, n))
     distances = dict()
+    distance = euclidean
+    fdfdm = FastDiscreteFrechetMatrix(distance)
     for j in range(index + 1, n):
         q = trajectories[j]
-        distances['{},{}'.format(index,j)] = distances['{},{}'.format(j,index)] = similaritymeasures.frechet_dist(p, q)
-        # dist_matrix[index, j] = dist_matrix[j, index] = similaritymeasures.frechet_dist(p, q)
+        distances['{},{}'.format(index,j)] = distances['{},{}'.format(j,index)] = fdfdm.distance(p, q)
     return distances
 
-def my_frechet_dist(p, q):
-    dists = np.zeros(len(p))
-    for i, pp, pq in zip(range(len(p), p, q)):
-        dists[i] = distance(pp, pq)
-    return np.abs(np.min(p - q))
+def reduce_traj(index, trajectory):
+    traj = trajectory[:, :3]
+    traj[:, 0] = (((traj[:, 0]) + 1) / 2) * 500
+    traj[:, 1] = (((traj[:, 1]) + 1) / 2) * 500
+    traj[:, 2] = (((traj[:, 2]) + 1) / 2) * 60
+    new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 50)
+    new_traj = np.asarray(new_traj)
+    return new_traj
 
+def cluster_trajectories(trajs, latents, means, num_clusters=20):
 
-def cluster_trajectories(trajectories):
+    trajectories = deepcopy(trajs)
+    np.asarray(trajectories)
+    num_cores = multiprocessing.cpu_count()
+    all_reduced_trajectories = Parallel(n_jobs=num_cores)(
+        delayed(reduce_traj)(i, traj)
+       for i, traj in enumerate(trajectories))
 
-    all_reduced_trajectories = []
-    max_length = 0
-    mean_length = 0
-    for traj in trajectories:
-        traj = np.asarray(traj)
-        traj = traj[:, :3]
-        new_traj, indices = rdp_with_index(traj, range(np.shape(traj)[0]), 0.5)
-        if len(new_traj) > max_length:
-            max_length = len(new_traj)
-        mean_length += len(new_traj)
-        all_reduced_trajectories.append(new_traj)
+    dist_matrix = np.zeros((len(all_reduced_trajectories), len(all_reduced_trajectories)))
+    dist_matrices = Parallel(n_jobs=num_cores)(
+        delayed(thread_compute_distance)(i, traj, all_reduced_trajectories)
+       for i, traj in enumerate(all_reduced_trajectories))
 
-    print("mean_length: {}".format(mean_length/len(trajectories)))
+    for dist in dist_matrices:
+        for key in dist.keys():
+            indeces = [int(k) for k in key.split(',')]
+            dist_matrix[indeces[0], indeces[1]] += dist[key]
 
-    num_chunk = 1
-    chunk_size = int(len(trajectories) / num_chunk)
-    indexes = []
-    for j in range(num_chunk):
-        reduced_trajectories = all_reduced_trajectories[j*chunk_size:j*chunk_size + chunk_size]
-        num_cores = multiprocessing.cpu_count()
-        import time
-        start = time.time()
-        dist_matrix = np.zeros((len(reduced_trajectories), len(reduced_trajectories)))
-        dist_matrices = Parallel(n_jobs=num_cores)(
-            delayed(thread_compute_distance)(i, traj, reduced_trajectories)
-           for i, traj in enumerate(reduced_trajectories))
+    clusterer = KMedoids(num_clusters, metric='precomputed', init='k-medoids++').fit(dist_matrix)
 
-        for dist in dist_matrices:
-            for key in dist.keys():
-                indeces = [int(k) for k in key.split(',')]
-                dist_matrix[indeces[0], indeces[1]] += dist[key]
-        end = time.time()
-        print(end - start)
+    num_cluster = np.max(clusterer.labels_)
+    closest = []
+    latents = np.asarray(latents)
+    for l in range(num_cluster + 1):
+        labels_indexes = np.where(clusterer.labels_ == l)[0]
+        cluster_latents = latents[labels_indexes]
+        cluster_means = means[labels_indexes]
+        cluster_means = cluster_means
 
-        # dist_matrix = compute_distance_matrix(reduced_trajectories)
-        # dist_matrix = parallel_compute_distance_matrix(reduced_trajectories)
-        clusterer = hdbscan.HDBSCAN(metric='precomputed', min_cluster_size=15, min_samples=1,
-                                    cluster_extraction_method="leaf")
+        highest_peak_traj_index_in_cluster = np.argmax(cluster_means)
+        highest_peak_latent = np.reshape(cluster_latents[highest_peak_traj_index_in_cluster], (1, -1))
+        highest_peak_traj_index, _ = pairwise_distances_argmin_min(highest_peak_latent, latents)
+        closest.append(highest_peak_traj_index[0])
 
-        clusterer.fit(dist_matrix)
-        num_cluster = np.max(clusterer.labels_)
-        for i in range(num_cluster + 1):
-            index = np.where(clusterer.labels_ == i)[0][0]
-            indexes.append(j * chunk_size + index)
-        # try:
-        #     index = np.where(clusterer.labels_ == -1)[0][0]
-        #     indexes.append(j * chunk_size + index)
-        # except Exception as e:
-        #     pass
-    return indexes
+    closest = np.asarray(closest)
+
+    return closest, None, clusterer.labels_
