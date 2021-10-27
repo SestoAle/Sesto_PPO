@@ -154,7 +154,7 @@ for (i,plot) in enumerate(plots):
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
 
-        x1.plot(range(len(data)), data, '-o'.format(colors[i]), ms=13, linewidth=5, color=colors[i])
+        x1.show_data(range(len(data)), data, '-o'.format(colors[i]), ms=13, linewidth=5, color=colors[i])
 
         i += 1
 

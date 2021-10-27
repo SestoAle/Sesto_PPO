@@ -64,7 +64,7 @@ for (i,plot) in enumerate(plots):
 
     win_rates = np.asarray(win_rates)
 
-    x1.plot(range(len(win_rates)), win_rates, '-o', ms=13, linewidth=5)
+    x1.show_data(range(len(win_rates)), win_rates, '-o', ms=13, linewidth=5)
 
     x1.set_xticks([])
     x1.legend(legends)

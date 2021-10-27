@@ -128,7 +128,7 @@ for (i,plot) in enumerate(plots):
         data = (data - np.min(data)) / (np.max(data) - np.min(data))
         all_data.append(data)
 
-        x1.plot(range(len(data)), data, '-o', ms=14, linewidth=5)
+        x1.show_data(range(len(data)), data, '-o', ms=14, linewidth=5)
 
         #legends.append("$R_{}$".format(i))
         i += 1

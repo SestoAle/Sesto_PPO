@@ -34,7 +34,7 @@ from sklearn.metrics import pairwise_distances
 from vispy import app, visuals, scene, gloo
 from vispy.visuals.filters import ShadingFilter, WireframeFilter
 
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import QDateTime, Qt, QTimer, QObject
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -42,23 +42,109 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget, QFrame, QStackedLayout, QListView, QTreeView)
 
+
 EPSILON = sys.float_info.epsilon
 from PyQt5.QtCore import QThread, pyqtSignal
 import threading
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 physical_devices = tf.config.experimental.list_physical_devices('GPU')
 if len(physical_devices) > 0:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
+MAXVAL = 650000
+class RangeSliderClass(QtWidgets.QWidget):
+
+    def __init__(self):
+        super().__init__()
+
+        self.minTime = 0
+        self.maxTime = 0
+        self.minRangeTime = 0
+        self.maxRangeTime = 0
+
+        self.sliderMin = MAXVAL
+        self.sliderMax = MAXVAL
+
+        self.setupUi(self)
+
+    def setupUi(self, RangeSlider):
+        RangeSlider.setObjectName("RangeSlider")
+        RangeSlider.resize(1000, 65)
+        RangeSlider.setMaximumSize(QtCore.QSize(16777215, 65))
+        self.RangeBarVLayout = QtWidgets.QVBoxLayout(RangeSlider)
+        self.RangeBarVLayout.setContentsMargins(5, 0, 5, 0)
+        self.RangeBarVLayout.setSpacing(0)
+        self.RangeBarVLayout.setObjectName("RangeBarVLayout")
+
+        self.slidersFrame = QtWidgets.QFrame(RangeSlider)
+        self.slidersFrame.setMaximumSize(QtCore.QSize(16777215, 25))
+        self.slidersFrame.setFrameShape(QtWidgets.QFrame.StyledPanel)
+        self.slidersFrame.setFrameShadow(QtWidgets.QFrame.Raised)
+        self.slidersFrame.setObjectName("slidersFrame")
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.slidersFrame)
+        self.horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetMinimumSize)
+        self.horizontalLayout.setContentsMargins(5, 2, 5, 2)
+        self.horizontalLayout.setSpacing(0)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+
+        ## Start Slider Widget
+        self.startSlider = QtWidgets.QSlider(self.slidersFrame)
+        self.startSlider.setMaximum(self.sliderMin)
+        self.startSlider.setMinimumSize(QtCore.QSize(100, 5))
+        self.startSlider.setMaximumSize(QtCore.QSize(16777215, 10))
+
+        font = QtGui.QFont()
+        font.setKerning(True)
+
+        self.startSlider.setFont(font)
+        self.startSlider.setAcceptDrops(False)
+        self.startSlider.setAutoFillBackground(False)
+        self.startSlider.setOrientation(QtCore.Qt.Horizontal)
+        self.startSlider.setInvertedAppearance(True)
+        self.startSlider.setObjectName("startSlider")
+        self.startSlider.setValue(MAXVAL)
+        self.startSlider.valueChanged.connect(self.handleStartSliderValueChange)
+        self.horizontalLayout.addWidget(self.startSlider)
+
+        ## End Slider Widget
+        self.endSlider = QtWidgets.QSlider(self.slidersFrame)
+        self.endSlider.setMaximum(MAXVAL)
+        self.endSlider.setMinimumSize(QtCore.QSize(100, 5))
+        self.endSlider.setMaximumSize(QtCore.QSize(16777215, 10))
+        self.endSlider.setTracking(True)
+        self.endSlider.setOrientation(QtCore.Qt.Horizontal)
+        self.endSlider.setObjectName("endSlider")
+        self.endSlider.setValue(self.sliderMax)
+        self.endSlider.valueChanged.connect(self.handleEndSliderValueChange)
+
+        #self.endSlider.sliderReleased.connect(self.handleEndSliderValueChange)
+
+        self.horizontalLayout.addWidget(self.endSlider)
+
+        self.RangeBarVLayout.addWidget(self.slidersFrame)
+
+        #self.retranslateUi(RangeSlider)
+        QtCore.QMetaObject.connectSlotsByName(RangeSlider)
+
+        self.show()
+
+    @QtCore.pyqtSlot(int)
+    def handleStartSliderValueChange(self, value):
+        self.startSlider.setValue(value)
+
+    @QtCore.pyqtSlot(int)
+    def handleEndSliderValueChange(self, value):
+        self.endSlider.setValue(value)
 
 class WorlModelCanvas(QObject, scene.SceneCanvas):
     heatmap_signal = pyqtSignal(bool)
     filtering_mean_signal = pyqtSignal(float)
     cluster_size_signal = pyqtSignal(int)
     in_time_signal = pyqtSignal(int)
-    im_rew_signal = pyqtSignal(np.ndarray)
+    plot_traj_signal = pyqtSignal(list)
     traj_list_signal = pyqtSignal(dict)
     cluster_selected_signal = pyqtSignal(int)
+    load_ending_signal = pyqtSignal(bool)
 
     def __init__(self, *args, **kwargs):
         self.current_line = None
@@ -92,6 +178,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.cluster_size = 20
         self.smooth_window = 5
         self.trajectory_visualizer = True
+        self.heatmap_in_time_discr = 500
 
         self.mean_moti_thr = 0.04
         self.sum_moti_thr = 16
@@ -180,15 +267,13 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             if event.key.name == 'Down':
                 self.index += 1
 
-            self.delete_agent()
-
             self.index = np.clip(self.index, -1, len(self.line_visuals))
 
             if self.index == -1 or self.index == len(self.line_visuals):
                 self.one_line = False
                 self.hide_all_lines()
                 self.toggle_lines()
-                self.im_rew_signal.emit(np.asarray([]))
+                self.plot_traj_signal.emit(np.asarray([]))
                 self.cluster_selected_signal.emit(-1)
                 return
 
@@ -223,16 +308,31 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 plt.show()
 
     def plot_one_traj(self, line_index):
+        self.delete_agent()
         self.hide_all_lines()
         self.line_visuals[line_index].visible = True
         self.cluster_selected_signal.emit(line_index)
 
         if self.im_rews[line_index] is not None:
-            self.plot_im_rews(self.im_rews[line_index])
+            self.plot_traj_data(self.im_rews[line_index], self.actions[line_index])
+
+        actions_to_save = dict(actions=self.actions[line_index])
+        json_str = json.dumps(actions_to_save, cls=NumpyEncoder)
+        f = open("arrays/actions.json", "w")
+        f.write(json_str)
+        f.close()
+
+
+        traj_to_save = dict(x_s=self.trajs[line_index][:, 0], z_s=self.trajs[line_index][:, 1], y_s=self.trajs[line_index][:, 2],
+                            im_values=np.zeros(501), il_values=np.zeros(501))
+        json_str = json.dumps(traj_to_save, cls=NumpyEncoder)
+        f = open("../Playtesting-Env/Assets/Resources/traj.json", "w")
+        f.write(json_str)
+        f.close()
 
         self.one_line = True
 
-    def plot_im_rews(self, im_rews):
+    def plot_traj_data(self, im_rews, actions):
         # plt.figure()
         # plt.title("im: {}".format(np.sum(self.im_rews[self.index])))
         plot_data = im_rews
@@ -240,7 +340,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         # plot_data = (plot_data - np.min(step_moti_rews)) / (np.max(step_moti_rews) - np.min(step_moti_rews))
         # plt.plot(range(len(plot_data)), plot_data)
         plot_data = np.asarray(plot_data)
-        self.im_rew_signal.emit(plot_data)
+        self.plot_traj_signal.emit([plot_data, actions])
 
     def change_line_colors(self, mode='default'):
         for i, v in enumerate(self.line_visuals):
@@ -391,17 +491,20 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             (r1, g1, b1), (r2, g2, b2) = colors[i], colors[i + 1]
             return int(r1 + f * (r2 - r1)) / 255, int(g1 + f * (g2 - g1)) / 255, int(b1 + f * (b2 - b1)) / 255, 1
 
-    def trajectories_to_pos_buffer(self, trajectories):
+    def trajectories_to_pos_buffer(self, trajectories, rnd=None):
         world_model_in_time = []
         pos_buffer = dict()
+        rnd_buffer = dict()
         pos_buffer_is_grounded = dict()
         pos_buffer_alpha = dict()
         count = 0
         for traj in list(trajectories.values())[:]:
             count += 1
             for state in traj:
-
                 position = np.asarray(state[:3])
+                # pos_key = ' '.join(map(str, position))
+                # if pos_key not in rnd_buffer:
+                #     rnd_buffer[pos_key] = 1
                 position[0] = (((position[0] + 1) / 2) * 500)
                 position[1] = (((position[1] + 1) / 2) * 500)
                 position[2] = (((position[2] + 1) / 2) * 60)
@@ -419,7 +522,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                     alphas[int(state[-2] * 10)] = 1
                     pos_buffer_alpha[pos_key] = alphas
 
-            if count % 100 == 0:
+            if count % self.heatmap_in_time_discr == 0:
                 world_model_t = []
                 for k in pos_buffer.keys():
                     k_value = list(map(float, k.split(" ")))
@@ -436,9 +539,33 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 alpha_heat = pos_buffer_alpha[k]
                 world_model.append(k_value[:3] + [heat] + list(alpha_heat))
 
+        # rnd_heatmap = []
+        # batch_size = 512
+        # k_list = list(rnd_buffer.keys())
+        # num_iter = int(np.ceil(len(k_list) / batch_size))
+        # for i in range(num_iter):
+        #     batch = k_list[i * batch_size: i * batch_size + batch_size]
+        #     state_batch = []
+        #     for s in batch:
+        #         s = list(map(float, s.split(" ")))
+        #         s = np.concatenate([s, np.zeros(70)])
+        #         state_batch.append(dict(global_in=s))
+        #
+        #     rnd_values = rnd.eval(state_batch)
+        #     for s, v in zip(batch, rnd_values):
+        #         s = list(map(float, s.split(" ")))
+        #         s = np.asarray(s[:3])
+        #         s[0] = (((s[0] + 1) / 2) * 500)
+        #         s[1] = (((s[1] + 1) / 2) * 500)
+        #         s[2] = (((s[2] + 1) / 2) * 60)
+        #         s = s.astype(int)
+        #         k = ' '.join(map(str, s))
+        #         if pos_buffer_is_grounded[k] == 1:
+        #             rnd_heatmap.append(list(s) + [v])
+
         return pos_buffer, pos_buffer_alpha, world_model, world_model_in_time
 
-    def plot_3d_map(self, world_model, color_index=3, percentile=95,
+    def plot_3d_map(self, world_model, color_index=3, percentile=98,
                     colors_gradient=[(150, 0, 0), (255, 255, 0), (255, 255, 255)], set_map=True):
         world_model_array = deepcopy(np.asarray(world_model))
         world_model_array[:, color_index] = np.clip(world_model_array[:, color_index],
@@ -485,8 +612,8 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
     def plot_3d_map_in_time(self, world_model_in_time):
         return
-        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 5)
-        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 95)
+        min_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 2)
+        max_perc = np.percentile(np.asarray(world_model_in_time[-1])[:, 3], 98)
         for world_model in world_model_in_time:
             world_model = np.asarray(world_model)
             world_model[:, 3] = np.clip(world_model[:, 3], min_perc,
@@ -498,9 +625,9 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             colors = []
             for c in world_model[:, 3]:
                 colors.append(self.convert_to_rgb(min_value, max_value, c))
+            colors = np.asarray(colors)
 
             Scatter3D = scene.visuals.create_visual_node(visuals.MarkersVisual)
-            colors = np.asarray(colors)
             heatmap = Scatter3D(parent=view.scene)
             heatmap.set_gl_state('additive', blend=True, depth_test=True)
             heatmap.set_data(world_model[:, :3], face_color=colors, symbol='o', size=0.7, edge_width=0, edge_color=colors,
@@ -529,9 +656,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.loading.visible = False
 
     def create_agent(self, starting_position=(255, 255, 0)):
+        starting_position = starting_position.astype(np.int)
         if self.agent == None:
             Cube = scene.visuals.create_visual_node(visuals.CubeVisual)
-            self.agent = Cube(parent=self.view.scene, color='white', size=1)
+            self.agent = Cube(parent=self.view.scene, color='white', size=2)
             # Define a scale and translate transformation :
             self.agent.transform = visuals.transforms.STTransform(translate=starting_position)
         else:
@@ -552,10 +680,31 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.camera.azimuth = self.camera.azimuth + 1
         self.timer.start()
 
+
+    def move_agent_at_traj_index(self, index):
+        self.delete_agent()
+        index = int(index)
+        smoothed_traj = deepcopy(self.trajs[self.index][:, :3])
+        smoothed_traj[:, 0] = ((np.asarray(smoothed_traj[:, 0]) + 1) / 2) * 500
+        smoothed_traj[:, 1] = ((np.asarray(smoothed_traj[:, 1]) + 1) / 2) * 500
+        smoothed_traj[:, 2] = ((np.asarray(smoothed_traj[:, 2]) + 1) / 2) * 60
+
+        if self.smooth_window > 0:
+            smoothed_traj[:, 0] = self.savitzky_golay(smoothed_traj[:, 0], self.smooth_window, 3)
+            smoothed_traj[:, 1] = self.savitzky_golay(smoothed_traj[:, 1], self.smooth_window, 3)
+            smoothed_traj[:, 2] = self.savitzky_golay(smoothed_traj[:, 2], self.smooth_window, 3)
+
+        self.create_agent(smoothed_traj[index, :3])
+
     def move_agent(self):
 
         self.agent_timer = threading.Timer(1/60, self.move_agent)
         to_move = self.trajs[self.index][self.animation_index, :3]
+        to_move = np.asarray(to_move)
+        to_move[0] = (((to_move[0] + 1) / 2) * 500)
+        to_move[1] = (((to_move[1] + 1) / 2) * 500)
+        to_move[2] = (((to_move[2] + 1) / 2) * 60)
+        to_move = to_move.astype(np.int)
         current_tr = self.agent.transform.translate
         if np.linalg.norm(to_move - current_tr[:3]) < 0.05 or np.linalg.norm(self.movement_vector) < 0.05:
             self.animation_index += 1
@@ -565,6 +714,11 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 self.delete_agent()
                 return
             to_move = self.trajs[self.index][self.animation_index, :3]
+            to_move = np.asarray(to_move)
+            to_move[0] = (((to_move[0] + 1) / 2) * 500)
+            to_move[1] = (((to_move[1] + 1) / 2) * 500)
+            to_move[2] = (((to_move[2] + 1) / 2) * 60)
+            to_move = to_move.astype(np.int)
             self.movement_vector = to_move - current_tr[:3]
             self.movement_vector = self.movement_vector / self.agent_speed
         current_tr[0] += self.movement_vector[0]
@@ -585,6 +739,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             filler = np.zeros((66))
             traj_to_observe = []
             episodes_to_observe = []
+            acts_to_observe = []
 
             # Goal Area 1
             # desired_point_y = 1
@@ -595,12 +750,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             # goal_area_width = 44
 
             # Goal Area 2
-            # desired_point_y = 21
-            # goal_area_x = 22
-            # goal_area_z = 461
-            # goal_area_y = 21
-            # goal_area_height = 39
-            # goal_area_width = 66
+            desired_point_y = 21
+            goal_area_x = 22
+            goal_area_z = 461
+            goal_area_y = 21
+            goal_area_height = 39
+            goal_area_width = 66
 
             # desired_point_y = 10
             # goal_area_x = 95
@@ -626,12 +781,12 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             # Goal Area 4
             #
-            desired_point_y = 1
-            goal_area_x = 442
-            goal_area_z = 38
-            goal_area_y = 1
-            goal_area_height = 65
-            goal_area_width = 46
+            # desired_point_y = 1
+            # goal_area_x = 442
+            # goal_area_z = 38
+            # goal_area_y = 1
+            # goal_area_height = 65
+            # goal_area_width = 46
 
             # desired_point_y = 21
             # goal_area_x = 454
@@ -684,6 +839,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                         #         if True:
                         traj_to_observe.append(traj)
                         episodes_to_observe.append(keys)
+                        acts_to_observe.append(actions[keys])
                         break
 
             # Get the value of the motivation and imitation models of the extracted trajectories
@@ -738,14 +894,15 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
                 sum_moti_rews_dict[idx_traj] = sum_moti_rew
 
             traj_to_observe = np.asarray(traj_to_observe)
-            print(len(traj_to_observe))
+            acts_to_observe = np.asarray(acts_to_observe)
 
-            return traj_to_observe, mean_moti_rews_dict, sum_moti_rews_dict
+            return traj_to_observe, acts_to_observe, mean_moti_rews_dict, sum_moti_rews_dict
 
     def filtering_trajectory(self):
 
         motivation = self.motivation
         traj_to_observe = self.unfiltered_trajs
+        acts_to_observe = self.unfiltered_actions
         mean_moti_rews_dict = self.mean_moti_rews_dict
         sum_moti_rews_dict = self.sum_moti_rews_dict
 
@@ -789,6 +946,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         all_points = []
         all_im_rews = []
         traj_to_observe = traj_to_observe[idxs_to_observe]
+        acts_to_observe = acts_to_observe[idxs_to_observe]
         # Plot the trajectories
         for traj, idx in zip(traj_to_observe, idxs_to_observe):
             states_batch = []
@@ -879,12 +1037,13 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         # for i, traj, im_rews, key in zip(range(len(cluster_indices)),
         #                                  traj_to_observe[idxs_to_observe][cluster_indices],
         #                                  all_normalized_im_rews[cluster_indices], episodes_to_observe):
-        for i, traj, im_rews in zip(range(len(cluster_indices)),
+        for i, traj, im_rews, actions in zip(range(len(cluster_indices)),
                                     traj_to_observe[cluster_indices],
-                                    all_normalized_im_rews[cluster_indices]):
+                                    all_normalized_im_rews[cluster_indices],
+                                    acts_to_observe[cluster_indices]):
 
             self.im_rews.append(im_rews)
-            self.actions.append(None)
+            self.actions.append(actions)
             self.trajs.append(traj)
 
         self.unfreeze()
@@ -972,18 +1131,22 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         try:
             with open('{}/{}/{}_unf_trajs.npy'.format(folder, model_name, model_name), 'rb') as f:
                 unfiltered_trajs = np.load(f, allow_pickle=True)
+            with open('{}/{}/{}_unf_actions.npy'.format(folder, model_name, model_name), 'rb') as f:
+                unfiltered_actions = np.load(f, allow_pickle=True)
             with open('{}/{}/{}_moti.pickle'.format(folder, model_name, model_name), 'rb') as f:
                 moti = pickle.load(f)
 
-            return unfiltered_trajs, moti
+            return unfiltered_trajs, unfiltered_actions, moti
 
         except Exception as e:
             print(e)
-            return None, None
+            return None, None, None
 
-    def save_unfiltered_trajs(self, model_name, trajs, mean_moti, sum_moti, folder='arrays'):
+    def save_unfiltered_trajs(self, model_name, trajs, actions, mean_moti, sum_moti, folder='arrays'):
         with open('{}/{}/{}_unf_trajs.npy'.format(folder, model_name, model_name), 'wb') as f:
             np.save(f, trajs)
+        with open('{}/{}/{}_unf_actions.npy'.format(folder, model_name, model_name), 'wb') as f:
+            np.save(f, actions)
         with open('{}/{}/{}_moti.pickle'.format(folder, model_name, model_name), 'wb') as f:
             moti = dict(mean=mean_moti, sum=sum_moti)
             pickle.dump(moti, f)
@@ -1007,9 +1170,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
     def load_data(self, model_name):
 
         self.remove_maps()
+        motivation = self.load_motivation(model_name)
 
         buffer, buffer_alpha, world_model, stats, world_model_in_time = self.load_precomputed_models(model_name)
-        unfiltered_trajs, unfiltered_moti = self.load_unfiltered_trajs(model_name)
+        unfiltered_trajs, unfiltered_actions, unfiltered_moti = self.load_unfiltered_trajs(model_name)
 
         self.unfreeze()
         self.world_model = world_model
@@ -1022,7 +1186,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
             trajectories, actions = self.load_data_from_disk(model_name)
 
-            buffer, buffer_alpha, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories)
+            buffer, buffer_alpha, world_model, world_model_in_time = self.trajectories_to_pos_buffer(trajectories, rnd=motivation)
             world_model = np.asarray(world_model)
             stats = dict(episodes=len(trajectories))
 
@@ -1036,17 +1200,17 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
         self.plot_3d_map_in_time(world_model_in_time)
 
         if self.trajectory_visualizer:
-            motivation = self.load_motivation(model_name)
 
             if unfiltered_trajs is None:
 
                 if trajectories is None:
                     trajectories, actions = self.load_data_from_disk(model_name)
 
-                unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict = \
+                unfiltered_trajs, unfiltered_actions, mean_moti_rews_dict, sum_moti_rews_dict = \
                     self.extrapolate_trajectories(motivation, trajectories, actions)
 
-                self.save_unfiltered_trajs(model_name, unfiltered_trajs, mean_moti_rews_dict, sum_moti_rews_dict)
+                self.save_unfiltered_trajs(model_name, unfiltered_trajs, unfiltered_actions,
+                                           mean_moti_rews_dict, sum_moti_rews_dict)
 
             if unfiltered_moti is not None:
                 mean_moti_rews_dict, sum_moti_rews_dict = unfiltered_moti.values()
@@ -1054,6 +1218,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
             self.unfreeze()
             self.motivation = motivation
             self.unfiltered_trajs = unfiltered_trajs
+            self.unfiltered_actions = unfiltered_actions
             self.mean_moti_rews_dict = mean_moti_rews_dict
             self.sum_moti_rews_dict = sum_moti_rews_dict
             self.freeze()
@@ -1063,6 +1228,7 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         self.change_text(model_name, len(list(buffer.keys())), stats['episodes'])
         self.stop_loading()
+        self.load_ending_signal.emit(True)
 
     def load_motivation(self, model_name):
         graph = tf.compat.v1.Graph()
@@ -1105,9 +1271,10 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
         smoothed_traj = deepcopy(ep_trajectory)
 
-        smoothed_traj[:, 0] = self.savitzky_golay(smoothed_traj[:, 0], smooth_window, 3)
-        smoothed_traj[:, 1] = self.savitzky_golay(smoothed_traj[:, 1], smooth_window, 3)
-        smoothed_traj[:, 2] = self.savitzky_golay(smoothed_traj[:, 2], smooth_window, 3)
+        if smooth_window > 0:
+            smoothed_traj[:, 0] = self.savitzky_golay(smoothed_traj[:, 0], smooth_window, 3)
+            smoothed_traj[:, 1] = self.savitzky_golay(smoothed_traj[:, 1], smooth_window, 3)
+            smoothed_traj[:, 2] = self.savitzky_golay(smoothed_traj[:, 2], smooth_window, 3)
 
         if color is None:
             default_colors = [(0, 255, 0), (0, 255, 255), (255, 0, 255)]
@@ -1191,25 +1358,76 @@ class WorlModelCanvas(QObject, scene.SceneCanvas):
 
 class MplCanvas(FigureCanvasQTAgg):
 
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig = plt.gcf()
-        self.axes = plt.gca()
+    hover_signal = pyqtSignal(int)
+
+    def __init__(self, canvas):
+        self.fig = plt.figure()
+        self.axes = plt.subplot()
+        self.canvas = canvas
+        self.hover_line = None
         plt.axis('off')
-        plt.clf()
+        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        # plt.clf()
         FigureCanvasQTAgg.__init__(self, self.fig)
         FigureCanvasQTAgg.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         FigureCanvasQTAgg.updateGeometry(self)
 
+    def show_data(self, x, y):
+        self.axes.clear()
+        self.plot(x, y)
+        self.axes.set_xlim(0, 501)
+        # fig = plt.gcf()
+        self.fig.canvas.mpl_connect("motion_notify_event", self.hover_plot)
+        if self.hover_line is not None:
+            self.hover_line.remove()
+        self.hover_line = None
+        self.draw()
+
     def plot(self, x, y):
-        plt.clf()
-        plt.plot(x, y)
-        plt.xlim(0, 501)
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0)
+        raise NotImplementedError("Please Implement this method")
+
+    def hover_plot(self, event):
+        x = event.xdata
+        if x is not None:
+            self.hover_signal.emit(x)
+
+    def catch_signal(self, x):
+        self.canvas.move_agent_at_traj_index(x)
+        self.draw_hover_line(x)
+
+    def draw_hover_line(self, x):
+        if self.hover_line is not None:
+            self.hover_line.remove()
+            del self.hover_line
+            self.hover_line = None
+
+        self.hover_line = self.axes.axvline(x)
         self.draw()
 
     def clear_plot(self):
-        plt.clf()
+        self.axes.clear()
         self.draw()
+
+class CuriosityPlot(MplCanvas):
+    def __init__(self, canvas):
+        MplCanvas.__init__(self, canvas)
+
+    def plot(self, x, y):
+        self.axes.plot(x, y)
+
+class ActionPlot(MplCanvas):
+    def __init__(self, canvas):
+        self.cmap = cm.get_cmap('tab10')
+        MplCanvas.__init__(self, canvas)
+
+    def plot(self, x, y):
+        colors = []
+        for p in y:
+            colors.append(self.cmap(p))
+
+        self.axes.scatter(x, y, c=colors, s=10, marker='s')
+        # self.axes.plot(x, y)
+
 
 class WorldModelApplication(QDialog):
     def __init__(self, canvas, parent=None):
@@ -1254,8 +1472,13 @@ class WorldModelApplication(QDialog):
         self.timeLabel.setBuddy(self.timeSlider)
         self.timeSlider.setMaximum(100)
         self.timeSlider.setValue(0)
-        self.timeLabel.setText(self.timeLabelText.format(self.timeSlider.value() * 500))
+        self.timeLabel.setText(self.timeLabelText.format(self.timeSlider.value() * self.canvas.heatmap_in_time_discr))
         self.timeSlider.setMinimumSize(200, 0)
+
+        self.doubleTimeSlider = RangeSliderClass()
+        # self.doubleTimeSlider.setMaximum(100)
+        # self.doubleTimeSlider.setValue(0)
+        self.doubleTimeSlider.setMinimumSize(200, 0)
 
         self.alphaCombo = QComboBox()
         self.alphaLabel = QLabel('&alpha:')
@@ -1267,7 +1490,7 @@ class WorldModelApplication(QDialog):
         self.smoothLabel = QLabel("&Smooth:")
         self.smoothLabel.setBuddy(self.smoothSlider)
         self.smoothSlider.setMaximum(101)
-        self.smoothSlider.setMinimum(5)
+        self.smoothSlider.setMinimum(0)
         self.smoothSlider.setTickInterval(2)
         self.smoothSlider.setSingleStep(2)
         self.smoothSlider.sliderReleased.connect(self.smooth_changed)
@@ -1280,14 +1503,15 @@ class WorldModelApplication(QDialog):
         self.treeRootNode = self.trajTreeModel.invisibleRootItem()
         self.trajTreeView.setModel(self.trajTreeModel)
         self.trajTreeView.expandAll()
-        self.trajTreeView.setMinimumSize(0, 500)
+        self.trajTreeView.setMinimumSize(0, 300)
         # self.trajTreeView.clicked.connect(self.tree_view_clicked)
         self.trajTreeView.selectionModel().selectionChanged.connect(self.tree_view_selected)
-        self.canvas.traj_list_signal.connect(self.populateTreeView)
+        self.canvas.traj_list_signal.connect(self.populate_tree_view)
         self.canvas.cluster_selected_signal.connect(self.tree_view_set_index)
 
         trajsLayout.addWidget(self.timeLabel)
         trajsLayout.addWidget(self.timeSlider)
+        trajsLayout.addWidget(self.doubleTimeSlider)
         trajsLayout.addWidget(self.alphaLabel)
         trajsLayout.addWidget(self.alphaCombo)
         trajsLayout.addWidget(self.smoothLabel)
@@ -1301,6 +1525,7 @@ class WorldModelApplication(QDialog):
             self.timeSlider.blockSignals(True),
             self.timeSlider.setMaximum(x),
             self.timeSlider.setValue(x),
+            self.timeLabel.setText(self.timeLabelText.format(x * self.canvas.heatmap_in_time_discr)),
             self.timeSlider.blockSignals(False)})
 
         controlLayout = QVBoxLayout()
@@ -1350,11 +1575,27 @@ class WorldModelApplication(QDialog):
         midLayout.addLayout(midLeftLayout)
 
         bottomLayout = QVBoxLayout()
-        self.plotWidget = MplCanvas()
-        bottomLayout.addWidget(self.plotWidget)
-        self.plotWidget.setMinimumSize(0, 80)
-        self.plotWidget.setMaximumSize(100000, 80)
-        self.canvas.im_rew_signal.connect(self.plot_curiosity)
+        self.curiosityPlotWidget = CuriosityPlot(canvas)
+        self.curiosityPlotWidget.setMinimumSize(0, 80)
+        self.curiosityPlotWidget.setMaximumSize(100000, 80)
+
+        self.actionPlotWidget = ActionPlot(canvas)
+        self.actionPlotWidget.setMinimumSize(0, 80)
+        self.actionPlotWidget.setMaximumSize(100000, 80)
+
+        self.curiosityPlotWidget.hover_signal.connect(lambda x: {
+            self.actionPlotWidget.catch_signal(x),
+            self.curiosityPlotWidget.catch_signal(x)
+        })
+        self.actionPlotWidget.hover_signal.connect(lambda x: {
+            self.actionPlotWidget.catch_signal(x),
+            self.curiosityPlotWidget.catch_signal(x)
+        })
+
+        self.canvas.plot_traj_signal.connect(self.plot_traj_data)
+
+        bottomLayout.addWidget(self.curiosityPlotWidget)
+        bottomLayout.addWidget(self.actionPlotWidget)
 
         # bottomLayout.addStretch(1)
 
@@ -1365,7 +1606,7 @@ class WorldModelApplication(QDialog):
 
         self.load_thread = None
         self.setLayout(mainLayout)
-        self.resize(1920, 1080)
+        self.resize(1920, 600)
 
     class MyThread(QThread):
         finished = pyqtSignal()
@@ -1412,7 +1653,7 @@ class WorldModelApplication(QDialog):
             self.canvas.print_3d_traj(self.trajTreeModel.itemFromIndex(index).data()[0], tmp_line=True,
                                       im_rews=self.trajTreeModel.itemFromIndex(index).data()[1],
                                       color=self.canvas.colors[index.parent().row()])
-            self.canvas.plot_im_rews(self.trajTreeModel.itemFromIndex(index).data()[1])
+            self.canvas.plot_traj_data(self.trajTreeModel.itemFromIndex(index).data()[1], None)
             self.canvas.blockSignals(False)
             self.trajTreeView.blockSignals(False)
 
@@ -1427,7 +1668,7 @@ class WorldModelApplication(QDialog):
         else:
             self.trajTreeView.setCurrentIndex(self.trajTreeModel.index(index, 0))
 
-    def populateTreeView(self, treeDict):
+    def populate_tree_view(self, treeDict):
 
         for i, traj in enumerate(treeDict['sub_trajs'].keys()):
             cl_item = QStandardItem('Cluster {}'.format(i))
@@ -1451,11 +1692,15 @@ class WorldModelApplication(QDialog):
         self.load_thread.finished.connect(self.enable_inputs)
         self.disable_inputs()
 
-    def plot_curiosity(self, x):
+    def plot_traj_data(self, x):
         if len(x) == 0:
-            self.plotWidget.clear_plot()
+            self.curiosityPlotWidget.clear_plot()
+            self.actionPlotWidget.clear_plot()
         else:
-            self.plotWidget.plot(np.arange(len(x)), x)
+            curiosity = x[0]
+            actions = x[1]
+            self.curiosityPlotWidget.show_data(np.arange(len(curiosity)), curiosity)
+            self.actionPlotWidget.show_data(np.arange(len(actions)), actions)
 
     def alpha_name_changed(self, value):
         if value=='all':
@@ -1475,7 +1720,7 @@ class WorldModelApplication(QDialog):
         else:
             self.heatmapCheck.setEnabled(True)
         self.canvas.show_heatmap_in_time(np.clip(value, 0, self.timeSlider.maximum()))
-        value = value * 500
+        value = value * self.canvas.heatmap_in_time_discr
         self.timeLabel.setText(self.timeLabelText.format(value))
 
     def disable_inputs(self):

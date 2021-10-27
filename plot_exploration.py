@@ -4,7 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-model_names = 'play_4_only_im, play_4_only_im_2, play_4_only_im_3, play_4_only_im_no_map, play_4_only_im_no_map_2, play_4_only_im_no_map_3'
+model_names = 'play_4_only_im_2, play_4_no_pos_embs'
 model_names = model_names.replace(" ", "")
 model_names = model_names.split(",")
 
