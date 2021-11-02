@@ -1,10 +1,9 @@
-import torch
+
 import numpy as np
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering
 from sklearn.metrics import pairwise_distances_argmin_min
 import hdbscan
 import os
-import scipy.cluster.hierarchy as hac
 os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 
 # Cluster through latent space of autoencoder.

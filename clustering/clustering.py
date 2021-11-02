@@ -1,7 +1,4 @@
 import numpy as np
-import sklearn as sk
-import similaritymeasures
-import hdbscan
 from clustering.rdp import rdp_with_index, distance
 from joblib import Parallel, delayed
 import multiprocessing
