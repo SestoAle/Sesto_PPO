@@ -4,8 +4,10 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-all_models = ['play_4_only_im, play_4_only_im_2, play_4_only_im_3',
-               'play_4_only_im_no_map, play_4_only_im_no_map_2, play_4_only_im_no_map_3']
+all_models = ['play_4_only_im',
+              'play_4_only_im_no_map',
+              'play_4_only_im_emb_2',
+              'play_4_no_pos_embs']
 
 for model_names in all_models:
     model_names = model_names.replace(" ", "")
@@ -25,7 +27,7 @@ for model_names in all_models:
         pos_buffer = dict()
         count_buffer = []
         count = 0
-        for traj in list(trajectories.values())[:1000]:
+        for traj in list(trajectories.values())[:50000]:
             count += 1
 
             for state in traj:
@@ -53,5 +55,5 @@ for model_names in all_models:
     plt.plot(range(len(means)), means)
     plt.fill_between(range(len(stds)), means-stds, means+stds, alpha=0.5)
 
-plt.legend(['Our method', 'Without semantic 3D map', 'Without positional embedding'])
+plt.legend(['Our method', 'Without semantic 3D map', 'With learnt embedding', 'Without embeddings'])
 plt.show()
