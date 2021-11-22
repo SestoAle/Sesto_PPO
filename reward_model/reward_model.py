@@ -105,12 +105,14 @@ class RewardModel:
             'obs': [],
             'obs_n': [],
             'acts': [],
+            'episode_len': []
         }
 
         val_traj = {
             'obs': [],
             'obs_n': [],
-            'acts': []
+            'acts': [],
+            'episode_len': []
         }
 
         if with_policy is False:
@@ -195,6 +197,7 @@ class RewardModel:
                     expert_traj['obs'].extend(np.array(states[:-1]))
                     expert_traj['obs_n'].extend(np.array(states[1:]))
                     expert_traj['acts'].extend(np.array(actions))
+                    expert_traj['episode_len'].extend(np.asarray([len(states[:-1])]))
                     episode += 1
                 else:
                     if num_episode is None or episode >= num_episode:
@@ -205,6 +208,7 @@ class RewardModel:
                         val_traj['obs'].extend(np.array(states[:-1]))
                         val_traj['obs_n'].extend(np.array(states[1:]))
                         val_traj['acts'].extend(np.array(actions))
+                        val_traj['episode_len'].extend(np.asarray([len(states[:-1])]))
                         episode += 1
 
             y = None
